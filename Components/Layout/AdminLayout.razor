@@ -1,0 +1,23 @@
+@inherits LayoutComponentBase
+
+<div class="admin-shell">
+    <aside class="admin-side">
+        <div class="brand">پاپی<span>.</span> | مدیریت</div>
+        <NavLink href="/admin" Match="NavLinkMatch.All">📊 داشبورد</NavLink>
+        <NavLink href="/admin/products">👕 محصولات</NavLink>
+        <NavLink href="/admin/orders">🧾 سفارش‌ها</NavLink>
+        <NavLink href="/admin/categories">🗂 دسته‌بندی‌ها</NavLink>
+        <hr style="border-color:#333; margin: 16px 0" />
+        <NavLink href="/">🏠 بازگشت به فروشگاه</NavLink>
+        <a href="/logout">🚪 خروج</a>
+    </aside>
+    <div class="admin-main">
+        @Body
+    </div>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    خطایی رخ داده است.
+    <a href="." class="reload">بارگذاری مجدد</a>
+    <span class="dismiss">🗙</span>
+</div>

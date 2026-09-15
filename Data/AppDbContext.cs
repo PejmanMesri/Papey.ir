@@ -1,0 +1,25 @@
+using Microsoft.EntityFrameworkCore;
+using Papey.Models;
+
+namespace Papey.Data;
+
+public class AppDbContext : DbContext
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+
+    public DbSet<Category> Categories => Set<Category>();
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
+    public DbSet<AppUser> Users => Set<AppUser>();
+    public DbSet<Address> Addresses => Set<Address>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+
+    protected override void OnModelCreating(ModelBuilder mb)
+    {
+        mb.Entity<Category>().HasIndex(c => c.Slug).IsUnique();
+        mb.Entity<Product>().HasIndex(p => p.Slug).IsUnique();
+        mb.Entity<AppUser>().HasIndex(u => u.Username).IsUnique();
+        mb.Entity<Order>().HasIndex(o => o.OrderNumber).IsUnique();
+    }
+}

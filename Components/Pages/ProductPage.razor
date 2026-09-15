@@ -1,0 +1,137 @@
+@page "/product/{Slug}"
+@rendermode InteractiveServer
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject CartService Cart
+
+@if (_product is null)
+{
+    <div class="alert-papey alert-info" style="margin-top:32px; text-align:center">محصول یافت نشد.</div>
+}
+else
+{
+    <PageTitle>@_product.Name | پاپی</PageTitle>
+    <div class="product-detail">
+        <div class="gallery">
+            <img src="@_product.ImageUrl" alt="@_product.Name" />
+        </div>
+        <div>
+            <p style="color:var(--papey-muted); font-size:0.85rem">
+                <a href="/">خانه</a> / <a href="/category/@_product.Category.Slug">@_product.Category.Name</a>
+            </p>
+            <h1 style="margin:0 0 12px; font-size:1.7rem">@_product.Name</h1>
+            <div class="price-row" style="margin-bottom: 24px">
+                <span class="price" style="font-size:1.4rem">@_product.Price.ToToman()</span>
+                @if (_product.OldPrice is not null)
+                {
+                    <span class="old-price">@_product.OldPrice.Value.ToToman()</span>
+                }
+            </div>
+
+            <label class="form-label">رنگ: <strong>@_selectedColor</strong></label>
+            <div>
+                @foreach (var c in _colors)
+                {
+                    <span class="color-dot @(_selectedColor == c.Name ? "selected" : "")"
+                          style="background:@c.Hex" title="@c.Name"
+                          @onclick="() => SelectColor(c.Name)"></span>
+                }
+            </div>
+            <div class="color-name">@_selectedColor</div>
+
+            <label class="form-label">سایز:</label>
+            <div style="margin-bottom: 20px">
+                @foreach (var s in _sizes)
+                {
+                    var inStock = HasStock(_selectedColor!, s);
+                    <span class="size-chip @(_selectedSize == s ? "selected" : "") @(!inStock ? "out" : "")"
+                          @onclick="() => { if (inStock) _selectedSize = s; }">@s</span>
+                }
+            </div>
+
+            <label class="form-label">تعداد:</label>
+            <div style="display:flex; align-items:center; margin-bottom: 24px">
+                <div class="qty-box">
+                    <button @onclick="() => { if (_qty > 1) _qty--; }">−</button>
+                    <span>@PersianHelpers.ToPersianDigits(_qty.ToString())</span>
+                    <button @onclick="() => { if (_qty < MaxQty) _qty++; }">+</button>
+                </div>
+                <small style="color:var(--papey-muted)">
+                    @(MaxQty > 0 ? $"موجودی: {PersianHelpers.ToPersianDigits(MaxQty.ToString())} عدد" : "ناموجود")
+                </small>
+            </div>
+
+            <button class="btn-papey" style="width:100%" disabled="@(!CanAdd)" @onclick="AddToCart">
+                🛒 افزودن به سبد خرید
+            </button>
+
+            @if (_message is not null)
+            {
+                <div class="alert-papey @(_added ? "alert-success" : "alert-danger")">@_message</div>
+            }
+
+            <div class="card-box" style="margin-top: 24px; font-size:0.9rem; line-height:2">
+                <strong>توضیحات:</strong>
+                <p style="color:var(--papey-muted)">@_product.Description</p>
+                <span>🚚 ارسال با پست پیشتاز</span><br />
+                <span>↩️ ۷ روز ضمانت بازگشت</span><br />
+                <span>🔒 پرداخت امن زرین‌پال</span>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string Slug { get; set; } = "";
+
+    private Product? _product;
+    private List<(string Name, string Hex)> _colors = new();
+    private List<string> _sizes = new();
+    private string? _selectedColor;
+    private string? _selectedSize;
+    private int _qty = 1;
+    private string? _message;
+    private bool _added;
+
+    private int MaxQty => _product?.Variants
+        .FirstOrDefault(v => v.Color == _selectedColor && v.Size == _selectedSize)?.Stock ?? 0;
+    private bool CanAdd => _selectedColor is not null && _selectedSize is not null && MaxQty > 0;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _product = await db.Products
+            .Include(p => p.Category)
+            .Include(p => p.Variants)
+            .FirstOrDefaultAsync(p => p.Slug == Slug && p.IsActive);
+
+        if (_product is not null)
+        {
+            _colors = _product.Variants
+                .GroupBy(v => v.Color)
+                .Select(g => (g.Key, g.First().ColorHex))
+                .ToList();
+            _sizes = _product.Variants.Select(v => v.Size).Distinct()
+                .OrderBy(s => s == "S" ? 0 : s == "M" ? 1 : s == "L" ? 2 : s == "XL" ? 3 : 4).ToList();
+            _selectedColor = _colors.FirstOrDefault().Name;
+            _selectedSize = _sizes.FirstOrDefault(s => HasStock(_selectedColor, s)) ?? _sizes.FirstOrDefault();
+        }
+    }
+
+    private bool HasStock(string? color, string size)
+        => _product?.Variants.Any(v => v.Color == color && v.Size == size && v.Stock > 0) ?? false;
+
+    private void SelectColor(string color)
+    {
+        _selectedColor = color;
+        if (_selectedSize is null || !HasStock(color, _selectedSize))
+            _selectedSize = _sizes.FirstOrDefault(s => HasStock(color, s));
+    }
+
+    private async Task AddToCart()
+    {
+        if (!CanAdd) return;
+        var ok = await Cart.AddAsync(_product!.Id, _selectedColor!, _selectedSize!, _qty);
+        _added = ok;
+        _message = ok ? "✓ محصول به سبد خرید اضافه شد." : "موجودی کافی نیست.";
+    }
+}

@@ -1,0 +1,69 @@
+@page "/account"
+@attribute [Authorize]
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject AuthService Auth
+
+<PageTitle>حساب کاربری | پاپی</PageTitle>
+
+<div class="section-title"><h2>👤 حساب کاربری من</h2></div>
+
+<div style="display:grid; grid-template-columns: 1fr 2fr; gap:24px; margin-bottom:48px">
+    <div class="card-box" style="height:fit-content">
+        <h3 style="margin-top:0">آدرس‌های من</h3>
+        @if (_addresses.Count == 0)
+        {
+            <p style="color:var(--papey-muted); font-size:0.9rem">آدرسی ثبت نشده است.</p>
+        }
+        @foreach (var a in _addresses)
+        {
+            <div style="border:1px solid var(--papey-border); border-radius:10px; padding:12px; margin-bottom:10px; font-size:0.85rem">
+                <strong>@a.Title</strong> @if (a.IsDefault) { <span class="status-chip status-Paid">پیش‌فرض</span> }
+                <div style="color:var(--papey-muted); margin-top:6px">
+                    @a.ReceiverName — @a.ReceiverPhone<br />
+                    @a.Province، @a.City<br />
+                    @a.FullAddress
+                    @if (!string.IsNullOrEmpty(a.PostalCode)) { <span><br />کدپستی: @PersianHelpers.ToPersianDigits(a.PostalCode)</span> }
+                </div>
+            </div>
+        }
+    </div>
+    <div class="card-box">
+        <h3 style="margin-top:0">سفارش‌های من</h3>
+        @if (_orders.Count == 0)
+        {
+            <p style="color:var(--papey-muted); font-size:0.9rem">سفارشی ثبت نشده است.</p>
+        }
+        else
+        {
+            <table class="table-papey">
+                <thead><tr><th>شماره سفارش</th><th>تاریخ</th><th>مبلغ</th><th>وضعیت</th></tr></thead>
+                <tbody>
+                    @foreach (var o in _orders)
+                    {
+                        <tr>
+                            <td><strong>@o.OrderNumber</strong></td>
+                            <td>@PersianHelpers.ToPersianDigits(o.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))</td>
+                            <td>@o.GrandTotal.ToToman()</td>
+                            <td><span class="status-chip status-@o.Status">@PersianHelpers.StatusLabel(o.Status)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@code {
+    private List<Address> _addresses = new();
+    private List<Order> _orders = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.CurrentUserId is { } uid)
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+            _addresses = await db.Addresses.Where(a => a.UserId == uid).OrderByDescending(a => a.IsDefault).ToListAsync();
+            _orders = await db.Orders.Where(o => o.UserId == uid).OrderByDescending(o => o.CreatedAt).ToListAsync();
+        }
+    }
+}

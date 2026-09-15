@@ -1,0 +1,89 @@
+@page "/cart"
+@rendermode InteractiveServer
+@inject CartService Cart
+@inject NavigationManager Nav
+@implements IDisposable
+
+<PageTitle>سبد خرید | پاپی</PageTitle>
+
+<div class="section-title"><h2>🛒 سبد خرید</h2></div>
+
+@if (Cart.Items.Count == 0)
+{
+    <div class="card-box" style="text-align:center; max-width:480px; margin: 40px auto">
+        <p style="font-size:3rem">🛒</p>
+        <p>سبد خرید شما خالی است.</p>
+        <a class="btn-papey" href="/">مشاهده محصولات</a>
+    </div>
+}
+else
+{
+    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:24px; margin-bottom:48px">
+        <div>
+            <table class="table-papey">
+                <thead>
+                    <tr><th>محصول</th><th>قیمت واحد</th><th>تعداد</th><th>جمع</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Cart.Items)
+                    {
+                        <tr>
+                            <td>
+                                <div style="display:flex; gap:12px; align-items:center">
+                                    <img src="@item.ImageUrl" style="width:60px; height:60px; border-radius:8px; object-fit:cover" />
+                                    <div>
+                                        <strong>@item.ProductName</strong>
+                                        <div style="font-size:0.8rem; color:var(--papey-muted)">
+                                            رنگ: @item.Color <span class="color-dot" style="width:14px;height:14px;background:@item.ColorHex; cursor:default"></span>
+                                            | سایز: @item.Size
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>@item.UnitPrice.ToToman()</td>
+                            <td>
+                                <div class="qty-box" style="margin:0">
+                                    <button @onclick="() => Cart.SetQuantity(item.ProductVariantId, item.Quantity + 1)">+</button>
+                                    <span>@PersianHelpers.ToPersianDigits(item.Quantity.ToString())</span>
+                                    <button @onclick="() => Cart.SetQuantity(item.ProductVariantId, item.Quantity - 1)">−</button>
+                                </div>
+                            </td>
+                            <td><strong>@item.LineTotal.ToToman()</strong></td>
+                            <td><button class="btn-papey btn-danger-papey btn-sm" @onclick="() => Cart.Remove(item.ProductVariantId)">✕</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="card-box" style="height:fit-content">
+            <h3 style="margin-top:0">خلاصه سفارش</h3>
+            <div style="display:flex; justify-content:space-between; margin:12px 0">
+                <span>جمع کالاها:</span><strong>@Cart.Total.ToToman()</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin:12px 0; color:var(--papey-muted)">
+                <span>هزینه ارسال:</span>
+                <span>@(Cart.Total >= 2000000 ? "رایگان 🎉" : 95000m.ToToman())</span>
+            </div>
+            <hr style="border-color:var(--papey-border)" />
+            <div style="display:flex; justify-content:space-between; font-size:1.15rem; font-weight:900; margin:16px 0">
+                <span>مبلغ قابل پرداخت:</span>
+                <span>@GrandTotal.ToToman()</span>
+            </div>
+            <button class="btn-papey" style="width:100%" @onclick='() => Nav.NavigateTo("/checkout")'>
+                ادامه فرآیند خرید ←
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    private decimal GrandTotal => Cart.Total + (Cart.Total >= 2000000 ? 0 : 95000);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Cart.OnChange += StateHasChanged;
+        await Cart.LoadAsync();
+    }
+
+    public void Dispose() => Cart.OnChange -= StateHasChanged;
+}

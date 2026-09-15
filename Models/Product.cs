@@ -1,0 +1,62 @@
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Papey.Models;
+
+public class Product
+{
+    public int Id { get; set; }
+
+    [Required, MaxLength(200)]
+    public string Name { get; set; } = string.Empty;
+
+    [Required, MaxLength(220)]
+    public string Slug { get; set; } = string.Empty;
+
+    [MaxLength(2000)]
+    public string? Description { get; set; }
+
+    [Column(TypeName = "numeric(18,0)")]
+    public decimal Price { get; set; }
+
+    [Column(TypeName = "numeric(18,0)")]
+    public decimal? OldPrice { get; set; }
+
+    [MaxLength(300)]
+    public string? ImageUrl { get; set; }
+
+    public bool IsFeatured { get; set; }
+    public bool IsNew { get; set; }
+    public bool IsActive { get; set; } = true;
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public int CategoryId { get; set; }
+    public Category Category { get; set; } = null!;
+
+    public List<ProductVariant> Variants { get; set; } = new();
+}
+
+public class ProductVariant
+{
+    public int Id { get; set; }
+
+    public int ProductId { get; set; }
+    public Product Product { get; set; } = null!;
+
+    [Required, MaxLength(50)]
+    public string Color { get; set; } = string.Empty;
+
+    [MaxLength(20)]
+    public string ColorHex { get; set; } = "#000000";
+
+    [Required, MaxLength(10)]
+    public string Size { get; set; } = string.Empty;
+
+    public int Stock { get; set; }
+
+    [Column(TypeName = "numeric(18,0)")]
+    public decimal? PriceOverride { get; set; }
+
+    public decimal EffectivePrice => PriceOverride ?? Product.Price;
+}

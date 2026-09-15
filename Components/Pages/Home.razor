@@ -1,0 +1,64 @@
+@page "/"
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>پاپی | فروشگاه تیشرت‌های خاص</PageTitle>
+
+<section class="hero">
+    <div>
+        <h1>تیشرت‌هایی با هویت ایرانی</h1>
+        <p>از دماوند تا پارسه — طرح‌های اصیل با بهترین کیفیت پارچه و چاپ. همین حالا استایل خودت را بساز.</p>
+        <a class="btn-hero" href="/category/irani">مشاهده محصولات</a>
+    </div>
+    <div class="hero-art">👕</div>
+</section>
+
+<div class="section-title"><h2>دسته‌بندی‌ها</h2></div>
+<div class="cat-row">
+    @foreach (var c in _categories)
+    {
+        <a class="cat-circle" href="/category/@c.Slug">
+            <div class="circle">@CategoryIcon(c.Slug)</div>
+            <div class="name">@c.Name</div>
+        </a>
+    }
+</div>
+
+<div class="section-title"><h2>جدیدترین محصولات</h2></div>
+<ProductGrid Products="_newProducts" />
+
+<div class="section-title"><h2>محبوب‌ترین‌ها</h2></div>
+<ProductGrid Products="_featured" />
+
+<div class="section-title"><h2>سوالات پرتکرار</h2></div>
+<div style="max-width:800px; margin: 0 auto 40px">
+    <details class="faq-item"><summary>کیفیت پارچه‌ها چطوره؟</summary><div class="faq-body">تمام تیشرت‌های پاپی از نخ‌پنبه ۱۰۰٪ با گرماژ بالا تولید می‌شوند و پس از شست‌وشو تغییر فرم نمی‌دهند.</div></details>
+    <details class="faq-item"><summary>کیفیت طراحی روی لباس چطوره؟</summary><div class="faq-body">چاپ‌ها با دستگاه‌های دیجیتال و سیلک با رنگ‌های درجه‌یک انجام می‌شود و تا سال‌ها بدون ترک و رنگ‌رفتگی می‌ماند.</div></details>
+    <details class="faq-item"><summary>ارسال سفارش‌ها چقدر طول می‌کشه؟</summary><div class="faq-body">سفارش‌ها ظرف ۱ تا ۳ روز کاری پردازش و با پست پیشتاز ارسال می‌شوند. تهران ۱-۲ روز، سایر شهرها ۳-۵ روز کاری.</div></details>
+    <details class="faq-item"><summary>چطور هزینه سفارش را پرداخت کنم؟</summary><div class="faq-body">پرداخت از طریق درگاه امن زرین‌پال با تمام کارت‌های شتاب انجام می‌شود.</div></details>
+    <details class="faq-item"><summary>آیا برای خرید لازم است ثبت‌نام کنم؟</summary><div class="faq-body">خیر، می‌توانید بدون ثبت‌نام خرید کنید. اما با ثبت‌نام آدرس‌های شما ذخیره شده و خریدهای بعدی سریع‌تر انجام می‌شود.</div></details>
+</div>
+
+@code {
+    private List<Category> _categories = new();
+    private List<Product> _newProducts = new();
+    private List<Product> _featured = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _categories = await db.Categories.OrderBy(c => c.DisplayOrder).ToListAsync();
+        _newProducts = await db.Products.Where(p => p.IsActive && p.IsNew).Take(8).ToListAsync();
+        _featured = await db.Products.Where(p => p.IsActive && p.IsFeatured).Take(8).ToListAsync();
+    }
+
+    private static string CategoryIcon(string slug) => slug switch
+    {
+        "irani" => "🏛️",
+        "pinteresti" => "✨",
+        "mashini" => "🚗",
+        "varzeshi" => "⚽",
+        "set" => "👫",
+        "custom" => "🎨",
+        _ => "👕"
+    };
+}

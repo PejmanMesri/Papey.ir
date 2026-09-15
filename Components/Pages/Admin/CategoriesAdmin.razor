@@ -1,0 +1,33 @@
+@page "/admin/categories"
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>دسته‌بندی‌ها | پنل مدیریت پاپی</PageTitle>
+
+<h1 style="margin-top:0">🗂 دسته‌بندی‌ها</h1>
+
+<table class="table-papey">
+    <thead><tr><th>نام</th><th>Slug</th><th>توضیح</th><th>تعداد محصول</th></tr></thead>
+    <tbody>
+        @foreach (var c in _categories)
+        {
+            <tr>
+                <td><strong>@c.Name</strong></td>
+                <td><code>@c.Slug</code></td>
+                <td>@c.Description</td>
+                <td>@PersianHelpers.ToPersianDigits(c.Products.Count.ToString())</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<Category> _categories = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _categories = await db.Categories.Include(c => c.Products).OrderBy(c => c.DisplayOrder).ToListAsync();
+    }
+}

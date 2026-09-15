@@ -1,0 +1,38 @@
+@namespace Papey.Components
+
+@if (Products.Count == 0)
+{
+    <div class="alert-papey alert-info" style="text-align:center">محصولی یافت نشد.</div>
+}
+else
+{
+    <div class="product-grid">
+        @foreach (var p in Products)
+        {
+            <div class="product-card">
+                @if (p.IsNew) { <span class="badge-new">جدید</span> }
+                @if (p.OldPrice is not null && p.OldPrice > p.Price)
+                {
+                    <span class="badge-sale">٪@PersianHelpers.ToPersianDigits(((int)((p.OldPrice - p.Price) / p.OldPrice * 100)).ToString()) تخفیف</span>
+                }
+                <a class="img-wrap" href="/product/@p.Slug">
+                    <img src="@p.ImageUrl" alt="@p.Name" loading="lazy" />
+                </a>
+                <div class="info">
+                    <h3><a href="/product/@p.Slug">@p.Name</a></h3>
+                    <div class="price-row">
+                        <span class="price">@p.Price.ToToman()</span>
+                        @if (p.OldPrice is not null)
+                        {
+                            <span class="old-price">@p.OldPrice.Value.ToToman()</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public List<Product> Products { get; set; } = new();
+}

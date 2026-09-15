@@ -1,0 +1,31 @@
+@page "/category/{Slug}"
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+@if (_category is null)
+{
+    <div class="alert-papey alert-info" style="margin-top:32px; text-align:center">دسته‌بندی یافت نشد.</div>
+}
+else
+{
+    <PageTitle>@_category.Name | پاپی</PageTitle>
+    <div class="section-title"><h2>@_category.Name</h2></div>
+    @if (!string.IsNullOrEmpty(_category.Description))
+    {
+        <p style="text-align:center; color:var(--papey-muted)">@_category.Description</p>
+    }
+    <ProductGrid Products="_products" />
+}
+
+@code {
+    [Parameter] public string Slug { get; set; } = "";
+    private Category? _category;
+    private List<Product> _products = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _category = await db.Categories.FirstOrDefaultAsync(c => c.Slug == Slug);
+        if (_category is not null)
+            _products = await db.Products.Where(p => p.CategoryId == _category.Id && p.IsActive).ToListAsync();
+    }
+}

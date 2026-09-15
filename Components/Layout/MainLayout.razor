@@ -1,0 +1,100 @@
+@inherits LayoutComponentBase
+@inject CartService Cart
+@inject AuthenticationStateProvider AuthStateProvider
+@implements IDisposable
+
+<div class="top-bar">ارسال رایگان برای سفارش‌های بالای ۲ میلیون تومان 🚚</div>
+<header class="site-header">
+    <div class="container-papey header-inner">
+        <a class="logo" href="/">پاپی<span>.</span></a>
+        <nav class="main-nav">
+            <NavLink href="/" Match="NavLinkMatch.All">خانه</NavLink>
+            <NavLink href="/category/irani">ایرانی</NavLink>
+            <NavLink href="/category/pinteresti">پینترستی</NavLink>
+            <NavLink href="/category/mashini">ماشینی</NavLink>
+            <NavLink href="/category/varzeshi">ورزشی</NavLink>
+            <NavLink href="/category/set">ست</NavLink>
+        </nav>
+        <form class="search-box" method="get" action="/search">
+            <button type="submit">🔍</button>
+            <input type="text" name="q" placeholder="جستجوی محصول..." />
+        </form>
+        <div class="header-actions">
+            <a href="/cart">
+                🛒 سبد خرید
+                @if (Cart.TotalQuantity > 0)
+                {
+                    <span class="cart-badge">@PersianHelpers.ToPersianDigits(Cart.TotalQuantity.ToString())</span>
+                }
+            </a>
+            <AuthorizeView>
+                <Authorized>
+                    @if (context.User.IsInRole("Admin"))
+                    {
+                        <a href="/admin">⚙️ پنل مدیریت</a>
+                    }
+                    <a href="/account">👤 حساب من</a>
+                    <a href="/logout">خروج</a>
+                </Authorized>
+                <NotAuthorized>
+                    <a href="/login">ورود</a>
+                    <a href="/register">ثبت‌نام</a>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    </div>
+</header>
+
+<main class="container-papey">
+    @Body
+</main>
+
+<footer class="site-footer">
+    <div class="container-papey">
+        <div class="footer-grid">
+            <div>
+                <h4>پاپی</h4>
+                <p style="font-size:0.85rem; line-height:1.9">
+                    فروشگاه اینترنتی پاپی، مرجع تیشرت‌های طراحی‌شده با ایده‌های ایرانی و مدرن.
+                    کیفیت پارچه و چاپ، تعهد ماست.
+                </p>
+            </div>
+            <div>
+                <h4>دسته‌بندی‌ها</h4>
+                <a href="/category/irani">ایرانی</a>
+                <a href="/category/pinteresti">پینترستی</a>
+                <a href="/category/mashini">ماشینی</a>
+                <a href="/category/varzeshi">ورزشی</a>
+                <a href="/category/set">ست</a>
+            </div>
+            <div>
+                <h4>خدمات مشتریان</h4>
+                <a href="/about">درباره ما</a>
+                <a href="/contact">نحوه ارتباط با ما</a>
+                <a href="/size-guide">جدول سایزبندی</a>
+            </div>
+            <div>
+                <h4>ارتباط با ما</h4>
+                <a href="tel:09036421161">📞 ۰۹۰۳۶۴۲۱۱۶۱</a>
+                <a href="https://www.instagram.com/papey.ir">اینستاگرام</a>
+                <a href="https://wa.me/989036421161">واتساپ</a>
+            </div>
+        </div>
+        <div class="footer-bottom">© ۱۴۰۵ پاپی — کلیه حقوق محفوظ است | Papey.ir</div>
+    </div>
+</footer>
+
+<div id="blazor-error-ui" data-nosnippet>
+    خطایی رخ داده است.
+    <a href="." class="reload">بارگذاری مجدد</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        Cart.OnChange += StateHasChanged;
+        await Cart.LoadAsync();
+    }
+    public void Dispose() => Cart.OnChange -= StateHasChanged;
+}

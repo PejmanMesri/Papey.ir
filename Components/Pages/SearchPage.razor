@@ -1,0 +1,21 @@
+@page "/search"
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>جستجو | پاپی</PageTitle>
+
+<div class="section-title"><h2>🔍 نتایج جستجو برای «@Q»</h2></div>
+<ProductGrid Products="_products" />
+
+@code {
+    [SupplyParameterFromQuery(Name = "q")] public string? Q { get; set; }
+    private List<Product> _products = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Q)) return;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _products = await db.Products
+            .Where(p => p.IsActive && (p.Name.Contains(Q) || (p.Description ?? "").Contains(Q)))
+            .ToListAsync();
+    }
+}

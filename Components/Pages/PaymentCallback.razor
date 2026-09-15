@@ -1,0 +1,88 @@
+@page "/payment/callback"
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject ZarinpalService Zarinpal
+@inject SmsService Sms
+@inject CartService Cart
+
+<PageTitle>نتیجه پرداخت | پاپی</PageTitle>
+
+<div style="max-width:560px; margin:64px auto">
+    <div class="card-box" style="text-align:center">
+        @if (_loading)
+        {
+            <p>در حال بررسی پرداخت...</p>
+        }
+        else if (_order is not null && _order.Status == OrderStatus.Paid)
+        {
+            <p style="font-size:4rem; margin:8px">✅</p>
+            <h2>پرداخت با موفقیت انجام شد</h2>
+            <p>سفارش شما با شماره <strong>@_order.OrderNumber</strong> ثبت شد.</p>
+            <p style="color:var(--papey-muted); font-size:0.9rem">
+                کد پیگیری پرداخت: <strong>@PersianHelpers.ToPersianDigits(_order.PaymentRefId ?? "")</strong><br />
+                مبلغ: <strong>@_order.GrandTotal.ToToman()</strong>
+            </p>
+            <a class="btn-papey" href="/">بازگشت به فروشگاه</a>
+        }
+        else
+        {
+            <p style="font-size:4rem; margin:8px">❌</p>
+            <h2>پرداخت ناموفق بود</h2>
+            <p>@_message</p>
+            <div style="display:flex; gap:12px; justify-content:center">
+                <a class="btn-papey" href="/cart">بازگشت به سبد خرید</a>
+                <a class="btn-papey btn-outline" href="/">صفحه اصلی</a>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public string? Authority { get; set; }
+    [SupplyParameterFromQuery] public string? Status { get; set; }
+
+    private bool _loading = true;
+    private Order? _order;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _order = await db.Orders.Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.PaymentAuthority == Authority);
+
+        if (_order is null) { _message = "سفارش یافت نشد."; _loading = false; return; }
+
+        if (Status != "OK")
+        {
+            _order.Status = OrderStatus.PaymentFailed;
+            await db.SaveChangesAsync();
+            _message = "پرداخت توسط کاربر لغو شد یا ناموفق بود.";
+            _loading = false;
+            return;
+        }
+
+        // Idempotency: don't verify twice
+        if (_order.Status == OrderStatus.Paid) { _loading = false; return; }
+
+        var verify = await Zarinpal.VerifyPaymentAsync(Authority!, (long)(_order.GrandTotal * 10));
+        if (verify.Success)
+        {
+            _order.Status = OrderStatus.Paid;
+            _order.PaymentRefId = verify.RefId.ToString();
+            _order.PaidAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+            await Cart.ClearAsync();
+
+            // SMS to admin phone numbers
+            var msg = $"پاپی: سفارش جدید {_order.OrderNumber} به مبلغ {_order.GrandTotal:N0} تومان ثبت شد. گیرنده: {_order.CustomerName} - {_order.CustomerPhone}";
+            _ = Sms.SendToAdminsAsync(msg);
+        }
+        else
+        {
+            _order.Status = OrderStatus.PaymentFailed;
+            await db.SaveChangesAsync();
+            _message = $"تأیید پرداخت ناموفق بود. {verify.Error}";
+        }
+        _loading = false;
+    }
+}
