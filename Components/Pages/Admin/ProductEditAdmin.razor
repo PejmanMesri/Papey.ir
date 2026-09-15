@@ -45,8 +45,10 @@ else
             <label class="form-label">توضیحات</label>
             <textarea class="form-input" rows="3" @bind="_product.Description"></textarea>
         </div>
-        <button class="btn-papey" @onclick="SaveInfo">💾 ذخیره اطلاعات</button>
-        @if (_infoMsg is not null) { <div class="alert-papey alert-success" style="margin-top:8px">@_infoMsg</div> }
+        <div style="display:flex; gap:12px; align-items:center; margin-top:16px; border-top:1px solid var(--papey-border); padding-top:16px">
+            <button class="btn-papey" @onclick="SaveInfo">💾 ذخیره اطلاعات</button>
+            @if (_infoMsg is not null) { <span class="alert-papey alert-success" style="margin:0; padding:10px 16px">@_infoMsg</span> }
+        </div>
     </div>
 
     <div class="card-box" style="margin-bottom:24px">

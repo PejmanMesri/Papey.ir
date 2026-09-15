@@ -20,5 +20,8 @@ public class Category
 
     public int DisplayOrder { get; set; }
 
+    /// <summary>Show this category in the site navigation and home category row.</summary>
+    public bool ShowInNav { get; set; } = true;
+
     public List<Product> Products { get; set; } = new();
 }

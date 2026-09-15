@@ -46,7 +46,7 @@
     protected override async Task OnInitializedAsync()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
-        _categories = await db.Categories.OrderBy(c => c.DisplayOrder).ToListAsync();
+        _categories = await db.Categories.Where(c => c.ShowInNav).OrderBy(c => c.DisplayOrder).ToListAsync();
         _newProducts = await db.Products.Where(p => p.IsActive && p.IsNew).Take(8).ToListAsync();
         _featured = await db.Products.Where(p => p.IsActive && p.IsFeatured).Take(8).ToListAsync();
     }

@@ -1,6 +1,6 @@
 @inherits LayoutComponentBase
 @inject CartService Cart
-@inject AuthenticationStateProvider AuthStateProvider
+@inject IDbContextFactory<AppDbContext> DbFactory
 @implements IDisposable
 
 <div class="top-bar">ارسال رایگان برای سفارش‌های بالای ۲ میلیون تومان 🚚</div>
@@ -9,11 +9,10 @@
         <a class="logo" href="/">پاپی<span>.</span></a>
         <nav class="main-nav">
             <NavLink href="/" Match="NavLinkMatch.All">خانه</NavLink>
-            <NavLink href="/category/irani">ایرانی</NavLink>
-            <NavLink href="/category/pinteresti">پینترستی</NavLink>
-            <NavLink href="/category/mashini">ماشینی</NavLink>
-            <NavLink href="/category/varzeshi">ورزشی</NavLink>
-            <NavLink href="/category/set">ست</NavLink>
+            @foreach (var c in _navCategories)
+            {
+                <NavLink href="@($"/category/{c.Slug}")">@c.Name</NavLink>
+            }
         </nav>
         <form class="search-box" method="get" action="/search">
             <button type="submit">🔍</button>
@@ -91,10 +90,17 @@
 </div>
 
 @code {
+    private List<Category> _navCategories = new();
+
     protected override async Task OnInitializedAsync()
     {
         Cart.OnChange += StateHasChanged;
         await Cart.LoadAsync();
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _navCategories = await db.Categories
+            .Where(c => c.ShowInNav)
+            .OrderBy(c => c.DisplayOrder)
+            .ToListAsync();
     }
     public void Dispose() => Cart.OnChange -= StateHasChanged;
 }

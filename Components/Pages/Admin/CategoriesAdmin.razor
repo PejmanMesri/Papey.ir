@@ -14,19 +14,24 @@
         <div><label class="form-label">نام *</label><input class="form-input" @bind="_form.Name" /></div>
         <div><label class="form-label">Slug (انگلیسی)</label><input class="form-input" @bind="_form.Slug" placeholder="auto" /></div>
         <div><label class="form-label">توضیح</label><input class="form-input" @bind="_form.Description" /></div>
-        <div style="display:flex; align-items:end; gap:8px">
-            <button class="btn-papey" @onclick="Save">💾 ذخیره</button>
-            @if (_editId is not null)
-            {
-                <button class="btn-papey btn-outline" @onclick="CancelEdit">انصراف</button>
-            }
+        <div style="display:flex; align-items:end; gap:16px; padding-bottom:10px">
+            <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem; white-space:nowrap">
+                <input type="checkbox" @bind="_form.ShowInNav" /> نمایش در منو
+            </label>
         </div>
+    </div>
+    <div style="display:flex; gap:8px; margin-top:12px">
+        <button class="btn-papey" @onclick="Save">💾 ذخیره</button>
+        @if (_editId is not null)
+        {
+            <button class="btn-papey btn-outline" @onclick="CancelEdit">انصراف</button>
+        }
     </div>
     @if (_msg is not null) { <div class="alert-papey alert-danger">@_msg</div> }
 </div>
 
 <table class="table-papey">
-    <thead><tr><th>نام</th><th>Slug</th><th>توضیح</th><th>محصولات</th><th>ترتیب</th><th></th></tr></thead>
+    <thead><tr><th>نام</th><th>Slug</th><th>توضیح</th><th>محصولات</th><th>در منو</th><th>ترتیب</th><th></th></tr></thead>
     <tbody>
         @foreach (var c in _categories)
         {
@@ -35,6 +40,7 @@
                 <td><code>@c.Slug</code></td>
                 <td>@c.Description</td>
                 <td>@PersianHelpers.ToPersianDigits(c.Products.Count.ToString())</td>
+                <td>@(c.ShowInNav ? "✓" : "—")</td>
                 <td>
                     <button class="btn-papey btn-sm btn-outline" @onclick="() => Move(c, -1)">↑</button>
                     <button class="btn-papey btn-sm btn-outline" @onclick="() => Move(c, 1)">↓</button>
@@ -65,7 +71,7 @@
     private void Edit(Category c)
     {
         _editId = c.Id;
-        _form = new Category { Name = c.Name, Slug = c.Slug, Description = c.Description };
+        _form = new Category { Name = c.Name, Slug = c.Slug, Description = c.Description, ShowInNav = c.ShowInNav };
     }
 
     private void CancelEdit() { _editId = null; _form = new(); _msg = null; }
@@ -78,7 +84,7 @@
         await using var db = await DbFactory.CreateDbContextAsync();
         if (_editId is null)
         {
-            db.Categories.Add(new Category { Name = _form.Name.Trim(), Slug = slug, Description = _form.Description, DisplayOrder = _categories.Count });
+            db.Categories.Add(new Category { Name = _form.Name.Trim(), Slug = slug, Description = _form.Description, DisplayOrder = _categories.Count, ShowInNav = _form.ShowInNav });
         }
         else
         {
@@ -87,6 +93,7 @@
             t.Name = _form.Name.Trim();
             t.Slug = slug;
             t.Description = _form.Description;
+            t.ShowInNav = _form.ShowInNav;
         }
         try { await db.SaveChangesAsync(); }
         catch { _msg = "این Slug قبلاً استفاده شده است."; return; }
