@@ -22,7 +22,7 @@ else
             <div><label class="form-label">قیمت (تومان)</label><input class="form-input" type="number" @bind="_product.Price" /></div>
             <div><label class="form-label">قیمت قبل از تخفیف</label><input class="form-input" type="number" @bind="_product.OldPrice" /></div>
             <div>
-                <label class="form-label">دسته‌بندی</label>
+                <label class="form-label">دسته‌بندی اصلی</label>
                 <select class="form-input" @bind="_product.CategoryId">
                     @foreach (var c in _categories) { <option value="@c.Id">@c.Name</option> }
                 </select>
@@ -38,6 +38,17 @@ else
                 <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem"><input type="checkbox" @bind="_product.IsNew" /> جدید</label>
                 <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem"><input type="checkbox" @bind="_product.IsFeatured" /> محبوب</label>
                 <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem"><input type="checkbox" @bind="_product.IsActive" /> فعال</label>
+            </div>
+        </div>
+        <div class="form-group" style="margin-top:12px">
+            <label class="form-label">دسته‌بندی‌های بیشتر (این محصول در چند دسته نمایش داده شود)</label>
+            <div style="display:flex; gap:16px; flex-wrap:wrap">
+                @foreach (var c in _categories.Where(c => c.Id != _product.CategoryId))
+                {
+                    <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem">
+                        <input type="checkbox" checked="@_selectedCatIds.Contains(c.Id)" @onchange="e => ToggleCategory(c.Id, (bool)e.Value!)" /> @c.Name
+                    </label>
+                }
             </div>
         </div>
         <div class="form-group" style="margin-top:12px">
@@ -130,6 +141,7 @@ else
     private List<Size> _sizes = new();
     private List<ProductTypeEntity> _types = new();
     private List<ProductMedia> _media = new();
+    private HashSet<int> _selectedCatIds = new();
     private string? _infoMsg, _variantMsg, _uploadError;
     private bool _uploading;
 
@@ -138,7 +150,8 @@ else
     private async Task Reload()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
-        _product = await db.Products.Include(p => p.Variants).FirstOrDefaultAsync(p => p.Id == Id);
+        _product = await db.Products.Include(p => p.Variants).Include(p => p.ProductCategories).FirstOrDefaultAsync(p => p.Id == Id);
+        _selectedCatIds = _product?.ProductCategories.Select(pc => pc.CategoryId).ToHashSet() ?? new();
         _categories = await db.Categories.OrderBy(c => c.DisplayOrder).ToListAsync();
         _types = await db.ProductTypes.Where(t => t.IsActive).OrderBy(t => t.DisplayOrder).ToListAsync();
         _colors = await db.Colors.Where(c => c.IsActive).OrderBy(c => c.DisplayOrder).ToListAsync();
@@ -157,8 +170,21 @@ else
         t.Description = _product.Description; t.IsNew = _product.IsNew;
         t.IsFeatured = _product.IsFeatured; t.IsActive = _product.IsActive;
         t.ImageUrl = _media.OrderBy(m => m.DisplayOrder).FirstOrDefault(m => m.Type == MediaType.Image)?.Url ?? t.ImageUrl;
+
+        // Sync extra categories
+        var existing = await db.ProductCategories.Where(pc => pc.ProductId == Id).ToListAsync();
+        db.ProductCategories.RemoveRange(existing.Where(pc => !_selectedCatIds.Contains(pc.CategoryId)));
+        foreach (var catId in _selectedCatIds)
+            if (!existing.Any(pc => pc.CategoryId == catId))
+                db.ProductCategories.Add(new ProductCategory { ProductId = Id, CategoryId = catId });
         await db.SaveChangesAsync();
         _infoMsg = "✓ ذخیره شد.";
+    }
+
+    private void ToggleCategory(int catId, bool selected)
+    {
+        if (selected) _selectedCatIds.Add(catId);
+        else _selectedCatIds.Remove(catId);
     }
 
     private async Task UploadMedia(InputFileChangeEventArgs e)

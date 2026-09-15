@@ -23,12 +23,13 @@
 
     private List<Product> Filtered => _filter == "all"
         ? _products
-        : _products.Where(p => p.Category.Slug == _filter).ToList();
+        : _products.Where(p => p.Category.Slug == _filter || p.ProductCategories.Any(pc => pc.Category.Slug == _filter)).ToList();
 
     protected override async Task OnInitializedAsync()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
         _categories = await db.Categories.Where(c => c.IsActive).OrderBy(c => c.DisplayOrder).ToListAsync();
-        _products = await db.Products.Include(p => p.Category).Where(p => p.IsActive && p.Category.IsActive).ToListAsync();
+        _products = await db.Products.Include(p => p.Category).Include(p => p.ProductCategories).ThenInclude(pc => pc.Category)
+            .Where(p => p.IsActive && p.Category.IsActive).ToListAsync();
     }
 }

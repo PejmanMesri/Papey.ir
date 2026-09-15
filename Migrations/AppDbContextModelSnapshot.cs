@@ -443,6 +443,21 @@ namespace Papey.Migrations
                     b.ToTable("Products");
                 });
 
+            modelBuilder.Entity("Papey.Models.ProductCategory", b =>
+                {
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ProductId", "CategoryId");
+
+                    b.HasIndex("CategoryId");
+
+                    b.ToTable("ProductCategories");
+                });
+
             modelBuilder.Entity("Papey.Models.ProductMedia", b =>
                 {
                     b.Property<int>("Id")
@@ -637,6 +652,25 @@ namespace Papey.Migrations
                     b.Navigation("ProductType");
                 });
 
+            modelBuilder.Entity("Papey.Models.ProductCategory", b =>
+                {
+                    b.HasOne("Papey.Models.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Papey.Models.Product", "Product")
+                        .WithMany("ProductCategories")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("Papey.Models.ProductMedia", b =>
                 {
                     b.HasOne("Papey.Models.Product", "Product")
@@ -691,6 +725,8 @@ namespace Papey.Migrations
             modelBuilder.Entity("Papey.Models.Product", b =>
                 {
                     b.Navigation("Media");
+
+                    b.Navigation("ProductCategories");
 
                     b.Navigation("Variants");
                 });

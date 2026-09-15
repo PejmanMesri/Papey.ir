@@ -38,8 +38,21 @@ public class Product
     public int CategoryId { get; set; }
     public Category Category { get; set; } = null!;
 
+    /// <summary>Additional categories this product belongs to (many-to-many).</summary>
+    public List<ProductCategory> ProductCategories { get; set; } = new();
+
     public List<ProductVariant> Variants { get; set; } = new();
     public List<ProductMedia> Media { get; set; } = new();
+}
+
+/// <summary>Join table: a cloth can belong to multiple categories.</summary>
+public class ProductCategory
+{
+    public int ProductId { get; set; }
+    public Product Product { get; set; } = null!;
+
+    public int CategoryId { get; set; }
+    public Category Category { get; set; } = null!;
 }
 
 public class ProductVariant

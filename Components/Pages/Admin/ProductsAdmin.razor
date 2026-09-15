@@ -42,7 +42,13 @@
                 <td><img src="@(p.Media.OrderBy(m => m.DisplayOrder).FirstOrDefault()?.Url ?? p.ImageUrl)" style="width:48px; height:48px; object-fit:cover; border-radius:8px" /></td>
                 <td><strong>@p.Name</strong></td>
                 <td>@(p.ProductType?.Name ?? "—")</td>
-                <td>@p.Category.Name</td>
+                <td>
+                    @p.Category.Name
+                    @foreach (var extra in p.ProductCategories.Select(pc => pc.Category).Where(c => c.Id != p.CategoryId))
+                    {
+                        <span class="status-chip status-Processing" style="margin-right:4px">@extra.Name</span>
+                    }
+                </td>
                 <td>@p.Price.ToToman()</td>
                 <td>@PersianHelpers.ToPersianDigits(p.Variants.Sum(v => v.Stock).ToString())</td>
                 <td>
@@ -75,7 +81,8 @@
         await using var db = await DbFactory.CreateDbContextAsync();
         _categories = await db.Categories.OrderBy(c => c.DisplayOrder).ToListAsync();
         _types = await db.ProductTypes.Where(t => t.IsActive).OrderBy(t => t.DisplayOrder).ToListAsync();
-        _products = await db.Products.Include(p => p.Category).Include(p => p.Variants).Include(p => p.Media).Include(p => p.ProductType).ToListAsync();
+        _products = await db.Products.Include(p => p.Category).Include(p => p.Variants).Include(p => p.Media).Include(p => p.ProductType)
+            .Include(p => p.ProductCategories).ThenInclude(pc => pc.Category).ToListAsync();
         if (_categories.Count > 0) _newCategoryId = _categories[0].Id;
         if (_types.Count > 0) _newTypeId = _types[0].Id;
     }

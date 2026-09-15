@@ -26,6 +26,8 @@ else
         await using var db = await DbFactory.CreateDbContextAsync();
         _category = await db.Categories.FirstOrDefaultAsync(c => c.Slug == Slug && c.IsActive);
         if (_category is not null)
-            _products = await db.Products.Where(p => p.CategoryId == _category.Id && p.IsActive).ToListAsync();
+            _products = await db.Products
+                .Where(p => p.IsActive && (p.CategoryId == _category.Id || p.ProductCategories.Any(pc => pc.CategoryId == _category.Id)))
+                .ToListAsync();
     }
 }
