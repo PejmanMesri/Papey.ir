@@ -1,14 +1,32 @@
 @page "/admin/categories"
 @attribute [Authorize(Roles = "Admin")]
 @layout AdminLayout
+@rendermode InteractiveServer
 @inject IDbContextFactory<AppDbContext> DbFactory
 
 <PageTitle>دسته‌بندی‌ها | پنل مدیریت پاپی</PageTitle>
 
 <h1 style="margin-top:0">🗂 دسته‌بندی‌ها</h1>
 
+<div class="card-box" style="margin-bottom:24px">
+    <h4 style="margin-top:0">@(_editId is null ? "افزودن دسته‌بندی" : "ویرایش دسته‌بندی")</h4>
+    <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px">
+        <div><label class="form-label">نام *</label><input class="form-input" @bind="_form.Name" /></div>
+        <div><label class="form-label">Slug (انگلیسی)</label><input class="form-input" @bind="_form.Slug" placeholder="auto" /></div>
+        <div><label class="form-label">توضیح</label><input class="form-input" @bind="_form.Description" /></div>
+        <div style="display:flex; align-items:end; gap:8px">
+            <button class="btn-papey" @onclick="Save">💾 ذخیره</button>
+            @if (_editId is not null)
+            {
+                <button class="btn-papey btn-outline" @onclick="CancelEdit">انصراف</button>
+            }
+        </div>
+    </div>
+    @if (_msg is not null) { <div class="alert-papey alert-danger">@_msg</div> }
+</div>
+
 <table class="table-papey">
-    <thead><tr><th>نام</th><th>Slug</th><th>توضیح</th><th>تعداد محصول</th></tr></thead>
+    <thead><tr><th>نام</th><th>Slug</th><th>توضیح</th><th>محصولات</th><th>ترتیب</th><th></th></tr></thead>
     <tbody>
         @foreach (var c in _categories)
         {
@@ -17,6 +35,14 @@
                 <td><code>@c.Slug</code></td>
                 <td>@c.Description</td>
                 <td>@PersianHelpers.ToPersianDigits(c.Products.Count.ToString())</td>
+                <td>
+                    <button class="btn-papey btn-sm btn-outline" @onclick="() => Move(c, -1)">↑</button>
+                    <button class="btn-papey btn-sm btn-outline" @onclick="() => Move(c, 1)">↓</button>
+                </td>
+                <td>
+                    <button class="btn-papey btn-sm btn-outline" @onclick="() => Edit(c)">✏️</button>
+                    <button class="btn-papey btn-sm btn-danger-papey" @onclick="() => Delete(c)">🗑</button>
+                </td>
             </tr>
         }
     </tbody>
@@ -24,10 +50,72 @@
 
 @code {
     private List<Category> _categories = new();
+    private Category _form = new();
+    private int? _editId;
+    private string? _msg;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
         _categories = await db.Categories.Include(c => c.Products).OrderBy(c => c.DisplayOrder).ToListAsync();
+    }
+
+    private void Edit(Category c)
+    {
+        _editId = c.Id;
+        _form = new Category { Name = c.Name, Slug = c.Slug, Description = c.Description };
+    }
+
+    private void CancelEdit() { _editId = null; _form = new(); _msg = null; }
+
+    private async Task Save()
+    {
+        _msg = null;
+        if (string.IsNullOrWhiteSpace(_form.Name)) { _msg = "نام الزامی است."; return; }
+        var slug = string.IsNullOrWhiteSpace(_form.Slug) ? "cat-" + Guid.NewGuid().ToString("N")[..6] : _form.Slug.Trim().ToLower();
+        await using var db = await DbFactory.CreateDbContextAsync();
+        if (_editId is null)
+        {
+            db.Categories.Add(new Category { Name = _form.Name.Trim(), Slug = slug, Description = _form.Description, DisplayOrder = _categories.Count });
+        }
+        else
+        {
+            var t = await db.Categories.FindAsync(_editId.Value);
+            if (t is null) return;
+            t.Name = _form.Name.Trim();
+            t.Slug = slug;
+            t.Description = _form.Description;
+        }
+        try { await db.SaveChangesAsync(); }
+        catch { _msg = "این Slug قبلاً استفاده شده است."; return; }
+        CancelEdit();
+        await Reload();
+    }
+
+    private async Task Move(Category c, int dir)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var list = await db.Categories.OrderBy(x => x.DisplayOrder).ToListAsync();
+        var i = list.FindIndex(x => x.Id == c.Id);
+        var j = i + dir;
+        if (i < 0 || j < 0 || j >= list.Count) return;
+        (list[i].DisplayOrder, list[j].DisplayOrder) = (list[j].DisplayOrder, list[i].DisplayOrder);
+        await db.SaveChangesAsync();
+        await Reload();
+    }
+
+    private async Task Delete(Category c)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        if (await db.Products.AnyAsync(p => p.CategoryId == c.Id))
+        {
+            _msg = "این دسته‌بندی دارای محصول است و قابل حذف نیست.";
+            return;
+        }
+        db.Categories.Remove(await db.Categories.FindAsync(c.Id)!);
+        await db.SaveChangesAsync();
+        await Reload();
     }
 }

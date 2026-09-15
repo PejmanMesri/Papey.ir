@@ -158,6 +158,35 @@ namespace Papey.Migrations
                     b.ToTable("Categories");
                 });
 
+            modelBuilder.Entity("Papey.Models.Color", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Hex")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Colors");
+                });
+
             modelBuilder.Entity("Papey.Models.Order", b =>
                 {
                     b.Property<int>("Id")
@@ -291,6 +320,40 @@ namespace Papey.Migrations
                     b.ToTable("OrderItems");
                 });
 
+            modelBuilder.Entity("Papey.Models.OtpCode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Phone");
+
+                    b.ToTable("OtpCodes");
+                });
+
             modelBuilder.Entity("Papey.Models.Product", b =>
                 {
                     b.Property<int>("Id")
@@ -333,6 +396,9 @@ namespace Papey.Migrations
                     b.Property<decimal>("Price")
                         .HasColumnType("numeric(18,0)");
 
+                    b.Property<int>("ProductType")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(220)
@@ -346,6 +412,39 @@ namespace Papey.Migrations
                         .IsUnique();
 
                     b.ToTable("Products");
+                });
+
+            modelBuilder.Entity("Papey.Models.ProductMedia", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Alt")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("ProductMedia");
                 });
 
             modelBuilder.Entity("Papey.Models.ProductVariant", b =>
@@ -366,6 +465,9 @@ namespace Papey.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<int?>("ColorId")
+                        .HasColumnType("integer");
+
                     b.Property<decimal?>("PriceOverride")
                         .HasColumnType("numeric(18,0)");
 
@@ -377,14 +479,45 @@ namespace Papey.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
 
+                    b.Property<int?>("SizeId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Stock")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ColorId");
+
                     b.HasIndex("ProductId");
 
+                    b.HasIndex("SizeId");
+
                     b.ToTable("ProductVariants");
+                });
+
+            modelBuilder.Entity("Papey.Models.Size", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Sizes");
                 });
 
             modelBuilder.Entity("Papey.Models.Address", b =>
@@ -445,15 +578,38 @@ namespace Papey.Migrations
                     b.Navigation("Category");
                 });
 
+            modelBuilder.Entity("Papey.Models.ProductMedia", b =>
+                {
+                    b.HasOne("Papey.Models.Product", "Product")
+                        .WithMany("Media")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("Papey.Models.ProductVariant", b =>
                 {
+                    b.HasOne("Papey.Models.Color", "ColorRef")
+                        .WithMany()
+                        .HasForeignKey("ColorId");
+
                     b.HasOne("Papey.Models.Product", "Product")
                         .WithMany("Variants")
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Papey.Models.Size", "SizeRef")
+                        .WithMany()
+                        .HasForeignKey("SizeId");
+
+                    b.Navigation("ColorRef");
+
                     b.Navigation("Product");
+
+                    b.Navigation("SizeRef");
                 });
 
             modelBuilder.Entity("Papey.Models.AppUser", b =>
@@ -475,6 +631,8 @@ namespace Papey.Migrations
 
             modelBuilder.Entity("Papey.Models.Product", b =>
                 {
+                    b.Navigation("Media");
+
                     b.Navigation("Variants");
                 });
 #pragma warning restore 612, 618

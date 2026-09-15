@@ -35,6 +35,46 @@ public static class DbSeeder
         }
 
         if (await db.Categories.AnyAsync()) return; // already seeded
+    }
+
+    /// <summary>Runs even when categories exist: backfills Color/Size tables, variant links, and media.</summary>
+    public static async Task EnsureColorsSizesAsync(AppDbContext db)
+    {
+        if (await db.Colors.AnyAsync()) return;
+
+        var colorEntities = Colors.Select((c, i) => new Color { Name = c.Name, Hex = c.Hex, DisplayOrder = i }).ToList();
+        db.Colors.AddRange(colorEntities);
+        var sizeEntities = Sizes.Select((s, i) => new Size { Name = s, DisplayOrder = i }).ToList();
+        db.Sizes.AddRange(sizeEntities);
+        await db.SaveChangesAsync();
+
+        var colors = await db.Colors.ToListAsync();
+        var sizes = await db.Sizes.ToListAsync();
+        foreach (var v in await db.ProductVariants.ToListAsync())
+        {
+            v.ColorId = colors.FirstOrDefault(c => c.Name == v.Color)?.Id;
+            v.SizeId = sizes.FirstOrDefault(s => s.Name == v.Size)?.Id;
+        }
+        await db.SaveChangesAsync();
+
+        if (!await db.ProductMedia.AnyAsync())
+        {
+            foreach (var p in await db.Products.ToListAsync())
+                if (!string.IsNullOrEmpty(p.ImageUrl))
+                    db.ProductMedia.Add(new ProductMedia { ProductId = p.Id, Url = p.ImageUrl, Type = MediaType.Image, Alt = p.Name });
+            await db.SaveChangesAsync();
+        }
+    }
+
+    private static async Task SeedStoreAsync(AppDbContext db)
+    {
+
+        // ---- Colors & Sizes (lookup tables, editable in admin) ----
+        var colorEntities = Colors.Select((c, i) => new Color { Name = c.Name, Hex = c.Hex, DisplayOrder = i }).ToList();
+        db.Colors.AddRange(colorEntities);
+        var sizeEntities = Sizes.Select((s, i) => new Size { Name = s, DisplayOrder = i }).ToList();
+        db.Sizes.AddRange(sizeEntities);
+        await db.SaveChangesAsync();
 
         // ---- Categories (mirroring tshock.ir) ----
         var cats = new[]
@@ -88,17 +128,24 @@ public static class DbSeeder
         // ---- Variants: every product × all colors × all sizes ----
         var variants = new List<ProductVariant>();
         foreach (var p in products)
-            foreach (var (cname, hex) in Colors)
-                foreach (var size in Sizes)
+            foreach (var col in colorEntities)
+                foreach (var sz in sizeEntities)
                     variants.Add(new ProductVariant
                     {
                         ProductId = p.Id,
-                        Color = cname,
-                        ColorHex = hex,
-                        Size = size,
+                        Color = col.Name,
+                        ColorHex = col.Hex,
+                        ColorId = col.Id,
+                        Size = sz.Name,
+                        SizeId = sz.Id,
                         Stock = rnd.Next(0, 15)
                     });
         db.ProductVariants.AddRange(variants);
+
+        // ---- Media gallery: seed each product with its main image ----
+        foreach (var p in products)
+            db.ProductMedia.Add(new ProductMedia { ProductId = p.Id, Url = p.ImageUrl!, Type = MediaType.Image, Alt = p.Name, DisplayOrder = 0 });
+
         await db.SaveChangesAsync();
     }
 }

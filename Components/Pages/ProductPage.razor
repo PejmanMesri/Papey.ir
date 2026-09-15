@@ -12,7 +12,44 @@ else
     <PageTitle>@_product.Name | پاپی</PageTitle>
     <div class="product-detail">
         <div class="gallery">
-            <img src="@_product.ImageUrl" alt="@_product.Name" />
+            @if (_media.Count == 0)
+            {
+                <img src="@_product.ImageUrl" alt="@_product.Name" />
+            }
+            else
+            {
+                var current = _media[_activeMedia];
+                <div class="gallery-main">
+                    @if (current.Type == MediaType.Video)
+                    {
+                        <video src="@current.Url" controls style="width:100%; border-radius:12px; border:1px solid var(--papey-border)"></video>
+                    }
+                    else
+                    {
+                        <img src="@current.Url" alt="@(current.Alt ?? _product.Name)" />
+                    }
+                </div>
+                @if (_media.Count > 1)
+                {
+                    <div class="gallery-thumbs">
+                        @for (var i = 0; i < _media.Count; i++)
+                        {
+                            var idx = i;
+                            var m = _media[i];
+                            <div class="gallery-thumb @(idx == _activeMedia ? "active" : "")" @onclick="() => _activeMedia = idx">
+                                @if (m.Type == MediaType.Video)
+                                {
+                                    <span class="thumb-video">▶</span>
+                                }
+                                else
+                                {
+                                    <img src="@m.Url" alt="@(m.Alt ?? _product.Name)" />
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            }
         </div>
         <div>
             <p style="color:var(--papey-muted); font-size:0.85rem">
@@ -84,6 +121,8 @@ else
     [Parameter] public string Slug { get; set; } = "";
 
     private Product? _product;
+    private List<ProductMedia> _media = new();
+    private int _activeMedia;
     private List<(string Name, string Hex)> _colors = new();
     private List<string> _sizes = new();
     private string? _selectedColor;
@@ -102,16 +141,19 @@ else
         _product = await db.Products
             .Include(p => p.Category)
             .Include(p => p.Variants)
+            .Include(p => p.Media)
             .FirstOrDefaultAsync(p => p.Slug == Slug && p.IsActive);
 
         if (_product is not null)
         {
+            _media = _product.Media.OrderBy(m => m.DisplayOrder).ToList();
+            _activeMedia = 0;
             _colors = _product.Variants
                 .GroupBy(v => v.Color)
                 .Select(g => (g.Key, g.First().ColorHex))
                 .ToList();
             _sizes = _product.Variants.Select(v => v.Size).Distinct()
-                .OrderBy(s => s == "S" ? 0 : s == "M" ? 1 : s == "L" ? 2 : s == "XL" ? 3 : 4).ToList();
+                .OrderBy(s => s == "S" ? 0 : s == "M" ? 1 : s == "L" ? 2 : s == "XL" ? 3 : s == "XXL" ? 4 : 5).ToList();
             _selectedColor = _colors.FirstOrDefault().Name;
             _selectedSize = _sizes.FirstOrDefault(s => HasStock(_selectedColor, s)) ?? _sizes.FirstOrDefault();
         }

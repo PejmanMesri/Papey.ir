@@ -1,0 +1,246 @@
+@page "/admin/products/{Id:int}"
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+@rendermode InteractiveServer
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject IJSRuntime JS
+
+<PageTitle>ویرایش محصول | پنل مدیریت پاپی</PageTitle>
+
+@if (_product is null)
+{
+    <div class="alert-papey alert-info">محصول یافت نشد.</div>
+}
+else
+{
+    <h1 style="margin-top:0">✏️ ویرایش: @_product.Name</h1>
+
+    <div class="card-box" style="margin-bottom:24px">
+        <h4 style="margin-top:0">اطلاعات اصلی</h4>
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px">
+            <div><label class="form-label">نام *</label><input class="form-input" @bind="_product.Name" /></div>
+            <div><label class="form-label">قیمت (تومان)</label><input class="form-input" type="number" @bind="_product.Price" /></div>
+            <div><label class="form-label">قیمت قبل از تخفیف</label><input class="form-input" type="number" @bind="_product.OldPrice" /></div>
+            <div>
+                <label class="form-label">دسته‌بندی</label>
+                <select class="form-input" @bind="_product.CategoryId">
+                    @foreach (var c in _categories) { <option value="@c.Id">@c.Name</option> }
+                </select>
+            </div>
+            <div>
+                <label class="form-label">نوع محصول</label>
+                <select class="form-input" value="@_product.ProductType" @onchange="e => _product.ProductType = Enum.Parse<ProductType>(e.Value!.ToString()!)">
+                    <option value="TShirt">تیشرت</option>
+                    <option value="Shirt">پیراهن</option>
+                    <option value="Pants">شلوار</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:16px; align-items:end">
+                <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem"><input type="checkbox" @bind="_product.IsNew" /> جدید</label>
+                <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem"><input type="checkbox" @bind="_product.IsFeatured" /> محبوب</label>
+                <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem"><input type="checkbox" @bind="_product.IsActive" /> فعال</label>
+            </div>
+        </div>
+        <div class="form-group" style="margin-top:12px">
+            <label class="form-label">توضیحات</label>
+            <textarea class="form-input" rows="3" @bind="_product.Description"></textarea>
+        </div>
+        <button class="btn-papey" @onclick="SaveInfo">💾 ذخیره اطلاعات</button>
+        @if (_infoMsg is not null) { <div class="alert-papey alert-success" style="margin-top:8px">@_infoMsg</div> }
+    </div>
+
+    <div class="card-box" style="margin-bottom:24px">
+        <h4 style="margin-top:0">🖼 تصاویر و ویدیو</h4>
+        <p style="font-size:0.8rem; color:var(--papey-muted)">
+            📐 نسبت پیشنهادی تصویر: <strong>۱:۱ (مربعی)</strong> — حداقل ۸۰۰×۸۰۰ پیکسل.
+            ویدیو: MP4/WebM حداکثر ۵۰ مگابایت.
+        </p>
+        <InputFile OnChange="UploadMedia" accept="image/*,video/mp4,video/webm" class="form-input" />
+        @if (_uploading) { <p>در حال آپلود...</p> }
+        @if (_uploadError is not null) { <div class="alert-papey alert-danger">@_uploadError</div> }
+
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:16px">
+            @foreach (var m in _media)
+            {
+                <div style="width:130px; text-align:center; border:1px solid var(--papey-border); border-radius:10px; padding:8px">
+                    @if (m.Type == MediaType.Video)
+                    {
+                        <video src="@m.Url" style="width:100%; height:110px; object-fit:cover; border-radius:8px" muted></video>
+                    }
+                    else
+                    {
+                        <img src="@m.Url" style="width:100%; height:110px; object-fit:cover; border-radius:8px" />
+                    }
+                    <div style="margin-top:6px; display:flex; justify-content:center; gap:4px">
+                        <button class="btn-papey btn-sm btn-outline" @onclick="() => MoveMedia(m, -1)">→</button>
+                        <button class="btn-papey btn-sm btn-outline" @onclick="() => MoveMedia(m, 1)">←</button>
+                        <button class="btn-papey btn-sm btn-danger-papey" @onclick="() => DeleteMedia(m)">🗑</button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card-box">
+        <h4 style="margin-top:0">🎨 رنگ‌ها و سایزها و موجودی</h4>
+        <p style="font-size:0.8rem; color:var(--papey-muted)">تیک = این ترکیب برای محصول فعال است. عدد = موجودی انبار.</p>
+        <div style="overflow-x:auto">
+            <table class="table-papey">
+                <thead>
+                    <tr>
+                        <th>رنگ \ سایز</th>
+                        @foreach (var s in _sizes) { <th>@s.Name</th> }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in _colors)
+                    {
+                        <tr>
+                            <td>
+                                <span class="color-dot" style="background:@c.Hex; cursor:default"></span> @c.Name
+                            </td>
+                            @foreach (var s in _sizes)
+                            {
+                                var v = _product.Variants.FirstOrDefault(x => x.ColorId == c.Id && x.SizeId == s.Id);
+                                <td>
+                                    <input type="checkbox" checked="@(v is not null)" @onchange="e => ToggleVariant(c, s, (bool)e.Value!)" />
+                                    @if (v is not null)
+                                    {
+                                        <input type="number" min="0" style="width:64px" class="form-input" value="@v.Stock"
+                                               @onchange="e => SetStock(v, e.Value?.ToString())" />
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (_variantMsg is not null) { <div class="alert-papey alert-success" style="margin-top:8px">@_variantMsg</div> }
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Product? _product;
+    private List<Category> _categories = new();
+    private List<Color> _colors = new();
+    private List<Size> _sizes = new();
+    private List<ProductMedia> _media = new();
+    private string? _infoMsg, _variantMsg, _uploadError;
+    private bool _uploading;
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _product = await db.Products.Include(p => p.Variants).FirstOrDefaultAsync(p => p.Id == Id);
+        _categories = await db.Categories.OrderBy(c => c.DisplayOrder).ToListAsync();
+        _colors = await db.Colors.Where(c => c.IsActive).OrderBy(c => c.DisplayOrder).ToListAsync();
+        _sizes = await db.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ToListAsync();
+        _media = await db.ProductMedia.Where(m => m.ProductId == Id).OrderBy(m => m.DisplayOrder).ToListAsync();
+    }
+
+    private async Task SaveInfo()
+    {
+        _infoMsg = null;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var t = await db.Products.FindAsync(Id);
+        if (t is null) return;
+        t.Name = _product!.Name; t.Price = _product.Price; t.OldPrice = _product.OldPrice;
+        t.CategoryId = _product.CategoryId; t.ProductType = _product.ProductType;
+        t.Description = _product.Description; t.IsNew = _product.IsNew;
+        t.IsFeatured = _product.IsFeatured; t.IsActive = _product.IsActive;
+        t.ImageUrl = _media.OrderBy(m => m.DisplayOrder).FirstOrDefault(m => m.Type == MediaType.Image)?.Url ?? t.ImageUrl;
+        await db.SaveChangesAsync();
+        _infoMsg = "✓ ذخیره شد.";
+    }
+
+    private async Task UploadMedia(InputFileChangeEventArgs e)
+    {
+        _uploading = true; _uploadError = null;
+        try
+        {
+            var file = e.File;
+            var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+            var isVideo = ext is ".mp4" or ".webm" or ".mov";
+            var folder = Path.Combine("wwwroot", "uploads", isVideo ? "videos" : "images");
+            Directory.CreateDirectory(folder);
+            var name = $"{Guid.NewGuid():N}{ext}";
+            var path = Path.Combine(folder, name);
+            await using (var fs = File.Create(path))
+                await file.OpenReadStream(50 * 1024 * 1024).CopyToAsync(fs);
+            var url = $"/uploads/{(isVideo ? "videos" : "images")}/{name}";
+
+            await using var db = await DbFactory.CreateDbContextAsync();
+            db.ProductMedia.Add(new ProductMedia
+            {
+                ProductId = Id,
+                Url = url,
+                Type = isVideo ? MediaType.Video : MediaType.Image,
+                Alt = _product?.Name,
+                DisplayOrder = _media.Count
+            });
+            await db.SaveChangesAsync();
+            await Reload();
+        }
+        catch (Exception ex) { _uploadError = "خطا در آپلود: " + ex.Message; }
+        _uploading = false;
+    }
+
+    private async Task MoveMedia(ProductMedia m, int dir)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var list = await db.ProductMedia.Where(x => x.ProductId == Id).OrderBy(x => x.DisplayOrder).ToListAsync();
+        var i = list.FindIndex(x => x.Id == m.Id);
+        var j = i + dir;
+        if (i < 0 || j < 0 || j >= list.Count) return;
+        (list[i].DisplayOrder, list[j].DisplayOrder) = (list[j].DisplayOrder, list[i].DisplayOrder);
+        await db.SaveChangesAsync();
+        await Reload();
+    }
+
+    private async Task DeleteMedia(ProductMedia m)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var t = await db.ProductMedia.FindAsync(m.Id);
+        if (t is not null) { db.ProductMedia.Remove(t); await db.SaveChangesAsync(); }
+        try { System.IO.File.Delete(Path.Combine("wwwroot", m.Url.TrimStart('/'))); } catch { }
+        await Reload();
+    }
+
+    private async Task ToggleVariant(Color c, Size s, bool enabled)
+    {
+        _variantMsg = null;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var existing = await db.ProductVariants.FirstOrDefaultAsync(v => v.ProductId == Id && v.ColorId == c.Id && v.SizeId == s.Id);
+        if (enabled && existing is null)
+        {
+            db.ProductVariants.Add(new ProductVariant
+            {
+                ProductId = Id, ColorId = c.Id, Color = c.Name, ColorHex = c.Hex,
+                SizeId = s.Id, Size = s.Name, Stock = 5
+            });
+            await db.SaveChangesAsync();
+            _variantMsg = "✓ تنوع اضافه شد.";
+        }
+        else if (!enabled && existing is not null)
+        {
+            var usedInOrders = await db.OrderItems.AnyAsync(o => o.ProductVariantId == existing.Id);
+            if (usedInOrders) { existing.Stock = 0; _variantMsg = "این تنوع در سفارش‌ها استفاده شده؛ موجودی صفر شد."; }
+            else { db.ProductVariants.Remove(existing); _variantMsg = "✓ تنوع حذف شد."; }
+            await db.SaveChangesAsync();
+        }
+        await Reload();
+    }
+
+    private async Task SetStock(ProductVariant v, string? val)
+    {
+        if (!int.TryParse(val, out var stock) || stock < 0) return;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var t = await db.ProductVariants.FindAsync(v.Id);
+        if (t is not null) { t.Stock = stock; await db.SaveChangesAsync(); v.Stock = stock; _variantMsg = "✓ موجودی به‌روزرسانی شد."; }
+    }
+}

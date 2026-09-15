@@ -8,10 +8,29 @@
 <h1 style="margin-top:0">📊 داشبورد</h1>
 
 <div class="stat-grid">
-    <div class="stat-card">🧾 کل سفارش‌ها<div class="num">@Fa(_totalOrders)</div></div>
-    <div class="stat-card">💰 فروش (پرداخت‌شده)<div class="num">@_revenue.ToToman()</div></div>
-    <div class="stat-card">👕 تعداد محصولات<div class="num">@Fa(_totalProducts)</div></div>
+    <div class="stat-card">💰 فروش امروز<div class="num">@_todaySales.ToToman()</div></div>
+    <div class="stat-card">🧾 سفارش‌های امروز<div class="num">@Fa(_todayOrders)</div></div>
+    <div class="stat-card">📅 فروش ۳۰ روز اخیر<div class="num">@_monthSales.ToToman()</div></div>
     <div class="stat-card">👤 کاربران<div class="num">@Fa(_totalUsers)</div></div>
+</div>
+
+<h3>فروش روزانه (۳۰ روز اخیر)</h3>
+<div class="card-box" style="margin-bottom:28px">
+    <div style="display:flex; align-items:flex-end; gap:4px; height:160px">
+        @foreach (var d in _daily)
+        {
+            var h = _maxDaily > 0 ? (int)(d.Amount / _maxDaily * 140) : 0;
+            <div title="@PersianHelpers.ToPersianDigits(d.Date.ToString("MM/dd")): @d.Amount.ToToman()"
+                 style="flex:1; background:var(--papey-accent); border-radius:4px 4px 0 0; height:@(Math.Max(h, 2))px; min-width:8px"></div>
+        }
+    </div>
+    <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--papey-muted); margin-top:6px">
+        @if (_daily.Count > 0)
+        {
+            <span>@PersianHelpers.ToPersianDigits(_daily.First().Date.ToString("yyyy/MM/dd"))</span>
+            <span>@PersianHelpers.ToPersianDigits(_daily.Last().Date.ToString("yyyy/MM/dd"))</span>
+        }
+    </div>
 </div>
 
 <h3>آخرین سفارش‌ها</h3>
@@ -32,17 +51,32 @@
 </table>
 
 @code {
-    private int _totalOrders, _totalProducts, _totalUsers;
-    private decimal _revenue;
+    private int _totalUsers, _todayOrders;
+    private decimal _todaySales, _monthSales, _maxDaily;
+    private List<(DateTime Date, decimal Amount)> _daily = new();
     private List<Order> _latest = new();
 
     protected override async Task OnInitializedAsync()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
-        _totalOrders = await db.Orders.CountAsync();
-        _totalProducts = await db.Products.CountAsync();
         _totalUsers = await db.Users.CountAsync();
-        _revenue = await db.Orders.Where(o => o.Status == OrderStatus.Paid).SumAsync(o => (decimal?)o.GrandTotal) ?? 0;
+
+        var today = DateTime.UtcNow.Date;
+        var paid = await db.Orders
+            .Where(o => o.Status == OrderStatus.Paid)
+            .Select(o => new { o.GrandTotal, o.CreatedAt })
+            .ToListAsync();
+
+        _todaySales = paid.Where(o => o.CreatedAt >= today).Sum(o => o.GrandTotal);
+        _todayOrders = paid.Count(o => o.CreatedAt >= today);
+        _monthSales = paid.Where(o => o.CreatedAt >= today.AddDays(-30)).Sum(o => o.GrandTotal);
+
+        _daily = Enumerable.Range(0, 30)
+            .Select(i => (Date: today.AddDays(-29 + i),
+                Amount: paid.Where(o => o.CreatedAt.Date == today.AddDays(-29 + i)).Sum(o => o.GrandTotal)))
+            .ToList();
+        _maxDaily = _daily.Max(d => d.Amount);
+
         _latest = await db.Orders.OrderByDescending(o => o.CreatedAt).Take(8).ToListAsync();
     }
 

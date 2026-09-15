@@ -29,12 +29,16 @@ public class Product
     public bool IsNew { get; set; }
     public bool IsActive { get; set; } = true;
 
+    /// <summary>Product type (t-shirt, shirt, pants, ...) for future expansion.</summary>
+    public ProductType ProductType { get; set; } = ProductType.TShirt;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public int CategoryId { get; set; }
     public Category Category { get; set; } = null!;
 
     public List<ProductVariant> Variants { get; set; } = new();
+    public List<ProductMedia> Media { get; set; } = new();
 }
 
 public class ProductVariant
@@ -50,8 +54,14 @@ public class ProductVariant
     [MaxLength(20)]
     public string ColorHex { get; set; } = "#000000";
 
+    public int? ColorId { get; set; }
+    public Color? ColorRef { get; set; }
+
     [Required, MaxLength(10)]
     public string Size { get; set; } = string.Empty;
+
+    public int? SizeId { get; set; }
+    public Size? SizeRef { get; set; }
 
     public int Stock { get; set; }
 

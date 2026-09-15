@@ -71,11 +71,7 @@ else
                     <label class="form-label">کد پستی</label>
                     <InputText class="form-input" @bind-Value="_model.PostalCode" />
                 </div>
-                <div class="form-group">
-                    <label style="display:flex; gap:8px; align-items:center; font-size:0.85rem">
-                        <InputCheckbox @bind-Value="_model.SaveAddress" /> ذخیره این آدرس در حساب کاربری من
-                    </label>
-                </div>
+                <p style="font-size:0.8rem; color:var(--papey-muted)">📌 این آدرس به‌طور خودکار در حساب کاربری شما ذخیره می‌شود.</p>
                 @if (_error is not null)
                 {
                     <div class="alert-papey alert-danger">@_error</div>
@@ -130,7 +126,6 @@ else
         [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "آدرس کامل الزامی است")]
         public string FullAddress { get; set; } = "";
         public string? PostalCode { get; set; }
-        public bool SaveAddress { get; set; }
     }
 
     protected override async Task OnInitializedAsync()
@@ -217,20 +212,26 @@ else
             }
             db.Orders.Add(order);
 
-            if (_model.SaveAddress && Auth.CurrentUserId is { } uid)
+            // Always save the address to the user's account
+            if (Auth.CurrentUserId is { } uid)
             {
-                db.Addresses.Add(new Address
+                var exists = _savedAddresses.Any(a =>
+                    a.FullAddress == _model.FullAddress && a.City == _model.City && a.ReceiverPhone == _model.CustomerPhone);
+                if (!exists)
                 {
-                    UserId = uid,
-                    Title = $"{_model.City} - {_model.CustomerName}",
-                    ReceiverName = _model.CustomerName,
-                    ReceiverPhone = _model.CustomerPhone,
-                    Province = _model.Province,
-                    City = _model.City,
-                    FullAddress = _model.FullAddress,
-                    PostalCode = _model.PostalCode,
-                    IsDefault = !_savedAddresses.Any()
-                });
+                    db.Addresses.Add(new Address
+                    {
+                        UserId = uid,
+                        Title = $"{_model.City} - {_model.CustomerName}",
+                        ReceiverName = _model.CustomerName,
+                        ReceiverPhone = _model.CustomerPhone,
+                        Province = _model.Province,
+                        City = _model.City,
+                        FullAddress = _model.FullAddress,
+                        PostalCode = _model.PostalCode,
+                        IsDefault = !_savedAddresses.Any()
+                    });
+                }
             }
             await db.SaveChangesAsync();
 

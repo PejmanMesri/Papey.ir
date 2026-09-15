@@ -1,32 +1,79 @@
 @page "/login"
+@rendermode InteractiveServer
 @inject AuthService Auth
 @inject NavigationManager Nav
 
 <PageTitle>ورود | پاپی</PageTitle>
 
-<div style="max-width:420px; margin:64px auto">
+<div style="max-width:440px; margin:64px auto">
     <div class="card-box">
         <h2 style="text-align:center; margin-top:0">👤 ورود به حساب</h2>
+
         @if (!string.IsNullOrEmpty(ReturnUrl))
         {
             <div class="alert-papey alert-info">برای تکمیل خرید ابتدا وارد شوید.</div>
         }
         @if (!string.IsNullOrEmpty(Error))
         {
-            <div class="alert-papey alert-danger">نام کاربری یا رمز عبور اشتباه است.</div>
+            <div class="alert-papey alert-danger">@(Error == "otp" ? "کد وارد شده صحیح نیست یا منقضی شده است." : "نام کاربری یا رمز عبور اشتباه است.")</div>
         }
-        <form method="post" action="/account/login@(ReturnUrlQuery)">
-            <AntiforgeryToken />
-            <div class="form-group">
-                <label class="form-label">نام کاربری</label>
-                <input class="form-input" name="username" required />
-            </div>
-            <div class="form-group">
-                <label class="form-label">رمز عبور</label>
-                <input class="form-input" name="password" type="password" required />
-            </div>
-            <button class="btn-papey" style="width:100%" type="submit">ورود</button>
-        </form>
+
+        <div style="display:flex; gap:8px; margin-bottom:20px">
+            <button class="btn-papey @(_tab == "password" ? "" : "btn-outline")" style="flex:1" @onclick='() => _tab = "password"'>ورود با رمز عبور</button>
+            <button class="btn-papey @(_tab == "otp" ? "" : "btn-outline")" style="flex:1" @onclick='() => _tab = "otp"'>ورود با پیامک</button>
+        </div>
+
+        @if (_tab == "password")
+        {
+            <form method="post" action="/account/login@(ReturnUrlQuery)">
+                <AntiforgeryToken />
+                <div class="form-group">
+                    <label class="form-label">نام کاربری یا شماره موبایل</label>
+                    <input class="form-input" name="identifier" required />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">رمز عبور</label>
+                    <input class="form-input" name="password" type="password" required />
+                </div>
+                <button class="btn-papey" style="width:100%" type="submit">ورود</button>
+            </form>
+        }
+        else
+        {
+            @if (!_otpSent)
+            {
+                <div class="form-group">
+                    <label class="form-label">شماره موبایل</label>
+                    <input class="form-input" @bind="_phone" placeholder="09xxxxxxxxx" maxlength="11" />
+                </div>
+                @if (_otpError is not null)
+                {
+                    <div class="alert-papey alert-danger">@_otpError</div>
+                }
+                <button class="btn-papey" style="width:100%" @onclick="SendOtp" disabled="@_sending">
+                    @(_sending ? "در حال ارسال..." : "ارسال کد یکبارمصرف")
+                </button>
+            }
+            else
+            {
+                <p style="font-size:0.85rem; color:var(--papey-muted)">کد ۵ رقمی به شماره @_phone ارسال شد.</p>
+                @if (_devCode is not null)
+                {
+                    <div class="alert-papey alert-info" style="font-size:0.85rem">حالت توسعه — کد: <strong>@_devCode</strong></div>
+                }
+                <div class="form-group">
+                    <label class="form-label">کد تایید</label>
+                    <input class="form-input" @bind="_code" maxlength="5" style="text-align:center; letter-spacing:8px; font-size:1.3rem" />
+                </div>
+                @if (_otpError is not null)
+                {
+                    <div class="alert-papey alert-danger">@_otpError</div>
+                }
+                <button class="btn-papey" style="width:100%" @onclick="VerifyOtp" disabled="@_sending">تایید و ورود</button>
+                <button class="btn-papey btn-outline" style="width:100%; margin-top:8px" @onclick="ResetOtp">ویرایش شماره</button>
+            }
+        }
+
         <p style="text-align:center; margin-top:16px; font-size:0.85rem">
             حساب ندارید؟ <a href="/register@(ReturnUrlQuery)" style="color:var(--papey-accent-dark); font-weight:700">ثبت‌نام کنید</a>
         </p>
@@ -37,5 +84,41 @@
     [SupplyParameterFromQuery] public string? Error { get; set; }
     [SupplyParameterFromQuery(Name = "returnUrl")] public string? ReturnUrl { get; set; }
 
+    private string _tab = "password";
+    private string _phone = "";
+    private string _code = "";
+    private bool _otpSent;
+    private bool _sending;
+    private string? _devCode;
+    private string? _otpError;
+
     private string ReturnUrlQuery => string.IsNullOrEmpty(ReturnUrl) ? "" : $"?returnUrl={Uri.EscapeDataString(ReturnUrl)}";
+    private string RedirectTarget => !string.IsNullOrEmpty(ReturnUrl) && ReturnUrl.StartsWith('/') ? ReturnUrl : "/";
+
+    private async Task SendOtp()
+    {
+        _sending = true; _otpError = null;
+        var (ok, devCode, error) = await Auth.RequestOtpAsync(_phone);
+        _sending = false;
+        if (!ok) { _otpError = error; return; }
+        _devCode = devCode;
+        _otpSent = true;
+    }
+
+    private void ResetOtp()
+    {
+        _otpSent = false;
+        _code = "";
+        _otpError = null;
+    }
+
+    private async Task VerifyOtp()
+    {
+        _sending = true; _otpError = null;
+        var user = await Auth.VerifyOtpAndSignInAsync(_phone, _code);
+        _sending = false;
+        if (user is null) { _otpError = "کد وارد شده صحیح نیست یا منقضی شده است."; return; }
+        // Sign-in must happen in a real HTTP request (cookie headers), not over the Blazor circuit
+        Nav.NavigateTo($"/account/otp-complete?userId={user.Id}&returnUrl={Uri.EscapeDataString(RedirectTarget)}", forceLoad: true);
+    }
 }

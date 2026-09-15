@@ -1,0 +1,221 @@
+@page "/admin/colors-sizes"
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+@rendermode InteractiveServer
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>رنگ‌ها و سایزها | پنل مدیریت پاپی</PageTitle>
+
+<h1 style="margin-top:0">🎨 رنگ‌ها و سایزها</h1>
+
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px">
+    <div class="card-box">
+        <h3 style="margin-top:0">رنگ‌ها</h3>
+        <div style="display:flex; gap:12px; align-items:end; margin-bottom:16px; flex-wrap:wrap">
+            <div><label class="form-label">نام رنگ</label><input class="form-input" @bind="_newColorName" placeholder="مثلاً سبز" /></div>
+            <div>
+                <label class="form-label">انتخاب رنگ (RGB)</label>
+                <input type="color" @bind="_newColorHex" style="width:64px; height:42px; border:1px solid var(--papey-border); border-radius:8px; cursor:pointer; background:#fff" />
+            </div>
+            <div><label class="form-label">کد</label><input class="form-input" @bind="_newColorHex" style="width:90px" /></div>
+            <button class="btn-papey" @onclick="AddColor">➕ افزودن</button>
+        </div>
+        <table class="table-papey">
+            <thead><tr><th>رنگ</th><th>نام</th><th>کد</th><th>ترتیب</th><th>وضعیت</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var c in _colors)
+                {
+                    <tr>
+                        <td><span class="color-dot" style="background:@c.Hex; cursor:default"></span></td>
+                        <td>
+                            @if (_editColorId == c.Id)
+                            {
+                                <input class="form-input" style="width:100px" @bind="_editColorName" />
+                            }
+                            else { <strong>@c.Name</strong> }
+                        </td>
+                        <td><code>@c.Hex</code></td>
+                        <td>
+                            <button class="btn-papey btn-sm btn-outline" @onclick="() => MoveColor(c, -1)">↑</button>
+                            <button class="btn-papey btn-sm btn-outline" @onclick="() => MoveColor(c, 1)">↓</button>
+                        </td>
+                        <td>
+                            <button class="btn-papey btn-sm @(c.IsActive ? "btn-outline" : "btn-danger-papey")" @onclick="() => ToggleColor(c)">@(c.IsActive ? "فعال" : "غیرفعال")</button>
+                        </td>
+                        <td>
+                            @if (_editColorId == c.Id)
+                            {
+                                <button class="btn-papey btn-sm" @onclick="() => SaveColor(c)">✓</button>
+                            }
+                            else
+                            {
+                                <button class="btn-papey btn-sm btn-outline" @onclick="() => { _editColorId = c.Id; _editColorName = c.Name; }">✏️</button>
+                            }
+                            <button class="btn-papey btn-sm btn-danger-papey" @onclick="() => DeleteColor(c)">🗑</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card-box">
+        <h3 style="margin-top:0">سایزها</h3>
+        <div style="display:flex; gap:12px; align-items:end; margin-bottom:16px">
+            <div><label class="form-label">نام سایز</label><input class="form-input" @bind="_newSizeName" placeholder="مثلاً 3XL" /></div>
+            <button class="btn-papey" @onclick="AddSize">➕ افزودن</button>
+        </div>
+        <table class="table-papey">
+            <thead><tr><th>نام</th><th>ترتیب</th><th>وضعیت</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var s in _sizes)
+                {
+                    <tr>
+                        <td>
+                            @if (_editSizeId == s.Id)
+                            {
+                                <input class="form-input" style="width:80px" @bind="_editSizeName" />
+                            }
+                            else { <strong>@s.Name</strong> }
+                        </td>
+                        <td>
+                            <button class="btn-papey btn-sm btn-outline" @onclick="() => MoveSize(s, -1)">↑</button>
+                            <button class="btn-papey btn-sm btn-outline" @onclick="() => MoveSize(s, 1)">↓</button>
+                        </td>
+                        <td>
+                            <button class="btn-papey btn-sm @(s.IsActive ? "btn-outline" : "btn-danger-papey")" @onclick="() => ToggleSize(s)">@(s.IsActive ? "فعال" : "غیرفعال")</button>
+                        </td>
+                        <td>
+                            @if (_editSizeId == s.Id)
+                            {
+                                <button class="btn-papey btn-sm" @onclick="() => SaveSize(s)">✓</button>
+                            }
+                            else
+                            {
+                                <button class="btn-papey btn-sm btn-outline" @onclick="() => { _editSizeId = s.Id; _editSizeName = s.Name; }">✏️</button>
+                            }
+                            <button class="btn-papey btn-sm btn-danger-papey" @onclick="() => DeleteSize(s)">🗑</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private List<Color> _colors = new();
+    private List<Size> _sizes = new();
+    private string _newColorName = "";
+    private string _newColorHex = "#212529";
+    private string _newSizeName = "";
+    private int? _editColorId;
+    private int? _editSizeId;
+    private string _editColorName = "";
+    private string _editSizeName = "";
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _colors = await db.Colors.OrderBy(c => c.DisplayOrder).ToListAsync();
+        _sizes = await db.Sizes.OrderBy(s => s.DisplayOrder).ToListAsync();
+    }
+
+    private async Task AddColor()
+    {
+        if (string.IsNullOrWhiteSpace(_newColorName)) return;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        db.Colors.Add(new Color { Name = _newColorName.Trim(), Hex = _newColorHex, DisplayOrder = _colors.Count });
+        await db.SaveChangesAsync();
+        _newColorName = "";
+        await Reload();
+    }
+
+    private async Task AddSize()
+    {
+        if (string.IsNullOrWhiteSpace(_newSizeName)) return;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        db.Sizes.Add(new Size { Name = _newSizeName.Trim().ToUpper(), DisplayOrder = _sizes.Count });
+        await db.SaveChangesAsync();
+        _newSizeName = "";
+        await Reload();
+    }
+
+    private async Task MoveColor(Color c, int dir)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var list = await db.Colors.OrderBy(x => x.DisplayOrder).ToListAsync();
+        var i = list.FindIndex(x => x.Id == c.Id);
+        var j = i + dir;
+        if (i < 0 || j < 0 || j >= list.Count) return;
+        (list[i].DisplayOrder, list[j].DisplayOrder) = (list[j].DisplayOrder, list[i].DisplayOrder);
+        await db.SaveChangesAsync();
+        await Reload();
+    }
+
+    private async Task MoveSize(Size s, int dir)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var list = await db.Sizes.OrderBy(x => x.DisplayOrder).ToListAsync();
+        var i = list.FindIndex(x => x.Id == s.Id);
+        var j = i + dir;
+        if (i < 0 || j < 0 || j >= list.Count) return;
+        (list[i].DisplayOrder, list[j].DisplayOrder) = (list[j].DisplayOrder, list[i].DisplayOrder);
+        await db.SaveChangesAsync();
+        await Reload();
+    }
+
+    private async Task ToggleColor(Color c)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var t = await db.Colors.FindAsync(c.Id);
+        if (t is not null) { t.IsActive = !t.IsActive; await db.SaveChangesAsync(); }
+        await Reload();
+    }
+
+    private async Task ToggleSize(Size s)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var t = await db.Sizes.FindAsync(s.Id);
+        if (t is not null) { t.IsActive = !t.IsActive; await db.SaveChangesAsync(); }
+        await Reload();
+    }
+
+    private async Task SaveColor(Color c)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var t = await db.Colors.FindAsync(c.Id);
+        if (t is not null) { t.Name = _editColorName; await db.SaveChangesAsync(); }
+        _editColorId = null;
+        await Reload();
+    }
+
+    private async Task SaveSize(Size s)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var t = await db.Sizes.FindAsync(s.Id);
+        if (t is not null) { t.Name = _editSizeName.ToUpper(); await db.SaveChangesAsync(); }
+        _editSizeId = null;
+        await Reload();
+    }
+
+    private async Task DeleteColor(Color c)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var used = await db.ProductVariants.AnyAsync(v => v.ColorId == c.Id || v.Color == c.Name);
+        if (used) { /* deactivate instead */ var t = await db.Colors.FindAsync(c.Id); if (t is not null) { t.IsActive = false; await db.SaveChangesAsync(); } }
+        else { db.Colors.Remove(await db.Colors.FindAsync(c.Id)!); await db.SaveChangesAsync(); }
+        await Reload();
+    }
+
+    private async Task DeleteSize(Size s)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var used = await db.ProductVariants.AnyAsync(v => v.SizeId == s.Id || v.Size == s.Name);
+        if (used) { var t = await db.Sizes.FindAsync(s.Id); if (t is not null) { t.IsActive = false; await db.SaveChangesAsync(); } }
+        else { db.Sizes.Remove(await db.Sizes.FindAsync(s.Id)!); await db.SaveChangesAsync(); }
+        await Reload();
+    }
+}

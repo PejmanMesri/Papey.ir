@@ -1,0 +1,53 @@
+@page "/admin/sales"
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>فروش و تراکنش‌ها | پنل مدیریت پاپی</PageTitle>
+
+<h1 style="margin-top:0">💰 فروش و تراکنش‌ها</h1>
+
+<div class="stat-grid">
+    <div class="stat-card">💰 کل فروش (پرداخت‌شده)<div class="num">@_totalRevenue.ToToman()</div></div>
+    <div class="stat-card">✅ تراکنش‌های موفق<div class="num">@Fa(_paidCount)</div></div>
+    <div class="stat-card">⏳ در انتظار پرداخت<div class="num">@Fa(_pendingCount)</div></div>
+    <div class="stat-card">❌ پرداخت ناموفق<div class="num">@Fa(_failedCount)</div></div>
+</div>
+
+<table class="table-papey">
+    <thead>
+        <tr><th>شماره سفارش</th><th>مشتری</th><th>اقلام</th><th>مبلغ</th><th>وضعیت</th><th>کد پیگیری</th><th>تاریخ</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var o in _orders)
+        {
+            <tr>
+                <td><strong>@o.OrderNumber</strong></td>
+                <td>@o.CustomerName<br /><small style="color:var(--papey-muted)">@o.CustomerPhone</small></td>
+                <td><small>@string.Join("، ", o.Items.Select(i => $"{i.ProductName} ×{PersianHelpers.ToPersianDigits(i.Quantity.ToString())}"))</small></td>
+                <td>@o.GrandTotal.ToToman()</td>
+                <td><span class="status-chip status-@o.Status">@PersianHelpers.StatusLabel(o.Status)</span></td>
+                <td><small>@PersianHelpers.ToPersianDigits(o.PaymentRefId ?? "—")</small></td>
+                <td>@PersianHelpers.ToPersianDigits(o.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<Order> _orders = new();
+    private decimal _totalRevenue;
+    private int _paidCount, _pendingCount, _failedCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _orders = await db.Orders.Include(o => o.Items).OrderByDescending(o => o.CreatedAt).ToListAsync();
+        _totalRevenue = _orders.Where(o => o.Status == OrderStatus.Paid).Sum(o => o.GrandTotal);
+        _paidCount = _orders.Count(o => o.Status == OrderStatus.Paid);
+        _pendingCount = _orders.Count(o => o.Status == OrderStatus.Pending);
+        _failedCount = _orders.Count(o => o.Status == OrderStatus.PaymentFailed);
+    }
+
+    private static string Fa(int n) => PersianHelpers.ToPersianDigits(n.ToString());
+}

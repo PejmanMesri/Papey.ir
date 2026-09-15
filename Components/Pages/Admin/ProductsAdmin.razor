@@ -3,6 +3,8 @@
 @layout AdminLayout
 @rendermode InteractiveServer
 @inject IDbContextFactory<AppDbContext> DbFactory
+@inject IJSRuntime JS
+@inject NavigationManager Nav
 
 <PageTitle>محصولات | پنل مدیریت پاپی</PageTitle>
 
@@ -10,34 +12,38 @@
 
 <div class="card-box" style="margin-bottom:24px">
     <h4 style="margin-top:0">افزودن محصول جدید</h4>
-    <EditForm Model="_new" OnValidSubmit="AddProduct" FormName="add-product">
-        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px">
-            <div><label class="form-label">نام *</label><InputText class="form-input" @bind-Value="_new.Name" required /></div>
-            <div><label class="form-label">قیمت (تومان) *</label><InputNumber class="form-input" @bind-Value="_new.Price" /></div>
-            <div>
-                <label class="form-label">دسته‌بندی</label>
-                <InputSelect class="form-input" @bind-Value="_new.CategoryId">
-                    @foreach (var c in _categories)
-                    {
-                        <option value="@c.Id">@c.Name</option>
-                    }
-                </InputSelect>
-            </div>
-            <div><label class="form-label">آدرس تصویر</label><InputText class="form-input" @bind-Value="_new.ImageUrl" /></div>
-            <div><label class="form-label">توضیح</label><InputText class="form-input" @bind-Value="_new.Description" /></div>
-            <div style="display:flex; align-items:end"><button class="btn-papey" type="submit">➕ افزودن</button></div>
+    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px">
+        <div><label class="form-label">نام *</label><input class="form-input" @bind="_newName" /></div>
+        <div><label class="form-label">قیمت (تومان) *</label><input class="form-input" type="number" @bind="_newPrice" /></div>
+        <div>
+            <label class="form-label">دسته‌بندی</label>
+            <select class="form-input" @bind="_newCategoryId">
+                @foreach (var c in _categories) { <option value="@c.Id">@c.Name</option> }
+            </select>
         </div>
-    </EditForm>
+        <div>
+            <label class="form-label">نوع محصول</label>
+            <select class="form-input" @bind="_newType">
+                <option value="TShirt">تیشرت</option>
+                <option value="Shirt">پیراهن</option>
+                <option value="Pants">شلوار</option>
+            </select>
+        </div>
+        <div><label class="form-label">توضیح</label><input class="form-input" @bind="_newDesc" /></div>
+        <div style="display:flex; align-items:end"><button class="btn-papey" @onclick="AddProduct">➕ افزودن</button></div>
+    </div>
+    @if (_msg is not null) { <div class="alert-papey alert-info">@_msg</div> }
 </div>
 
 <table class="table-papey">
-    <thead><tr><th>تصویر</th><th>نام</th><th>دسته</th><th>قیمت</th><th>موجودی</th><th>وضعیت</th><th></th></tr></thead>
+    <thead><tr><th>تصویر</th><th>نام</th><th>نوع</th><th>دسته</th><th>قیمت</th><th>موجودی</th><th>وضعیت</th><th></th></tr></thead>
     <tbody>
         @foreach (var p in _products)
         {
             <tr>
-                <td><img src="@p.ImageUrl" style="width:48px; height:48px; object-fit:cover; border-radius:8px" /></td>
+                <td><img src="@(p.Media.OrderBy(m => m.DisplayOrder).FirstOrDefault()?.Url ?? p.ImageUrl)" style="width:48px; height:48px; object-fit:cover; border-radius:8px" /></td>
                 <td><strong>@p.Name</strong></td>
+                <td>@TypeLabel(p.ProductType)</td>
                 <td>@p.Category.Name</td>
                 <td>@p.Price.ToToman()</td>
                 <td>@PersianHelpers.ToPersianDigits(p.Variants.Sum(v => v.Stock).ToString())</td>
@@ -46,7 +52,10 @@
                         @(p.IsActive ? "فعال" : "غیرفعال")
                     </button>
                 </td>
-                <td><button class="btn-papey btn-sm btn-danger-papey" @onclick="() => Delete(p)">🗑</button></td>
+                <td>
+                    <a class="btn-papey btn-sm" href="/admin/products/@p.Id">✏️ ویرایش</a>
+                    <button class="btn-papey btn-sm btn-danger-papey" @onclick="() => Delete(p)">🗑</button>
+                </td>
             </tr>
         }
     </tbody>
@@ -55,30 +64,46 @@
 @code {
     private List<Product> _products = new();
     private List<Category> _categories = new();
-    private Product _new = new() { Price = 1000000 };
+    private string _newName = "";
+    private decimal _newPrice = 1000000;
+    private int _newCategoryId;
+    private string _newType = "TShirt";
+    private string? _newDesc;
+    private string? _msg;
 
     protected override async Task OnInitializedAsync()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
         _categories = await db.Categories.OrderBy(c => c.DisplayOrder).ToListAsync();
-        _products = await db.Products.Include(p => p.Category).Include(p => p.Variants).ToListAsync();
-        if (_categories.Count > 0) _new.CategoryId = _categories[0].Id;
+        _products = await db.Products.Include(p => p.Category).Include(p => p.Variants).Include(p => p.Media).ToListAsync();
+        if (_categories.Count > 0) _newCategoryId = _categories[0].Id;
     }
+
+    private static string TypeLabel(ProductType t) => t switch
+    {
+        ProductType.TShirt => "تیشرت",
+        ProductType.Shirt => "پیراهن",
+        ProductType.Pants => "شلوار",
+        _ => t.ToString()
+    };
 
     private async Task AddProduct()
     {
+        _msg = null;
+        if (string.IsNullOrWhiteSpace(_newName)) { _msg = "نام محصول الزامی است."; return; }
         await using var db = await DbFactory.CreateDbContextAsync();
-        _new.Slug = "p-" + Guid.NewGuid().ToString("N")[..8];
-        _new.ImageUrl ??= "/img/products/pinterest-minimal.svg";
-        db.Products.Add(_new);
+        var p = new Product
+        {
+            Name = _newName.Trim(),
+            Slug = "p-" + Guid.NewGuid().ToString("N")[..8],
+            Price = _newPrice,
+            CategoryId = _newCategoryId,
+            Description = _newDesc,
+            ProductType = Enum.Parse<ProductType>(_newType)
+        };
+        db.Products.Add(p);
         await db.SaveChangesAsync();
-        // default variants
-        foreach (var (cname, hex) in new[] { ("مشکی", "#212529"), ("سفید", "#f8f9fa") })
-            foreach (var size in new[] { "M", "L", "XL" })
-                db.ProductVariants.Add(new ProductVariant { ProductId = _new.Id, Color = cname, ColorHex = hex, Size = size, Stock = 5 });
-        await db.SaveChangesAsync();
-        await OnInitializedAsync();
-        _new = new Product { Price = 1000000, CategoryId = _categories.FirstOrDefault()?.Id ?? 0 };
+        Nav.NavigateTo($"/admin/products/{p.Id}");
     }
 
     private async Task ToggleActive(Product p)
@@ -90,8 +115,10 @@
 
     private async Task Delete(Product p)
     {
+        if (!await JS.InvokeAsync<bool>("confirm", $"محصول «{p.Name}» حذف شود؟")) return;
         await using var db = await DbFactory.CreateDbContextAsync();
         db.ProductVariants.RemoveRange(db.ProductVariants.Where(v => v.ProductId == p.Id));
+        db.ProductMedia.RemoveRange(db.ProductMedia.Where(m => m.ProductId == p.Id));
         db.Products.Remove(await db.Products.FindAsync(p.Id)!);
         await db.SaveChangesAsync();
         _products.Remove(p);
