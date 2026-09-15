@@ -29,8 +29,9 @@ public class Product
     public bool IsNew { get; set; }
     public bool IsActive { get; set; } = true;
 
-    /// <summary>Product type (t-shirt, shirt, pants, ...) for future expansion.</summary>
-    public ProductType ProductType { get; set; } = ProductType.TShirt;
+    /// <summary>Product type (lookup table, editable in admin) — تیشرت، هودی، شلوار...</summary>
+    public int? ProductTypeId { get; set; }
+    public ProductTypeEntity? ProductType { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

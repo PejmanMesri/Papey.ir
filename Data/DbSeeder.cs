@@ -11,10 +11,18 @@ public static class DbSeeder
         ("قرمز", "#c1121f"), ("طوسی", "#6c757d"), ("کرم", "#e9d8a6")
     };
     private static readonly string[] Sizes = { "S", "M", "L", "XL", "XXL" };
+    private static readonly string[] ProductTypeNames = { "تیشرت", "هودی" };
 
     public static async Task SeedAsync(AppDbContext db, IConfiguration config)
     {
         await db.Database.MigrateAsync();
+
+        // ---- Product types (تیشرت, هودی) — always ensured on first run ----
+        if (!await db.ProductTypes.AnyAsync())
+        {
+            db.ProductTypes.AddRange(ProductTypeNames.Select((n, i) => new ProductTypeEntity { Name = n, DisplayOrder = i }));
+            await db.SaveChangesAsync();
+        }
 
         // ---- Admin user ----
         var adminUsername = config["ADMIN_USERNAME"] ?? "Admin";
@@ -64,6 +72,13 @@ public static class DbSeeder
                     db.ProductMedia.Add(new ProductMedia { ProductId = p.Id, Url = p.ImageUrl, Type = MediaType.Image, Alt = p.Name });
             await db.SaveChangesAsync();
         }
+    }
+
+    /// <summary>Seeds the full store (categories/products/variants) if the Categories table is empty.</summary>
+    public static async Task EnsureStoreSeededAsync(AppDbContext db)
+    {
+        if (await db.Categories.AnyAsync()) return;
+        await SeedStoreAsync(db);
     }
 
     private static async Task SeedStoreAsync(AppDbContext db)

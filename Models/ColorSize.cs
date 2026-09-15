@@ -27,10 +27,14 @@ public class Size
     public bool IsActive { get; set; } = true;
 }
 
-/// <summary>Product type: t-shirt now; pants/shirts can be added later.</summary>
-public enum ProductType
+/// <summary>Product type lookup (تیشرت, هودی, شلوار, ...) — editable in the admin panel.</summary>
+public class ProductTypeEntity
 {
-    TShirt,
-    Shirt,
-    Pants
+    public int Id { get; set; }
+
+    [Required, MaxLength(50)]
+    public string Name { get; set; } = string.Empty;
+
+    public int DisplayOrder { get; set; }
+    public bool IsActive { get; set; } = true;
 }

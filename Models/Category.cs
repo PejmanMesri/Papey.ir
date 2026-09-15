@@ -23,5 +23,8 @@ public class Category
     /// <summary>Show this category in the site navigation and home category row.</summary>
     public bool ShowInNav { get; set; } = true;
 
+    /// <summary>Inactive categories are hidden from the storefront entirely.</summary>
+    public bool IsActive { get; set; } = true;
+
     public List<Product> Products { get; set; } = new();
 }

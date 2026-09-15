@@ -24,7 +24,7 @@ else
     protected override async Task OnParametersSetAsync()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
-        _category = await db.Categories.FirstOrDefaultAsync(c => c.Slug == Slug);
+        _category = await db.Categories.FirstOrDefaultAsync(c => c.Slug == Slug && c.IsActive);
         if (_category is not null)
             _products = await db.Products.Where(p => p.CategoryId == _category.Id && p.IsActive).ToListAsync();
     }

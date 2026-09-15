@@ -23,10 +23,8 @@
         </div>
         <div>
             <label class="form-label">نوع محصول</label>
-            <select class="form-input" @bind="_newType">
-                <option value="TShirt">تیشرت</option>
-                <option value="Shirt">پیراهن</option>
-                <option value="Pants">شلوار</option>
+            <select class="form-input" @bind="_newTypeId">
+                @foreach (var t in _types) { <option value="@t.Id">@t.Name</option> }
             </select>
         </div>
         <div><label class="form-label">توضیح</label><input class="form-input" @bind="_newDesc" /></div>
@@ -43,7 +41,7 @@
             <tr>
                 <td><img src="@(p.Media.OrderBy(m => m.DisplayOrder).FirstOrDefault()?.Url ?? p.ImageUrl)" style="width:48px; height:48px; object-fit:cover; border-radius:8px" /></td>
                 <td><strong>@p.Name</strong></td>
-                <td>@TypeLabel(p.ProductType)</td>
+                <td>@(p.ProductType?.Name ?? "—")</td>
                 <td>@p.Category.Name</td>
                 <td>@p.Price.ToToman()</td>
                 <td>@PersianHelpers.ToPersianDigits(p.Variants.Sum(v => v.Stock).ToString())</td>
@@ -64,10 +62,11 @@
 @code {
     private List<Product> _products = new();
     private List<Category> _categories = new();
+    private List<ProductTypeEntity> _types = new();
     private string _newName = "";
     private decimal _newPrice = 1000000;
     private int _newCategoryId;
-    private string _newType = "TShirt";
+    private int _newTypeId;
     private string? _newDesc;
     private string? _msg;
 
@@ -75,17 +74,11 @@
     {
         await using var db = await DbFactory.CreateDbContextAsync();
         _categories = await db.Categories.OrderBy(c => c.DisplayOrder).ToListAsync();
-        _products = await db.Products.Include(p => p.Category).Include(p => p.Variants).Include(p => p.Media).ToListAsync();
+        _types = await db.ProductTypes.Where(t => t.IsActive).OrderBy(t => t.DisplayOrder).ToListAsync();
+        _products = await db.Products.Include(p => p.Category).Include(p => p.Variants).Include(p => p.Media).Include(p => p.ProductType).ToListAsync();
         if (_categories.Count > 0) _newCategoryId = _categories[0].Id;
+        if (_types.Count > 0) _newTypeId = _types[0].Id;
     }
-
-    private static string TypeLabel(ProductType t) => t switch
-    {
-        ProductType.TShirt => "تیشرت",
-        ProductType.Shirt => "پیراهن",
-        ProductType.Pants => "شلوار",
-        _ => t.ToString()
-    };
 
     private async Task AddProduct()
     {
@@ -99,7 +92,7 @@
             Price = _newPrice,
             CategoryId = _newCategoryId,
             Description = _newDesc,
-            ProductType = Enum.Parse<ProductType>(_newType)
+            ProductTypeId = _newTypeId == 0 ? null : _newTypeId
         };
         db.Products.Add(p);
         await db.SaveChangesAsync();

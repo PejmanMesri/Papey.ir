@@ -1,0 +1,113 @@
+@page "/admin/product-types"
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+@rendermode InteractiveServer
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>انواع محصول | پنل مدیریت پاپی</PageTitle>
+
+<h1 style="margin-top:0">🏷 انواع محصول</h1>
+
+<div class="card-box" style="max-width:640px">
+    <div style="display:flex; gap:12px; align-items:end; margin-bottom:16px">
+        <div><label class="form-label">نام نوع</label><input class="form-input" @bind="_newName" placeholder="مثلاً شلوار" /></div>
+        <button class="btn-papey" @onclick="Add">➕ افزودن</button>
+    </div>
+    <table class="table-papey">
+        <thead><tr><th>نام</th><th>محصولات</th><th>ترتیب</th><th>وضعیت</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var t in _types)
+            {
+                <tr>
+                    <td>
+                        @if (_editId == t.Id)
+                        {
+                            <input class="form-input" style="width:110px" @bind="_editName" />
+                        }
+                        else { <strong>@t.Name</strong> }
+                    </td>
+                    <td>@PersianHelpers.ToPersianDigits(_productCounts.GetValueOrDefault(t.Id, 0).ToString())</td>
+                    <td>
+                        <button class="btn-papey btn-sm btn-outline" @onclick="() => Move(t, -1)">↑</button>
+                        <button class="btn-papey btn-sm btn-outline" @onclick="() => Move(t, 1)">↓</button>
+                    </td>
+                    <td>
+                        <button class="btn-papey btn-sm @(t.IsActive ? "btn-outline" : "btn-danger-papey")" @onclick="() => Toggle(t)">
+                            @(t.IsActive ? "فعال" : "غیرفعال")
+                        </button>
+                    </td>
+                    <td>
+                        @if (_editId == t.Id)
+                        {
+                            <button class="btn-papey btn-sm" @onclick="() => SaveEdit(t)">✓</button>
+                        }
+                        else
+                        {
+                            <button class="btn-papey btn-sm btn-outline" @onclick="() => { _editId = t.Id; _editName = t.Name; }">✏️</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (_msg is not null) { <div class="alert-papey alert-danger">@_msg</div> }
+</div>
+
+@code {
+    private List<ProductTypeEntity> _types = new();
+    private Dictionary<int, int> _productCounts = new();
+    private string _newName = "";
+    private int? _editId;
+    private string _editName = "";
+    private string? _msg;
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _types = await db.ProductTypes.OrderBy(t => t.DisplayOrder).ToListAsync();
+        _productCounts = await db.Products.Where(p => p.ProductTypeId != null)
+            .GroupBy(p => p.ProductTypeId!.Value).ToDictionaryAsync(g => g.Key, g => g.Count());
+    }
+
+    private async Task Add()
+    {
+        _msg = null;
+        if (string.IsNullOrWhiteSpace(_newName)) { _msg = "نام نوع الزامی است."; return; }
+        await using var db = await DbFactory.CreateDbContextAsync();
+        db.ProductTypes.Add(new ProductTypeEntity { Name = _newName.Trim(), DisplayOrder = _types.Count });
+        await db.SaveChangesAsync();
+        _newName = "";
+        await Reload();
+    }
+
+    private async Task Move(ProductTypeEntity t, int dir)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var list = await db.ProductTypes.OrderBy(x => x.DisplayOrder).ToListAsync();
+        var i = list.FindIndex(x => x.Id == t.Id);
+        var j = i + dir;
+        if (i < 0 || j < 0 || j >= list.Count) return;
+        (list[i].DisplayOrder, list[j].DisplayOrder) = (list[j].DisplayOrder, list[i].DisplayOrder);
+        await db.SaveChangesAsync();
+        await Reload();
+    }
+
+    private async Task Toggle(ProductTypeEntity t)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var x = await db.ProductTypes.FindAsync(t.Id);
+        if (x is not null) { x.IsActive = !x.IsActive; await db.SaveChangesAsync(); }
+        await Reload();
+    }
+
+    private async Task SaveEdit(ProductTypeEntity t)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var x = await db.ProductTypes.FindAsync(t.Id);
+        if (x is not null) { x.Name = _editName.Trim(); await db.SaveChangesAsync(); }
+        _editId = null;
+        await Reload();
+    }
+}

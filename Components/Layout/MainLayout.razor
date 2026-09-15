@@ -3,7 +3,6 @@
 @inject IDbContextFactory<AppDbContext> DbFactory
 @implements IDisposable
 
-<div class="top-bar">ارسال رایگان برای سفارش‌های بالای ۲ میلیون تومان 🚚</div>
 <header class="site-header">
     <div class="container-papey header-inner">
         <a class="logo" href="/">پاپی<span>.</span></a>
@@ -13,6 +12,7 @@
             {
                 <NavLink href="@($"/category/{c.Slug}")">@c.Name</NavLink>
             }
+            <NavLink href="/products">محصولات</NavLink>
         </nav>
         <form class="search-box" method="get" action="/search">
             <button type="submit">🔍</button>
@@ -60,11 +60,11 @@
             </div>
             <div>
                 <h4>دسته‌بندی‌ها</h4>
-                <a href="/category/irani">ایرانی</a>
-                <a href="/category/pinteresti">پینترستی</a>
-                <a href="/category/mashini">ماشینی</a>
-                <a href="/category/varzeshi">ورزشی</a>
-                <a href="/category/set">ست</a>
+                @foreach (var c in _navCategories)
+                {
+                    <a href="@($"/category/{c.Slug}")">@c.Name</a>
+                }
+                <a href="/products">همه محصولات</a>
             </div>
             <div>
                 <h4>خدمات مشتریان</h4>
@@ -98,7 +98,7 @@
         await Cart.LoadAsync();
         await using var db = await DbFactory.CreateDbContextAsync();
         _navCategories = await db.Categories
-            .Where(c => c.ShowInNav)
+            .Where(c => c.ShowInNav && c.IsActive)
             .OrderBy(c => c.DisplayOrder)
             .ToListAsync();
     }

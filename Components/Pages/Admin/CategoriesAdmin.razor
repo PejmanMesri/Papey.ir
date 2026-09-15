@@ -18,6 +18,9 @@
             <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem; white-space:nowrap">
                 <input type="checkbox" @bind="_form.ShowInNav" /> نمایش در منو
             </label>
+            <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem; white-space:nowrap">
+                <input type="checkbox" @bind="_form.IsActive" /> فعال
+            </label>
         </div>
     </div>
     <div style="display:flex; gap:8px; margin-top:12px">
@@ -31,7 +34,7 @@
 </div>
 
 <table class="table-papey">
-    <thead><tr><th>نام</th><th>Slug</th><th>توضیح</th><th>محصولات</th><th>در منو</th><th>ترتیب</th><th></th></tr></thead>
+    <thead><tr><th>نام</th><th>Slug</th><th>توضیح</th><th>محصولات</th><th>در منو</th><th>وضعیت</th><th>ترتیب</th><th></th></tr></thead>
     <tbody>
         @foreach (var c in _categories)
         {
@@ -41,6 +44,7 @@
                 <td>@c.Description</td>
                 <td>@PersianHelpers.ToPersianDigits(c.Products.Count.ToString())</td>
                 <td>@(c.ShowInNav ? "✓" : "—")</td>
+                <td>@(c.IsActive ? "فعال" : "غیرفعال")</td>
                 <td>
                     <button class="btn-papey btn-sm btn-outline" @onclick="() => Move(c, -1)">↑</button>
                     <button class="btn-papey btn-sm btn-outline" @onclick="() => Move(c, 1)">↓</button>
@@ -71,7 +75,7 @@
     private void Edit(Category c)
     {
         _editId = c.Id;
-        _form = new Category { Name = c.Name, Slug = c.Slug, Description = c.Description, ShowInNav = c.ShowInNav };
+        _form = new Category { Name = c.Name, Slug = c.Slug, Description = c.Description, ShowInNav = c.ShowInNav, IsActive = c.IsActive };
     }
 
     private void CancelEdit() { _editId = null; _form = new(); _msg = null; }
@@ -84,7 +88,7 @@
         await using var db = await DbFactory.CreateDbContextAsync();
         if (_editId is null)
         {
-            db.Categories.Add(new Category { Name = _form.Name.Trim(), Slug = slug, Description = _form.Description, DisplayOrder = _categories.Count, ShowInNav = _form.ShowInNav });
+            db.Categories.Add(new Category { Name = _form.Name.Trim(), Slug = slug, Description = _form.Description, DisplayOrder = _categories.Count, ShowInNav = _form.ShowInNav, IsActive = _form.IsActive });
         }
         else
         {
@@ -94,6 +98,7 @@
             t.Slug = slug;
             t.Description = _form.Description;
             t.ShowInNav = _form.ShowInNav;
+            t.IsActive = _form.IsActive;
         }
         try { await db.SaveChangesAsync(); }
         catch { _msg = "این Slug قبلاً استفاده شده است."; return; }

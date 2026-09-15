@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<ProductMedia> ProductMedia => Set<ProductMedia>();
     public DbSet<Color> Colors => Set<Color>();
     public DbSet<Size> Sizes => Set<Size>();
+    public DbSet<ProductTypeEntity> ProductTypes => Set<ProductTypeEntity>();
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<Address> Addresses => Set<Address>();
     public DbSet<Order> Orders => Set<Order>();

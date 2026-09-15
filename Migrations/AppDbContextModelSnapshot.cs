@@ -140,6 +140,9 @@ namespace Papey.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -420,7 +423,7 @@ namespace Papey.Migrations
                     b.Property<decimal>("Price")
                         .HasColumnType("numeric(18,0)");
 
-                    b.Property<int>("ProductType")
+                    b.Property<int?>("ProductTypeId")
                         .HasColumnType("integer");
 
                     b.Property<string>("Slug")
@@ -431,6 +434,8 @@ namespace Papey.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CategoryId");
+
+                    b.HasIndex("ProductTypeId");
 
                     b.HasIndex("Slug")
                         .IsUnique();
@@ -469,6 +474,30 @@ namespace Papey.Migrations
                     b.HasIndex("ProductId");
 
                     b.ToTable("ProductMedia");
+                });
+
+            modelBuilder.Entity("Papey.Models.ProductTypeEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ProductTypes");
                 });
 
             modelBuilder.Entity("Papey.Models.ProductVariant", b =>
@@ -599,7 +628,13 @@ namespace Papey.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Papey.Models.ProductTypeEntity", "ProductType")
+                        .WithMany()
+                        .HasForeignKey("ProductTypeId");
+
                     b.Navigation("Category");
+
+                    b.Navigation("ProductType");
                 });
 
             modelBuilder.Entity("Papey.Models.ProductMedia", b =>

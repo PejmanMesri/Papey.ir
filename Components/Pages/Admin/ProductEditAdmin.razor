@@ -29,10 +29,9 @@ else
             </div>
             <div>
                 <label class="form-label">نوع محصول</label>
-                <select class="form-input" value="@_product.ProductType" @onchange="e => _product.ProductType = Enum.Parse<ProductType>(e.Value!.ToString()!)">
-                    <option value="TShirt">تیشرت</option>
-                    <option value="Shirt">پیراهن</option>
-                    <option value="Pants">شلوار</option>
+                <select class="form-input" @bind="_product.ProductTypeId">
+                    <option value="">— بدون نوع —</option>
+                    @foreach (var t in _types) { <option value="@t.Id">@t.Name</option> }
                 </select>
             </div>
             <div style="display:flex; gap:16px; align-items:end">
@@ -129,6 +128,7 @@ else
     private List<Category> _categories = new();
     private List<Color> _colors = new();
     private List<Size> _sizes = new();
+    private List<ProductTypeEntity> _types = new();
     private List<ProductMedia> _media = new();
     private string? _infoMsg, _variantMsg, _uploadError;
     private bool _uploading;
@@ -140,6 +140,7 @@ else
         await using var db = await DbFactory.CreateDbContextAsync();
         _product = await db.Products.Include(p => p.Variants).FirstOrDefaultAsync(p => p.Id == Id);
         _categories = await db.Categories.OrderBy(c => c.DisplayOrder).ToListAsync();
+        _types = await db.ProductTypes.Where(t => t.IsActive).OrderBy(t => t.DisplayOrder).ToListAsync();
         _colors = await db.Colors.Where(c => c.IsActive).OrderBy(c => c.DisplayOrder).ToListAsync();
         _sizes = await db.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ToListAsync();
         _media = await db.ProductMedia.Where(m => m.ProductId == Id).OrderBy(m => m.DisplayOrder).ToListAsync();
@@ -152,7 +153,7 @@ else
         var t = await db.Products.FindAsync(Id);
         if (t is null) return;
         t.Name = _product!.Name; t.Price = _product.Price; t.OldPrice = _product.OldPrice;
-        t.CategoryId = _product.CategoryId; t.ProductType = _product.ProductType;
+        t.CategoryId = _product.CategoryId; t.ProductTypeId = _product.ProductTypeId;
         t.Description = _product.Description; t.IsNew = _product.IsNew;
         t.IsFeatured = _product.IsFeatured; t.IsActive = _product.IsActive;
         t.ImageUrl = _media.OrderBy(m => m.DisplayOrder).FirstOrDefault(m => m.Type == MediaType.Image)?.Url ?? t.ImageUrl;
