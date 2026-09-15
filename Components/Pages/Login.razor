@@ -7,11 +7,15 @@
 <div style="max-width:420px; margin:64px auto">
     <div class="card-box">
         <h2 style="text-align:center; margin-top:0">👤 ورود به حساب</h2>
+        @if (!string.IsNullOrEmpty(ReturnUrl))
+        {
+            <div class="alert-papey alert-info">برای تکمیل خرید ابتدا وارد شوید.</div>
+        }
         @if (!string.IsNullOrEmpty(Error))
         {
             <div class="alert-papey alert-danger">نام کاربری یا رمز عبور اشتباه است.</div>
         }
-        <form method="post" action="/account/login">
+        <form method="post" action="/account/login@(ReturnUrlQuery)">
             <AntiforgeryToken />
             <div class="form-group">
                 <label class="form-label">نام کاربری</label>
@@ -24,11 +28,14 @@
             <button class="btn-papey" style="width:100%" type="submit">ورود</button>
         </form>
         <p style="text-align:center; margin-top:16px; font-size:0.85rem">
-            حساب ندارید؟ <a href="/register" style="color:var(--papey-accent-dark); font-weight:700">ثبت‌نام کنید</a>
+            حساب ندارید؟ <a href="/register@(ReturnUrlQuery)" style="color:var(--papey-accent-dark); font-weight:700">ثبت‌نام کنید</a>
         </p>
     </div>
 </div>
 
 @code {
     [SupplyParameterFromQuery] public string? Error { get; set; }
+    [SupplyParameterFromQuery(Name = "returnUrl")] public string? ReturnUrl { get; set; }
+
+    private string ReturnUrlQuery => string.IsNullOrEmpty(ReturnUrl) ? "" : $"?returnUrl={Uri.EscapeDataString(ReturnUrl)}";
 }

@@ -71,21 +71,27 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 
 // Cookie auth endpoints (login/register/logout via form posts)
-app.MapPost("/account/login", async (HttpContext http, [FromForm] string username, [FromForm] string password, AuthService auth) =>
+app.MapPost("/account/login", async (HttpContext http, [FromForm] string username, [FromForm] string password,
+    [FromQuery] string? returnUrl, AuthService auth) =>
 {
     var user = await auth.ValidateLoginAsync(username, password);
-    if (user is null) return Results.Redirect("/login?error=1");
+    var failUrl = "/login?error=1" + (string.IsNullOrEmpty(returnUrl) ? "" : $"&returnUrl={Uri.EscapeDataString(returnUrl)}");
+    if (user is null) return Results.Redirect(failUrl);
     await auth.SignInAsync(user);
-    return Results.Redirect(user.IsAdmin ? "/admin" : "/");
+    var target = !string.IsNullOrEmpty(returnUrl) && returnUrl.StartsWith('/') ? returnUrl
+        : user.IsAdmin ? "/admin" : "/";
+    return Results.Redirect(target);
 }).DisableAntiforgery();
 
 app.MapPost("/account/register", async ([FromForm] string username, [FromForm] string password,
-    [FromForm] string? fullName, [FromForm] string? phone, [FromForm] string? email, AuthService auth) =>
+    [FromForm] string? fullName, [FromForm] string? phone, [FromForm] string? email,
+    [FromQuery] string? returnUrl, AuthService auth) =>
 {
     var user = await auth.RegisterAsync(username, password, email, phone, fullName);
     if (user is null) return Results.Redirect("/register?error=duplicate");
     await auth.SignInAsync(user);
-    return Results.Redirect("/");
+    var target = !string.IsNullOrEmpty(returnUrl) && returnUrl.StartsWith('/') ? returnUrl : "/";
+    return Results.Redirect(target);
 }).DisableAntiforgery();
 
 app.MapGet("/logout", async (AuthService auth) =>

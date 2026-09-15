@@ -6,7 +6,7 @@
                     <div class="card-box" style="max-width:480px; margin:64px auto; text-align:center">
                         <p style="font-size:3rem">🔒</p>
                         <p>برای دسترسی به این صفحه باید وارد شوید.</p>
-                        <a class="btn-papey" href="/login">ورود</a>
+                        <a class="btn-papey" href="@LoginHref()">ورود / ثبت‌نام</a>
                     </div>
                 </NotAuthorized>
             </AuthorizeRouteView>
@@ -14,3 +14,13 @@
         </Found>
     </Router>
 </CascadingAuthenticationState>
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private string LoginHref()
+    {
+        var path = new Uri(Nav.Uri).PathAndQuery;
+        return $"/login?returnUrl={Uri.EscapeDataString(path)}";
+    }
+}

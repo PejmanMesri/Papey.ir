@@ -69,9 +69,19 @@ else
                 <span>مبلغ قابل پرداخت:</span>
                 <span>@GrandTotal.ToToman()</span>
             </div>
-            <button class="btn-papey" style="width:100%" @onclick='() => Nav.NavigateTo("/checkout")'>
-                ادامه فرآیند خرید ←
-            </button>
+            <AuthorizeView>
+                <Authorized>
+                    <button class="btn-papey" style="width:100%" @onclick='() => Nav.NavigateTo("/checkout")'>
+                        ادامه فرآیند خرید ←
+                    </button>
+                </Authorized>
+                <NotAuthorized>
+                    <div class="alert-papey alert-info" style="font-size:0.85rem; font-weight:500">
+                        برای تکمیل خرید ابتدا وارد حساب کاربری خود شوید.
+                    </div>
+                    <a class="btn-papey" style="width:100%" href="/login?returnUrl=/checkout">🔑 ورود / ثبت‌نام و ادامه خرید</a>
+                </NotAuthorized>
+            </AuthorizeView>
         </div>
     </div>
 }
