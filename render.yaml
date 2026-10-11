@@ -3,11 +3,12 @@ services:
   - type: web
     name: papey-store
     runtime: docker
+    branch: codex/free-hosting-20261011
     plan: free
     region: frankfurt
     dockerfilePath: ./Dockerfile
     healthCheckPath: /healthz
-    autoDeployTrigger: off
+    autoDeployTrigger: "off"
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
