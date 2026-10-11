@@ -30,7 +30,7 @@ No paid service, persistent disk, or payment method is required by this configur
    Use `render.yaml` at the repository root.
 3. Verify both resources use the `free` plan before deploying.
 4. Render injects `DATABASE_URL`, generates `ADMIN_PASSWORD`, and exposes the
-   application on port 8080. Database migrations and sample store seeding run
+   application on Render's default port 10000. Database migrations and sample store seeding run
    at startup. The database blocks public connections by default.
 5. Wait for the deployment to become live. Check `/healthz`, the storefront,
    the Blazor connection, and login. The admin username is `Admin`; retrieve

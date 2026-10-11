@@ -13,7 +13,7 @@ services:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
       - key: ASPNETCORE_URLS
-        value: http://0.0.0.0:8080
+        value: http://0.0.0.0:10000
       # Render terminates TLS; the container is reached through Render's proxy.
       - key: ASPNETCORE_FORWARDEDHEADERS_ENABLED
         value: "true"
