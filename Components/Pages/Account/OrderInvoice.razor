@@ -1,0 +1,372 @@
+@page "/account/orders/{Id:int}/invoice"
+@page "/account/orders/{Id:int}/invoice/{Format}"
+@attribute [Authorize]
+@layout PrintLayout
+@rendermode InteractiveServer
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject AuthService Auth
+@inject IJSRuntime JS
+@inject Microsoft.Extensions.Options.IOptions<StoreProfile> StoreOptions
+@using System.Globalization
+
+<PageTitle>@_format.Label() | پاپی</PageTitle>
+
+@if (_order is null)
+{
+    <p class="document-not-found">فاکتور مورد نظر یافت نشد یا اجازه مشاهده آن را ندارید.</p>
+}
+else
+{
+    <div class="document-toolbar no-print">
+        <a class="btn-papey btn-outline" href="/account/orders/@_order.Id">← جزئیات سفارش</a>
+        <a class="btn-papey btn-outline" href="/account/orders/@_order.Id/invoice">فاکتور</a>
+        <a class="btn-papey btn-outline" href="/account/orders/@_order.Id/invoice/official">فاکتور رسمی</a>
+        <a class="btn-papey btn-outline" href="/account/orders/@_order.Id/invoice/thermal">پرینت حرارتی</a>
+        <button class="btn-papey" type="button" @onclick="Print">🖨 چاپ @_format.Label()</button>
+    </div>
+
+    @if (_format == InvoiceFormat.Thermal)
+    {
+        <article class="thermal-receipt invoice-document">
+            <header class="thermal-head">
+                <strong>@Store.Name</strong>
+                <span>رسید سفارش</span>
+                @if (!string.IsNullOrWhiteSpace(Store.Phone))
+                {
+                    <span>تلفن: @PersianHelpers.ToPersianDigits(Store.Phone)</span>
+                }
+            </header>
+
+            <div class="thermal-divider"></div>
+            <dl class="thermal-meta">
+                <div><dt>شماره سفارش</dt><dd>@PersianHelpers.ToPersianDigits(_order.OrderNumber)</dd></div>
+                <div><dt>تاریخ</dt><dd>@FaDate(_order.CreatedAt.ToLocalTime())</dd></div>
+                <div><dt>گیرنده</dt><dd>@_order.CustomerName</dd></div>
+                <div><dt>شماره تماس</dt><dd>@PersianHelpers.ToPersianDigits(_order.CustomerPhone)</dd></div>
+                @if (_order.PaymentRefId is not null)
+                {
+                    <div><dt>کد پیگیری</dt><dd>@PersianHelpers.ToPersianDigits(_order.PaymentRefId)</dd></div>
+                }
+            </dl>
+
+            <div class="thermal-address">آدرس: @_order.Province، @_order.City، @_order.FullAddress</div>
+            @if (!string.IsNullOrWhiteSpace(_order.PostalCode))
+            {
+                <div class="thermal-address">کد پستی: @PersianHelpers.ToPersianDigits(_order.PostalCode)</div>
+            }
+
+            <div class="thermal-divider"></div>
+            @foreach (var item in _order.Items)
+            {
+                <div class="thermal-item">
+                    <strong>@item.ProductName</strong>
+                    <span>رنگ: @item.Color | سایز: @item.Size | تعداد: @Fa(item.Quantity)</span>
+                    <div><span>@Money(item.UnitPrice) × @Fa(item.Quantity)</span><strong>@Money(item.LineTotal)</strong></div>
+                </div>
+            }
+
+            <div class="thermal-divider"></div>
+            <dl class="thermal-totals">
+                <div><dt>جمع اقلام</dt><dd>@Money(_order.TotalAmount)</dd></div>
+                @if (_order.ShippingCost > 0)
+                {
+                    <div><dt>هزینه ارسال</dt><dd>@Money(_order.ShippingCost)</dd></div>
+                }
+                <div class="thermal-grand"><dt>مبلغ نهایی</dt><dd>@Money(_order.GrandTotal) تومان</dd></div>
+            </dl>
+            <div class="thermal-payment">روش پرداخت: @PaymentMethod</div>
+            <div class="thermal-footer">سپاس از خرید شما از @Store.Name</div>
+        </article>
+    }
+    else if (_format == InvoiceFormat.Official)
+    {
+        <article class="official-invoice invoice-document">
+            <header class="official-head">
+                <div>
+                    <span class="document-kicker">صورتحساب فروش کالا و خدمات</span>
+                    <h1>فاکتور رسمی</h1>
+                </div>
+                <dl>
+                    <div><dt>شماره فاکتور</dt><dd>@PersianHelpers.ToPersianDigits(_order.OrderNumber)</dd></div>
+                    <div><dt>تاریخ صدور</dt><dd>@FaDate(_order.CreatedAt.ToLocalTime())</dd></div>
+                    <div><dt>کد پیگیری</dt><dd>@PersianHelpers.ToPersianDigits(_order.PaymentRefId ?? "—")</dd></div>
+                </dl>
+            </header>
+
+            <section class="official-party-grid">
+                <div class="official-party">
+                    <h2>فروشنده</h2>
+                    <p><b>نام شخص حقیقی/حقوقی:</b> @Store.Name</p>
+                    <p><b>تلفن:</b> @TextOrDash(Store.Phone)</p>
+                    <p><b>نشانی:</b> @TextOrDash(Store.Address)</p>
+                    <p><b>کد پستی:</b> @TextOrDash(Store.PostalCode)</p>
+                    <p><b>شناسه/کد ملی:</b> @TextOrDash(Store.NationalId)</p>
+                    <p><b>شماره اقتصادی:</b> @TextOrDash(Store.EconomicCode)</p>
+                </div>
+                <div class="official-party">
+                    <h2>خریدار</h2>
+                    <p><b>نام شخص حقیقی:</b> @_order.CustomerName</p>
+                    <p><b>تلفن:</b> @PersianHelpers.ToPersianDigits(_order.CustomerPhone)</p>
+                    <p><b>استان و شهر:</b> @_order.Province، @_order.City</p>
+                    <p><b>نشانی:</b> @_order.FullAddress</p>
+                    <p><b>کد پستی:</b> @PersianHelpers.ToPersianDigits(_order.PostalCode ?? "—")</p>
+                </div>
+            </section>
+
+            <div class="invoice-table-wrap">
+                <table class="official-items">
+                    <thead>
+                        <tr>
+                            <th>ردیف</th><th>شناسه کالا</th><th>شرح کالا یا خدمات</th><th>تعداد</th><th>مبلغ واحد<br />(ریال)</th><th>مبلغ کل<br />(ریال)</th><th>تخفیف<br />(ریال)</th><th>جمع پس از تخفیف<br />(ریال)</th><th>مالیات و عوارض<br />(ریال)</th><th>مبلغ نهایی<br />(ریال)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var index = 0; index < _order.Items.Count; index++)
+                        {
+                            var item = _order.Items[index];
+                            <tr>
+                                <td>@Fa(index + 1)</td>
+                                <td>@Fa(item.ProductId)</td>
+                                <td>@item.ProductName<br /><small>رنگ: @item.Color | سایز: @item.Size</small></td>
+                                <td>@Fa(item.Quantity)</td>
+                                <td>@Rials(item.UnitPrice)</td>
+                                <td>@Rials(item.LineTotal)</td>
+                                <td>@Fa(0)</td>
+                                <td>@Rials(item.LineTotal)</td>
+                                <td>@Fa(0)</td>
+                                <td>@Rials(item.LineTotal)</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th colspan="3">مجموع</th>
+                            <th>@Fa(_order.Items.Sum(i => i.Quantity))</th>
+                            <th>@Rials(_order.TotalAmount)</th>
+                            <th>@Rials(_order.TotalAmount)</th>
+                            <th>@Fa(0)</th>
+                            <th>@Rials(_order.TotalAmount)</th>
+                            <th>@Fa(0)</th>
+                            <th>@Rials(_order.TotalAmount)</th>
+                        </tr>
+                        @if (_order.ShippingCost > 0)
+                        {
+                            <tr><th colspan="9">هزینه حمل و نقل (ریال)</th><td>@Rials(_order.ShippingCost)</td></tr>
+                        }
+                        <tr class="official-grand"><th colspan="9">جمع نهایی با احتساب مالیات و عوارض (ریال)</th><td>@Rials(_order.GrandTotal)</td></tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <footer class="official-footer">
+                <span><b>روش پرداخت:</b> @PaymentMethod</span>
+                <span><b>وضعیت سفارش:</b> @PersianHelpers.StatusLabel(_order.Status)</span>
+                <span><b>مهر و امضای فروشنده:</b> @Store.Name</span>
+            </footer>
+        </article>
+    }
+    else
+    {
+        <article class="standard-invoice invoice-document">
+            <header class="standard-head">
+                <div>
+                    <span class="document-kicker">رسید خرید</span>
+                    <h1>فاکتور فروش @Store.Name</h1>
+                    @if (!string.IsNullOrWhiteSpace(Store.Phone))
+                    {
+                        <p>تلفن پشتیبانی: @PersianHelpers.ToPersianDigits(Store.Phone)</p>
+                    }
+                </div>
+                <dl>
+                    <div><dt>شماره سفارش</dt><dd>@PersianHelpers.ToPersianDigits(_order.OrderNumber)</dd></div>
+                    <div><dt>تاریخ</dt><dd>@FaDate(_order.CreatedAt.ToLocalTime())</dd></div>
+                    <div><dt>وضعیت</dt><dd>@PersianHelpers.StatusLabel(_order.Status)</dd></div>
+                </dl>
+            </header>
+
+            <section class="standard-customer">
+                <h2>مشخصات گیرنده</h2>
+                <div><b>@_order.CustomerName</b><span>@PersianHelpers.ToPersianDigits(_order.CustomerPhone)</span></div>
+                <p>@_order.Province، @_order.City، @_order.FullAddress</p>
+                @if (!string.IsNullOrWhiteSpace(_order.PostalCode))
+                {
+                    <p>کد پستی: @PersianHelpers.ToPersianDigits(_order.PostalCode)</p>
+                }
+            </section>
+
+            <div class="invoice-table-wrap">
+                <table class="standard-items">
+                    <thead><tr><th>محصول</th><th>ویژگی‌ها</th><th>قیمت واحد</th><th>تعداد</th><th>مجموع</th></tr></thead>
+                    <tbody>
+                        @foreach (var item in _order.Items)
+                        {
+                            <tr>
+                                <td><strong>@item.ProductName</strong></td>
+                                <td>رنگ: @item.Color<br />سایز: @item.Size</td>
+                                <td>@Money(item.UnitPrice)</td>
+                                <td>@Fa(item.Quantity)</td>
+                                <td><strong>@Money(item.LineTotal)</strong></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <section class="standard-summary">
+                <dl>
+                    <div><dt>جمع اقلام</dt><dd>@Money(_order.TotalAmount)</dd></div>
+                    @if (_order.ShippingCost > 0)
+                    {
+                        <div><dt>هزینه ارسال</dt><dd>@Money(_order.ShippingCost)</dd></div>
+                    }
+                    <div class="standard-grand"><dt>مبلغ قابل پرداخت</dt><dd>@Money(_order.GrandTotal)</dd></div>
+                    <div><dt>روش پرداخت</dt><dd>@PaymentMethod</dd></div>
+                    @if (_order.PaymentRefId is not null)
+                    {
+                        <div><dt>کد پیگیری پرداخت</dt><dd>@PersianHelpers.ToPersianDigits(_order.PaymentRefId)</dd></div>
+                    }
+                </dl>
+            </section>
+
+            <footer class="standard-footer">این فاکتور به صورت الکترونیکی صادر شده است. از خرید شما سپاسگزاریم.</footer>
+        </article>
+    }
+}
+
+<style>
+    @PageSizeCss
+
+    :root { color-scheme: light; }
+    .document-not-found { max-width: 540px; margin: 56px auto; padding: 22px; text-align: center; border: 1px solid #e5e0d8; border-radius: 12px; background: #fff; }
+    .document-toolbar { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; padding: 18px; }
+    .document-toolbar .btn-papey { padding: 9px 14px; font-size: .84rem; }
+    .invoice-document { box-sizing: border-box; background: #fff; color: #171717; direction: rtl; font-family: 'Vazirmatn', Tahoma, sans-serif; }
+    .document-kicker { color: #a8894e; font-size: .78rem; font-weight: 800; letter-spacing: .04em; }
+    .invoice-table-wrap { overflow-x: auto; }
+
+    .standard-invoice { width: min(210mm, calc(100% - 32px)); min-height: 270mm; margin: 16px auto 40px; padding: 16mm; border-top: 6px solid #c8a96a; box-shadow: 0 12px 32px rgba(0,0,0,.10); }
+    .standard-head { display: flex; justify-content: space-between; gap: 32px; padding-bottom: 20px; border-bottom: 1px solid #ded7ca; }
+    .standard-head h1 { margin: 3px 0 8px; font-size: 1.65rem; }
+    .standard-head p { margin: 0; color: #666; font-size: .82rem; }
+    .standard-head dl, .standard-summary dl { margin: 0; min-width: 210px; }
+    .standard-head dl div, .standard-summary dl div { display: flex; justify-content: space-between; gap: 24px; padding: 5px 0; font-size: .84rem; }
+    .standard-head dt, .standard-summary dt { color: #68635a; }
+    .standard-head dd, .standard-summary dd { margin: 0; font-weight: 700; text-align: left; }
+    .standard-customer { margin: 20px 0; padding: 14px 16px; border: 1px solid #ded7ca; border-radius: 8px; background: #faf8f5; }
+    .standard-customer h2 { margin: 0 0 10px; font-size: .95rem; }
+    .standard-customer div { display: flex; gap: 24px; flex-wrap: wrap; }
+    .standard-customer p { margin: 7px 0 0; font-size: .84rem; line-height: 1.8; }
+    .standard-items { width: 100%; border-collapse: collapse; font-size: .84rem; }
+    .standard-items th { padding: 10px; text-align: right; background: #24211c; color: #fff; }
+    .standard-items td { padding: 12px 10px; border-bottom: 1px solid #e6e1d8; vertical-align: top; }
+    .standard-items th:not(:first-child), .standard-items td:not(:first-child) { text-align: center; }
+    .standard-summary { width: min(100%, 330px); margin: 22px 0 0 auto; padding: 14px; border: 1px solid #ded7ca; border-radius: 8px; }
+    .standard-summary dl div { padding: 6px 0; }
+    .standard-summary .standard-grand { margin: 6px -14px 0; padding: 12px 14px; background: #24211c; color: #fff; font-size: 1rem; }
+    .standard-summary .standard-grand dt { color: #fff; }
+    .standard-footer { margin-top: 30px; padding-top: 14px; border-top: 1px dashed #b8afa0; text-align: center; color: #68635a; font-size: .75rem; }
+
+    .official-invoice { width: min(297mm, calc(100% - 32px)); min-height: 190mm; margin: 16px auto 40px; padding: 10mm; border: 1px solid #222; box-shadow: 0 12px 32px rgba(0,0,0,.10); }
+    .official-head { display: flex; justify-content: space-between; gap: 24px; padding-bottom: 12px; border-bottom: 1px solid #222; }
+    .official-head h1 { margin: 3px 0 0; font-size: 1.35rem; }
+    .official-head dl { display: grid; grid-template-columns: repeat(3, max-content); gap: 8px 22px; margin: 0; font-size: .78rem; }
+    .official-head dl div { display: flex; flex-direction: column; gap: 3px; }
+    .official-head dt { color: #666; }
+    .official-head dd { margin: 0; font-weight: 800; }
+    .official-party-grid { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #222; border-top: 0; }
+    .official-party { padding: 10px; min-height: 128px; font-size: .73rem; line-height: 1.8; }
+    .official-party + .official-party { border-right: 1px solid #222; }
+    .official-party h2 { display: inline-block; margin: 0 0 7px; padding: 2px 10px; background: #eee; font-size: .76rem; }
+    .official-party p { margin: 2px 0; }
+    .official-items { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: .65rem; }
+    .official-items th, .official-items td { padding: 6px 4px; border: 1px solid #222; text-align: center; vertical-align: middle; }
+    .official-items thead th { background: #eee; }
+    .official-items td:nth-child(3) { text-align: right; min-width: 180px; }
+    .official-items small { color: #555; }
+    .official-items tfoot th { text-align: right; background: #f5f5f5; }
+    .official-grand th, .official-grand td { font-weight: 900; background: #e7e7e7; }
+    .official-footer { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 14px; font-size: .71rem; }
+
+    .thermal-receipt { width: 72mm; margin: 16px auto 28px; padding: 4mm; border: 1px solid #111; font-family: Tahoma, sans-serif; font-size: 10px; line-height: 1.7; }
+    .thermal-head { display: flex; flex-direction: column; align-items: center; text-align: center; }
+    .thermal-head strong { font-size: 18px; }
+    .thermal-head span { font-size: 10px; }
+    .thermal-divider { border-top: 1px dashed #111; margin: 6px 0; }
+    .thermal-meta, .thermal-totals { margin: 0; }
+    .thermal-meta div, .thermal-totals div, .thermal-item > div { display: flex; justify-content: space-between; gap: 8px; }
+    .thermal-meta dt, .thermal-totals dt { font-weight: 400; }
+    .thermal-meta dd, .thermal-totals dd { margin: 0; font-weight: 700; text-align: left; }
+    .thermal-address { margin: 3px 0; text-align: right; }
+    .thermal-item { display: flex; flex-direction: column; padding: 4px 0; }
+    .thermal-item > strong { font-size: 11px; }
+    .thermal-item > span { font-size: 9px; }
+    .thermal-grand { padding-top: 3px; font-size: 12px; }
+    .thermal-payment { margin-top: 5px; text-align: center; font-size: 9px; }
+    .thermal-footer { margin-top: 6px; text-align: center; font-size: 10px; }
+
+    @@media print {
+        .no-print { display: none !important; }
+        body { margin: 0 !important; background: #fff !important; }
+        .standard-invoice, .official-invoice, .thermal-receipt { margin: 0; box-shadow: none; }
+        .standard-invoice { width: 100%; min-height: 0; }
+        .official-invoice { width: 100%; min-height: 0; }
+        .thermal-receipt { width: 72mm; }
+    }
+
+    @@media (max-width: 700px) {
+        .standard-invoice { width: calc(100% - 20px); padding: 20px; }
+        .standard-head, .official-head { flex-direction: column; }
+        .standard-head dl { min-width: 0; }
+        .official-invoice { width: calc(100% - 20px); padding: 14px; }
+        .official-head dl { grid-template-columns: 1fr 1fr; }
+        .official-party-grid { grid-template-columns: 1fr; }
+        .official-party + .official-party { border-right: 0; border-top: 1px solid #222; }
+    }
+</style>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    [Parameter] public string? Format { get; set; }
+
+    private static readonly PersianCalendar PersianCalendar = new();
+    private Order? _order;
+    private InvoiceFormat _format;
+
+    private StoreProfile Store => StoreOptions.Value;
+    private string PaymentMethod => _order?.Status == OrderStatus.PaymentFailed
+        ? "پرداخت ناموفق"
+        : "پرداخت امن زرین‌پال";
+
+    private string PageSizeCss => _format switch
+    {
+        InvoiceFormat.Thermal => "@page { size: 80mm auto; margin: 4mm; }",
+        InvoiceFormat.Official => "@page { size: A4 landscape; margin: 10mm; }",
+        _ => "@page { size: A4 portrait; margin: 12mm; }"
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _format = InvoiceFormatExtensions.Parse(Format);
+        _order = null;
+
+        if (Auth.CurrentUserId is not { } userId) return;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _order = await db.Orders
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.Id == Id && o.UserId == userId);
+    }
+
+    private Task Print() => JS.InvokeVoidAsync("print").AsTask();
+
+    private static string Money(decimal amount)
+        => PersianHelpers.ToPersianDigits(amount.ToString("N0", CultureInfo.InvariantCulture));
+
+    private static string Rials(decimal toman) => Money(toman * 10);
+    private static string Fa(int value) => PersianHelpers.ToPersianDigits(value.ToString(CultureInfo.InvariantCulture));
+    private static string TextOrDash(string? value)
+        => string.IsNullOrWhiteSpace(value) ? "—" : PersianHelpers.ToPersianDigits(value);
+
+    private static string FaDate(DateTime date)
+        => PersianHelpers.ToPersianDigits($"{PersianCalendar.GetYear(date):0000}/{PersianCalendar.GetMonth(date):00}/{PersianCalendar.GetDayOfMonth(date):00} {date:HH:mm}");
+}

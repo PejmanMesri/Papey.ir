@@ -1,0 +1,42 @@
+# Temporary free deployment. Free Postgres expires after 30 days; uploads are ephemeral.
+services:
+  - type: web
+    name: papey-store
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    autoDeployTrigger: off
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:8080
+      # Render terminates TLS; the container is reached through Render's proxy.
+      - key: ASPNETCORE_FORWARDEDHEADERS_ENABLED
+        value: "true"
+      - key: Deployment__RequireSecureConfiguration
+        value: "true"
+      - key: Deployment__HttpsOnly
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: papey-db
+          property: connectionString
+      - key: ADMIN_USERNAME
+        value: Admin
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: ZARINPAL_SANDBOX
+        value: "true"
+      - key: ZARINPAL_MERCHANT_ID
+        value: 00000000-0000-0000-0000-000000000000
+databases:
+  - name: papey-db
+    plan: free
+    region: frankfurt
+    databaseName: papeydb
+    user: papey
+    postgresMajorVersion: "17"
+    ipAllowList: []

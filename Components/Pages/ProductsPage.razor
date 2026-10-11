@@ -1,35 +1,11 @@
 @page "/products"
 @rendermode InteractiveServer
-@inject IDbContextFactory<AppDbContext> DbFactory
 
 <PageTitle>همه محصولات | پاپی</PageTitle>
 
-<div class="section-title"><h2>👕 همه محصولات</h2></div>
-
-<div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-bottom:20px">
-    <button class="btn-papey @(_filter == "all" ? "" : "btn-outline") btn-sm" @onclick='() => _filter = "all"'>همه</button>
-    @foreach (var c in _categories)
-    {
-        <button class="btn-papey @(_filter == c.Slug ? "" : "btn-outline") btn-sm" @onclick="() => _filter = c.Slug">@c.Name</button>
-    }
-</div>
-
-<ProductGrid Products="Filtered" />
+<ProductCatalog ProductTypeId="TypeId" />
 
 @code {
-    private List<Product> _products = new();
-    private List<Category> _categories = new();
-    private string _filter = "all";
-
-    private List<Product> Filtered => _filter == "all"
-        ? _products
-        : _products.Where(p => p.Category.Slug == _filter || p.ProductCategories.Any(pc => pc.Category.Slug == _filter)).ToList();
-
-    protected override async Task OnInitializedAsync()
-    {
-        await using var db = await DbFactory.CreateDbContextAsync();
-        _categories = await db.Categories.Where(c => c.IsActive).OrderBy(c => c.DisplayOrder).ToListAsync();
-        _products = await db.Products.Include(p => p.Category).Include(p => p.ProductCategories).ThenInclude(pc => pc.Category)
-            .Where(p => p.IsActive && p.Category.IsActive).ToListAsync();
-    }
+	[SupplyParameterFromQuery(Name = "type")]
+	public int? TypeId { get; set; }
 }

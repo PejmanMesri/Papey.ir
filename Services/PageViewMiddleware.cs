@@ -9,7 +9,7 @@ public class PageViewMiddleware
 {
     private readonly RequestDelegate _next;
     private static readonly string[] SkipPrefixes =
-        { "/admin", "/_framework", "/_blazor", "/_content", "/img", "/uploads", "/css", "/js", "/favicon", "/account" };
+        { "/admin", "/_framework", "/_blazor", "/_content", "/img", "/uploads", "/css", "/js", "/favicon", "/account", "/healthz" };
 
     public PageViewMiddleware(RequestDelegate next) => _next = next;
 

@@ -3,8 +3,19 @@ bin/
 obj/
 out/
 
+# Local publish output — never dump publish folders inside the repo
+# (stray .razor.js files in them break the Razor build)
+test-publish/
+publish-test7/
+publish/
+[pP]ublish*/
+
 # Env secrets
 .env
+.env.*
+!.env.example
+App_Data/
+deploy-artifacts/
 
 # VS
 .vs/

@@ -1,0 +1,99 @@
+@* Jalali (Shamsi) date picker popup — uses .NET PersianCalendar, no external deps *@
+@using System.Globalization
+
+<div class="jdp-wrap">
+    <input class="form-input jdp-input" readonly placeholder="@Placeholder" value="@Display" @onclick="Toggle" />
+    <button type="button" class="btn-papey btn-sm btn-outline" @onclick="Toggle">📅</button>
+    @if (_open)
+    {
+        <div class="jdp-popup">
+            <div class="jdp-head">
+                <button type="button" class="jdp-nav" @onclick="() => ShiftMonth(-1)">›</button>
+                <strong>@MonthName(_viewJm) @PersianHelpers.ToPersianDigits(_viewJy.ToString())</strong>
+                <button type="button" class="jdp-nav" @onclick="() => ShiftMonth(1)">‹</button>
+            </div>
+            <div class="jdp-grid jdp-week">
+                @foreach (var w in new[] { "ش", "ی", "د", "س", "چ", "پ", "ج" })
+                {
+                    <span>@w</span>
+                }
+            </div>
+            <div class="jdp-grid">
+                @for (var i = 0; i < _leadingBlanks; i++)
+                {
+                    <span></span>
+                }
+                @for (var d = 1; d <= _daysInMonth; d++)
+                {
+                    var date = _pc.ToDateTime(_viewJy, _viewJm, d, 0, 0, 0, 0);
+                    var selected = Value?.Date == date.Date;
+                    var today = date.Date == DateTime.Today;
+                    <button type="button"
+                            class="jdp-day @(selected ? "selected" : "") @(today ? "today" : "")"
+                            @onclick="() => Pick(date)">@PersianHelpers.ToPersianDigits(d.ToString())</button>
+                }
+            </div>
+            <div class="jdp-foot">
+                <button type="button" class="btn-papey btn-sm btn-outline" @onclick="PickToday">امروز</button>
+                <button type="button" class="btn-papey btn-sm btn-outline" @onclick="Clear">پاک کردن</button>
+                <button type="button" class="btn-papey btn-sm" @onclick="Toggle">بستن</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public DateTime? Value { get; set; }
+    [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+
+    private static readonly PersianCalendar _pc = new();
+    private bool _open;
+    private int _viewJy, _viewJm;
+
+    private int _daysInMonth => _pc.GetDaysInMonth(_viewJy, _viewJm);
+    // Persian week starts Saturday: offset Sat→0, Sun→1, ... Fri→6
+    private int _leadingBlanks => (((int)_pc.ToDateTime(_viewJy, _viewJm, 1, 0, 0, 0, 0).DayOfWeek + 1) % 7 + 7) % 7;
+
+    private string Display => Value is null
+        ? ""
+        : PersianHelpers.ToPersianDigits($"{_pc.GetYear(Value.Value):0000}/{_pc.GetMonth(Value.Value):00}/{_pc.GetDayOfMonth(Value.Value):00}");
+
+    private void Toggle()
+    {
+        var today = Value ?? DateTime.Today;
+        _viewJy = _pc.GetYear(today);
+        _viewJm = _pc.GetMonth(today);
+        _open = !_open;
+    }
+
+    private void ShiftMonth(int delta)
+    {
+        _viewJm += delta;
+        if (_viewJm > 12) { _viewJm = 1; _viewJy++; }
+        if (_viewJm < 1) { _viewJm = 12; _viewJy--; }
+    }
+
+    private async Task Pick(DateTime date)
+    {
+        Value = date.Date;
+        _open = false;
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private Task PickToday() => Pick(DateTime.Today);
+
+    private async Task Clear()
+    {
+        Value = null;
+        _open = false;
+        await ValueChanged.InvokeAsync(null);
+    }
+
+    private static string MonthName(int m) => m switch
+    {
+        1 => "فروردین", 2 => "اردیبهشت", 3 => "خرداد", 4 => "تیر",
+        5 => "مرداد", 6 => "شهریور", 7 => "مهر", 8 => "آبان",
+        9 => "آذر", 10 => "دی", 11 => "بهمن", _ => "اسفند"
+    };
+}

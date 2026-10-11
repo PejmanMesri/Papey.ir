@@ -27,6 +27,7 @@ public class AppUser
 
     public List<Address> Addresses { get; set; } = new();
     public List<Order> Orders { get; set; } = new();
+    public List<ProductFavorite> Favorites { get; set; } = new();
 }
 
 public class Address

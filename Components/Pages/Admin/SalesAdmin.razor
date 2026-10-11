@@ -1,6 +1,7 @@
 @page "/admin/sales"
 @attribute [Authorize(Roles = "Admin")]
 @layout AdminLayout
+@rendermode InteractiveServer
 @inject IDbContextFactory<AppDbContext> DbFactory
 
 <PageTitle>فروش و تراکنش‌ها | پنل مدیریت پاپی</PageTitle>
@@ -14,22 +15,156 @@
     <div class="stat-card">❌ پرداخت ناموفق<div class="num">@Fa(_failedCount)</div></div>
 </div>
 
+<div class="card-box" style="margin-bottom:20px">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; align-items:end">
+        <div style="grid-column:span 2">
+            <label class="form-label">🔍 جستجو</label>
+            <input class="form-input" placeholder="شماره سفارش، نام مشتری، تلفن، کد پیگیری، نام کاربری..." @bind="_search" @bind:event="oninput" />
+        </div>
+        <div>
+            <label class="form-label">وضعیت</label>
+            <select class="form-input" value="@(_statusFilter?.ToString() ?? "")"
+                    @onchange="e => _statusFilter = string.IsNullOrEmpty(e.Value?.ToString()) ? null : Enum.Parse<OrderStatus>(e.Value!.ToString()!)">
+                <option value="">همه وضعیت‌ها</option>
+                @foreach (var s in Enum.GetValues<OrderStatus>())
+                {
+                    <option value="@s">@PersianHelpers.StatusLabel(s)</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label class="form-label">از تاریخ</label>
+            <JalaliDatePicker @bind-Value="_from" Placeholder="از تاریخ (شمسی)" />
+        </div>
+        <div>
+            <label class="form-label">تا تاریخ</label>
+            <JalaliDatePicker @bind-Value="_to" Placeholder="تا تاریخ (شمسی)" />
+        </div>
+        <div>
+            <button class="btn-papey btn-outline" style="width:100%" @onclick="ClearFilters">🗑 پاک کردن فیلترها</button>
+        </div>
+    </div>
+    <div style="font-size:0.85rem; color:var(--papey-muted); margin-top:10px">
+        نمایش @Fa(Filtered.Count()) از @Fa(_orders.Count) سفارش
+    </div>
+</div>
+
 <table class="table-papey">
     <thead>
-        <tr><th>شماره سفارش</th><th>مشتری</th><th>اقلام</th><th>مبلغ</th><th>وضعیت</th><th>کد پیگیری</th><th>تاریخ</th></tr>
+        <tr><th>شماره سفارش</th><th>مشتری</th><th>اقلام</th><th>مبلغ</th><th>وضعیت</th><th>کد پیگیری</th><th>تاریخ</th><th></th></tr>
     </thead>
     <tbody>
-        @foreach (var o in _orders)
+        @foreach (var o in Filtered)
         {
-            <tr>
+            <tr class="row-@o.Status">
                 <td><strong>@o.OrderNumber</strong></td>
                 <td>@o.CustomerName<br /><small style="color:var(--papey-muted)">@o.CustomerPhone</small></td>
                 <td><small>@string.Join("، ", o.Items.Select(i => $"{i.ProductName} ×{PersianHelpers.ToPersianDigits(i.Quantity.ToString())}"))</small></td>
                 <td>@o.GrandTotal.ToToman()</td>
-                <td><span class="status-chip status-@o.Status">@PersianHelpers.StatusLabel(o.Status)</span></td>
+                <td>
+                    @if (o.Status is OrderStatus.Pending or OrderStatus.PaymentFailed)
+                    {
+                        <span class="status-chip status-@o.Status" title="این وضعیت به‌صورت خودکار توسط درگاه تعیین می‌شود">
+                            @PersianHelpers.StatusLabel(o.Status)
+                        </span>
+                    }
+                    else
+                    {
+                        <select class="form-input" style="width:auto; padding:4px 8px; font-size:0.8rem"
+                                value="@o.Status" @onchange="e => SetStatus(o, e.Value!.ToString()!)">
+                            @foreach (var s in Enum.GetValues<OrderStatus>().Where(s => s is not (OrderStatus.Pending or OrderStatus.PaymentFailed)))
+                            {
+                                <option value="@s">@PersianHelpers.StatusLabel(s)</option>
+                            }
+                        </select>
+                    }
+                </td>
                 <td><small>@PersianHelpers.ToPersianDigits(o.PaymentRefId ?? "—")</small></td>
                 <td>@PersianHelpers.ToPersianDigits(o.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))</td>
+                <td>
+                    <div style="display:flex; gap:4px">
+                        <button class="btn-papey btn-sm btn-outline" @onclick="() => ToggleDetail(o.Id)">
+                            @(_expandedId == o.Id ? "▲ بستن" : "🔍 جزئیات")
+                        </button>
+                        <a class="btn-papey btn-sm btn-outline" href="/admin/print/order/@o.Id" target="_blank" title="چاپ فاکتور (پرینتر حرارتی)">🖨</a>
+                    </div>
+                </td>
             </tr>
+            @if (_expandedId == o.Id)
+            {
+                <tr>
+                    <td colspan="8" style="padding:0">
+                        <div class="card-box" style="margin:8px; border-radius:0">
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:24px">
+                                <div>
+                                    <h4 style="margin-top:0">👤 مشخصات مشتری</h4>
+                                    @foreach (var (label, value) in CustomerRows(o))
+                                    {
+                                        <div style="display:flex; gap:8px; padding:4px 0; font-size:0.9rem">
+                                            <span style="color:var(--papey-muted); min-width:130px">@label:</span>
+                                            <span style="font-weight:600">@value</span>
+                                        </div>
+                                    }
+                                </div>
+                                <div>
+                                    <h4 style="margin-top:0">👤 حساب کاربری</h4>
+                                    @if (o.User is not null)
+                                    {
+                                        @foreach (var (label, value) in AccountRows(o))
+                                        {
+                                            <div style="display:flex; gap:8px; padding:4px 0; font-size:0.9rem">
+                                                <span style="color:var(--papey-muted); min-width:130px">@label:</span>
+                                                <span style="font-weight:600">@value</span>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <p style="color:var(--papey-muted); font-size:0.85rem">این سفارش بدون حساب کاربری (مهمان) ثبت شده است.</p>
+                                    }
+                                    <h4>💳 پرداخت</h4>
+                                    @foreach (var (label, value) in PaymentRows(o))
+                                    {
+                                        <div style="display:flex; gap:8px; padding:4px 0; font-size:0.9rem">
+                                            <span style="color:var(--papey-muted); min-width:130px">@label:</span>
+                                            <span style="font-weight:600">@value</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                            <h4>🛒 اقلام سفارش</h4>
+                            <div style="overflow-x:auto">
+                                <table class="table-papey">
+                                    <thead>
+                                        <tr><th>محصول</th><th>رنگ</th><th>سایز</th><th>قیمت واحد</th><th>تعداد</th><th>جمع</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var i in o.Items)
+                                        {
+                                            <tr>
+                                                <td>@i.ProductName</td>
+                                                <td>@i.Color</td>
+                                                <td>@i.Size</td>
+                                                <td>@i.UnitPrice.ToToman()</td>
+                                                <td>@Fa(i.Quantity)</td>
+                                                <td><strong>@i.LineTotal.ToToman()</strong></td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style="display:flex; gap:24px; flex-wrap:wrap; justify-content:flex-end; margin-top:12px; border-top:1px solid var(--papey-border); padding-top:12px">
+                                <span>جمع اقلام: <strong>@o.TotalAmount.ToToman()</strong></span>
+                                <span>مبلغ نهایی: <strong style="color:var(--papey-accent)">@o.GrandTotal.ToToman()</strong></span>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            }
+        }
+        @if (!Filtered.Any())
+        {
+            <tr><td colspan="8" style="text-align:center; color:var(--papey-muted); padding:24px">سفارشی مطابق فیلترها یافت نشد.</td></tr>
         }
     </tbody>
 </table>
@@ -38,16 +173,121 @@
     private List<Order> _orders = new();
     private decimal _totalRevenue;
     private int _paidCount, _pendingCount, _failedCount;
+    private int? _expandedId;
+
+    // Filters
+    private string _search = string.Empty;
+    private OrderStatus? _statusFilter;
+    private DateTime? _from, _to;
+
+    private IEnumerable<Order> Filtered => _orders.Where(MatchesFilters).ToList();
+
+    private bool MatchesFilters(Order o)
+    {
+        if (_statusFilter is not null && o.Status != _statusFilter) return false;
+        var created = o.CreatedAt.ToLocalTime().Date;
+        if (_from is not null && created < _from.Value.Date) return false;
+        if (_to is not null && created > _to.Value.Date) return false;
+        if (!string.IsNullOrWhiteSpace(_search)) return MatchesSearch(o);
+        return true;
+    }
+
+    private bool MatchesSearch(Order o)
+    {
+        // Normalize digits so searching ۰۹۱۲... (Persian) matches 0912... (stored Latin)
+        var q = PersianHelpers.ToEnglishDigits(_search.Trim());
+        var qw = q.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var haystack = new[]
+        {
+            PersianHelpers.ToEnglishDigits(o.OrderNumber ?? ""),
+            PersianHelpers.ToEnglishDigits(o.CustomerName ?? ""),
+            PersianHelpers.ToEnglishDigits(o.CustomerPhone ?? ""),
+            PersianHelpers.ToEnglishDigits(o.PaymentRefId ?? ""),
+            PersianHelpers.ToEnglishDigits(o.PaymentAuthority ?? ""),
+            PersianHelpers.ToEnglishDigits(o.User?.Username ?? ""),
+            PersianHelpers.ToEnglishDigits(o.User?.FullName ?? ""),
+            PersianHelpers.ToEnglishDigits(o.User?.Phone ?? ""),
+            PersianHelpers.ToEnglishDigits(o.User?.Email ?? ""),
+        };
+        // Every whitespace-separated term must match somewhere (AND search)
+        return qw.All(t => haystack.Any(h => h.Contains(t, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private void ClearFilters()
+    {
+        _search = string.Empty;
+        _statusFilter = null;
+        _from = null;
+        _to = null;
+    }
 
     protected override async Task OnInitializedAsync()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
-        _orders = await db.Orders.Include(o => o.Items).OrderByDescending(o => o.CreatedAt).ToListAsync();
-        _totalRevenue = _orders.Where(o => o.Status == OrderStatus.Paid).Sum(o => o.GrandTotal);
-        _paidCount = _orders.Count(o => o.Status == OrderStatus.Paid);
+        _orders = await db.Orders.Include(o => o.Items).Include(o => o.User).OrderByDescending(o => o.CreatedAt).ToListAsync();
+        RecountStats();
+    }
+
+    private async Task SetStatus(Order o, string statusStr)
+    {
+        if (!Enum.TryParse<OrderStatus>(statusStr, out var s)) return;
+        // Pending & PaymentFailed are system-managed: set by the payment gateway
+        // (or the 20-min expiry job) and must not be overridden manually.
+        if (o.Status is OrderStatus.Pending or OrderStatus.PaymentFailed) return;
+        if (s is OrderStatus.Pending or OrderStatus.PaymentFailed) return;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var tracked = await db.Orders.FindAsync(o.Id);
+        if (tracked is null) return;
+        tracked.Status = s;
+        if (s == OrderStatus.Paid && tracked.PaidAt is null) tracked.PaidAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        o.Status = s;
+        if (s == OrderStatus.Paid && o.PaidAt is null) o.PaidAt = DateTime.UtcNow;
+        RecountStats();
+    }
+
+    // Orders that were paid and not cancelled; Pending/PaymentFailed/Cancelled are excluded
+    private static readonly OrderStatus[] PaidStatuses =
+        { OrderStatus.Paid, OrderStatus.Processing, OrderStatus.Shipped, OrderStatus.Delivered };
+
+    private void RecountStats()
+    {
+        var active = _orders.Where(o => PaidStatuses.Contains(o.Status)).ToList();
+        _totalRevenue = active.Sum(o => o.GrandTotal);
+        _paidCount = active.Count;
         _pendingCount = _orders.Count(o => o.Status == OrderStatus.Pending);
         _failedCount = _orders.Count(o => o.Status == OrderStatus.PaymentFailed);
     }
 
+    private void ToggleDetail(int id) => _expandedId = _expandedId == id ? null : id;
+
     private static string Fa(int n) => PersianHelpers.ToPersianDigits(n.ToString());
+
+    private static IEnumerable<(string Label, string Value)> CustomerRows(Order o) => new[]
+    {
+        ("نام و نام خانوادگی", o.CustomerName),
+        ("شماره تماس", PersianHelpers.ToPersianDigits(o.CustomerPhone)),
+        ("استان", o.Province),
+        ("شهر", o.City),
+        ("آدرس کامل", o.FullAddress),
+        ("کد پستی", PersianHelpers.ToPersianDigits(o.PostalCode ?? "—")),
+    };
+
+    private static IEnumerable<(string Label, string Value)> AccountRows(Order o) => new[]
+    {
+        ("نام کاربری", o.User!.Username),
+        ("نام کامل", o.User.FullName ?? "—"),
+        ("ایمیل", o.User.Email ?? "—"),
+        ("شماره تماس حساب", PersianHelpers.ToPersianDigits(o.User.Phone ?? "—")),
+        ("تاریخ عضویت", PersianHelpers.ToPersianDigits(o.User.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd"))),
+    };
+
+    private static IEnumerable<(string Label, string Value)> PaymentRows(Order o) => new[]
+    {
+        ("وضعیت", PersianHelpers.StatusLabel(o.Status)),
+        ("کد پیگیری", PersianHelpers.ToPersianDigits(o.PaymentRefId ?? "—")),
+        ("شناسه تراکنش", PersianHelpers.ToPersianDigits(o.PaymentAuthority ?? "—")),
+        ("تاریخ ثبت سفارش", PersianHelpers.ToPersianDigits(o.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))),
+        ("تاریخ پرداخت", o.PaidAt is null ? "—" : PersianHelpers.ToPersianDigits(o.PaidAt.Value.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))),
+    };
 }

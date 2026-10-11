@@ -1,4 +1,7 @@
 @namespace Papey.Components
+@inject FavoriteService Favorites
+@inject NavigationManager Nav
+@implements IDisposable
 
 @if (Products.Count == 0)
 {
@@ -18,6 +21,13 @@ else
                 <a class="img-wrap" href="/product/@p.Slug">
                     <img src="@p.ImageUrl" alt="@p.Name" loading="lazy" />
                 </a>
+                <button class="favorite-button @(_favoriteProductIds.Contains(p.Id) ? "is-favorite" : "")"
+                        type="button"
+                        title="@(_favoriteProductIds.Contains(p.Id) ? "حذف از علاقه‌مندی‌ها" : "افزودن به علاقه‌مندی‌ها")"
+                        aria-label="@(_favoriteProductIds.Contains(p.Id) ? $"حذف {p.Name} از علاقه‌مندی‌ها" : $"افزودن {p.Name} به علاقه‌مندی‌ها")"
+                        @onclick="() => ToggleFavoriteAsync(p.Id)">
+                    @(_favoriteProductIds.Contains(p.Id) ? "♥" : "♡")
+                </button>
                 <div class="info">
                     <h3><a href="/product/@p.Slug">@p.Name</a></h3>
                     <div class="price-row">
@@ -35,4 +45,31 @@ else
 
 @code {
     [Parameter] public List<Product> Products { get; set; } = new();
+
+    private HashSet<int> _favoriteProductIds = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        Favorites.OnChange += RefreshFavorites;
+        await LoadFavoritesAsync();
+    }
+
+    private async Task ToggleFavoriteAsync(int productId)
+    {
+        if (!await Favorites.ToggleAsync(productId))
+        {
+            var returnUrl = "/" + Nav.ToBaseRelativePath(Nav.Uri);
+            Nav.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}");
+        }
+    }
+
+    private void RefreshFavorites() => _ = LoadFavoritesAsync();
+
+    private async Task LoadFavoritesAsync()
+    {
+        _favoriteProductIds = await Favorites.GetProductIdsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose() => Favorites.OnChange -= RefreshFavorites;
 }

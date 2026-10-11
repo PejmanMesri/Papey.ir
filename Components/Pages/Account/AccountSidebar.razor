@@ -1,0 +1,62 @@
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<aside class="account-side">
+    <div class="account-user-card">
+        <div class="account-avatar">@_initials</div>
+        <div class="account-user-info">
+            <div class="account-user-name">@_displayName</div>
+            @if (!string.IsNullOrEmpty(_phone))
+            {
+                <div class="account-user-phone">@PersianHelpers.ToPersianDigits(_phone)</div>
+            }
+        </div>
+    </div>
+
+    <nav class="account-nav" aria-label="منوی حساب کاربری">
+        <NavLink href="/account" Match="NavLinkMatch.All">
+            <span class="acc-ico">🏠</span><span>پیشخوان</span>
+        </NavLink>
+        <NavLink href="/account/orders">
+            <span class="acc-ico">🧾</span><span>سفارش‌ها</span>
+        </NavLink>
+        <NavLink href="/account/favorites">
+            <span class="acc-ico">♡</span><span>علاقه‌مندی‌ها</span>
+        </NavLink>
+        <NavLink href="/account/addresses">
+            <span class="acc-ico">📍</span><span>نشانی‌ها</span>
+        </NavLink>
+        <NavLink href="/account/profile">
+            <span class="acc-ico">👤</span><span>جزئیات حساب</span>
+        </NavLink>
+        <a href="/cart">
+            <span class="acc-ico">🛒</span><span>سبد خرید</span>
+        </a>
+        <a href="/logout" class="acc-logout">
+            <span class="acc-ico">🚪</span><span>خروج از حساب</span>
+        </a>
+    </nav>
+</aside>
+
+@code {
+    private string _displayName = "کاربر پاپی";
+    private string _initials = "👤";
+    private string? _phone;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.CurrentUserId is { } uid)
+        {
+            var user = await Auth.GetUserByIdAsync(uid);
+            if (user is not null)
+            {
+                _displayName = !string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : user.Username;
+                _phone = user.Phone;
+                var parts = _displayName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                _initials = parts.Length >= 2
+                    ? $"{parts[0][0]}{parts[1][0]}"
+                    : _displayName.Trim()[0].ToString();
+            }
+        }
+    }
+}

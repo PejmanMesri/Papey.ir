@@ -27,7 +27,9 @@ public class ZarinpalService
         {
             MerchantId = config["ZARINPAL_MERCHANT_ID"] ?? "",
             Sandbox = (config["ZARINPAL_SANDBOX"] ?? "true").Equals("true", StringComparison.OrdinalIgnoreCase),
-            CallbackUrl = config["ZARINPAL_CALLBACK_URL"] ?? ""
+            CallbackUrl = config["ZARINPAL_CALLBACK_URL"]
+                ?? (config["RENDER_EXTERNAL_URL"] is { Length: > 0 } origin
+                    ? $"{origin.TrimEnd('/')}/payment/callback" : "")
         };
         var baseUrl = _opt.Sandbox ? "https://sandbox.zarinpal.com/" : "https://payment.zarinpal.com/";
         _http = new HttpClient { BaseAddress = new Uri(baseUrl) };

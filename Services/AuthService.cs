@@ -13,14 +13,16 @@ public class AuthService
     private readonly IHttpContextAccessor _http;
     private readonly IConfiguration _config;
     private readonly SmsService _sms;
+    private readonly IHostEnvironment _environment;
 
     public AuthService(IDbContextFactory<AppDbContext> dbFactory, IHttpContextAccessor http,
-        IConfiguration config, SmsService sms)
+        IConfiguration config, SmsService sms, IHostEnvironment environment)
     {
         _dbFactory = dbFactory;
         _http = http;
         _config = config;
         _sms = sms;
+        _environment = environment;
     }
 
     /// <summary>Admin phone numbers from .env — users with these phones get Admin role.</summary>
@@ -39,19 +41,28 @@ public class AuthService
         return BCrypt.Net.BCrypt.Verify(password, user.PasswordHash) ? user : null;
     }
 
-    /// <summary>Request an OTP for phone login. Returns the code (only non-null in dev so we can test).</summary>
-    public async Task<(bool Success, string? DevCode, string? Error)> RequestOtpAsync(string phone)
+    /// <summary>Request an OTP. Returns the code (only non-null in dev so we can test).
+    /// When requireExistingUser is set, only registered phones get a code (forgot-password flow).</summary>
+    public async Task<(bool Success, string? DevCode, string? Error)> RequestOtpAsync(string phone, bool requireExistingUser = false)
     {
         phone = phone.Trim();
         if (!System.Text.RegularExpressions.Regex.IsMatch(phone, @"^09\d{9}$"))
             return (false, null, "شماره موبایل معتبر وارد کنید (09xxxxxxxxx)");
 
+        var apiKey = _config["KAVENEGAR_API_KEY"] ?? "";
+        var smsConfigured = !string.IsNullOrWhiteSpace(apiKey) && !apiKey.StartsWith("YOUR_");
+        if (!smsConfigured && !_environment.IsDevelopment())
+            return (false, null, "ورود پیامکی در حال حاضر فعال نیست. از رمز عبور استفاده کنید.");
+
         await using var db = await _dbFactory.CreateDbContextAsync();
+        if (requireExistingUser && !await db.Users.AnyAsync(u => u.Phone == phone))
+            return (false, null, "کاربری با این شماره موبایل یافت نشد.");
+
         // Invalidate previous codes
         var old = await db.OtpCodes.Where(o => o.Phone == phone && !o.IsUsed).ToListAsync();
         foreach (var o in old) o.IsUsed = true;
 
-        var code = Random.Shared.Next(10000, 99999).ToString();
+        var code = System.Security.Cryptography.RandomNumberGenerator.GetInt32(10000, 100000).ToString();
         db.OtpCodes.Add(new OtpCode
         {
             Phone = phone,
@@ -60,8 +71,7 @@ public class AuthService
         });
         await db.SaveChangesAsync();
 
-        var apiKey = _config["KAVENEGAR_API_KEY"] ?? "";
-        if (apiKey.StartsWith("YOUR_") || string.IsNullOrWhiteSpace(apiKey))
+        if (!smsConfigured)
         {
             // No SMS provider configured — return code for local development/testing
             return (true, code, null);
@@ -151,10 +161,61 @@ public class AuthService
             Email = email,
             Phone = phone,
             FullName = fullName,
-            IsAdmin = !string.IsNullOrWhiteSpace(phone) && AdminPhones.Contains(phone)
+            // Password registration does not prove ownership of an administrator's phone.
+            IsAdmin = false
         };
         db.Users.Add(user);
         await db.SaveChangesAsync();
         return (user, null);
+    }
+
+    /// <summary>Change password: requires the current password. Returns (Success, Error).</summary>
+    public async Task<(bool Success, string? Error)> ChangePasswordAsync(int userId, string currentPassword, string newPassword)
+    {
+        if (newPassword.Length < 6) return (false, "رمز عبور جدید باید حداقل ۶ کاراکتر باشد.");
+        await using var db = await _dbFactory.CreateDbContextAsync();
+        var user = await db.Users.FindAsync(userId);
+        if (user is null) return (false, "کاربر یافت نشد.");
+        if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
+            return (false, "رمز عبور فعلی اشتباه است.");
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        await db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    /// <summary>Update display profile fields (username/phone are login identity — not editable here).</summary>
+    public async Task<(bool Success, string? Error)> UpdateProfileAsync(int userId, string? fullName, string? email)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync();
+        var user = await db.Users.FindAsync(userId);
+        if (user is null) return (false, "کاربر یافت نشد.");
+        user.FullName = fullName?.Trim();
+        user.Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
+        await db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    /// <summary>Forgot-password: verify OTP then set a new password. Does not sign in.</summary>
+    public async Task<(bool Success, string? Error)> ResetPasswordByOtpAsync(string phone, string code, string newPassword)
+    {
+        if (newPassword.Length < 6) return (false, "رمز عبور جدید باید حداقل ۶ کاراکتر باشد.");
+        phone = phone.Trim(); code = code.Trim();
+        await using var db = await _dbFactory.CreateDbContextAsync();
+        var otp = await db.OtpCodes
+            .Where(o => o.Phone == phone && !o.IsUsed)
+            .OrderByDescending(o => o.Id)
+            .FirstOrDefaultAsync();
+        if (otp is null || !otp.IsValid) return (false, "کد وارد شده صحیح نیست یا منقضی شده است.");
+
+        otp.Attempts++;
+        if (otp.Code != code) { await db.SaveChangesAsync(); return (false, "کد وارد شده صحیح نیست یا منقضی شده است."); }
+        otp.IsUsed = true;
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Phone == phone);
+        if (user is null) { await db.SaveChangesAsync(); return (false, "کاربری با این شماره موبایل یافت نشد."); }
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        await db.SaveChangesAsync();
+        return (true, null);
     }
 }

@@ -5,38 +5,95 @@
 @inject IDbContextFactory<AppDbContext> DbFactory
 @inject IJSRuntime JS
 @inject NavigationManager Nav
+@inject IWebHostEnvironment Env
 
 <PageTitle>محصولات | پنل مدیریت پاپی</PageTitle>
 
-<h1 style="margin-top:0">👕 محصولات</h1>
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px">
+    <h1 style="margin:0">👕 محصولات</h1>
+    <button class="btn-papey" @onclick="AddProduct">➕ افزودن محصول جدید</button>
+</div>
+@if (_msg is not null) { <div class="alert-papey alert-info">@_msg</div> }
 
-<div class="card-box" style="margin-bottom:24px">
-    <h4 style="margin-top:0">افزودن محصول جدید</h4>
-    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px">
-        <div><label class="form-label">نام *</label><input class="form-input" @bind="_newName" /></div>
-        <div><label class="form-label">قیمت (تومان) *</label><input class="form-input" type="number" @bind="_newPrice" /></div>
+<div class="card-box" style="margin-bottom:20px">
+    <div class="admin-product-filters">
         <div>
-            <label class="form-label">دسته‌بندی</label>
-            <select class="form-input" @bind="_newCategoryId">
-                @foreach (var c in _categories) { <option value="@c.Id">@c.Name</option> }
+            <label class="form-label" for="product-search">جستجو</label>
+            <input id="product-search" class="form-input" placeholder="نام، شناسه یا آدرس محصول..." @bind="_search" @bind:event="oninput" />
+        </div>
+        <div>
+            <label class="form-label" for="product-category">دسته‌بندی</label>
+            <select id="product-category" class="form-input" @bind="_categoryId">
+                <option value="">همه دسته‌بندی‌ها</option>
+                @foreach (var category in _categories)
+                {
+                    <option value="@category.Id">@(category.ProductType is null ? category.Name : $"{category.ProductType.Name} / {category.Name}")</option>
+                }
             </select>
         </div>
         <div>
-            <label class="form-label">نوع محصول</label>
-            <select class="form-input" @bind="_newTypeId">
-                @foreach (var t in _types) { <option value="@t.Id">@t.Name</option> }
+            <label class="form-label" for="product-type">نوع محصول</label>
+            <select id="product-type" class="form-input" @bind="_typeId">
+                <option value="">همه انواع</option>
+                @foreach (var type in _types) { <option value="@type.Id">@type.Name</option> }
             </select>
         </div>
-        <div><label class="form-label">توضیح</label><input class="form-input" @bind="_newDesc" /></div>
-        <div style="display:flex; align-items:end"><button class="btn-papey" @onclick="AddProduct">➕ افزودن</button></div>
+        <div>
+            <label class="form-label" for="product-active">وضعیت</label>
+            <select id="product-active" class="form-input" @bind="_activeFilter">
+                <option value="">همه وضعیت‌ها</option>
+                <option value="active">فعال</option>
+                <option value="inactive">غیرفعال</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label" for="product-stock">موجودی</label>
+            <select id="product-stock" class="form-input" @bind="_stockFilter">
+                <option value="">همه</option>
+                <option value="in-stock">موجود</option>
+                <option value="out-of-stock">ناموجود</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label" for="product-design">فایل طرح</label>
+            <select id="product-design" class="form-input" @bind="_designFilter">
+                <option value="">همه</option>
+                <option value="with-design">دارای فایل طرح</option>
+                <option value="without-design">بدون فایل طرح</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label">ثبت از تاریخ</label>
+            <JalaliDatePicker @bind-Value="_from" Placeholder="از تاریخ (شمسی)" />
+        </div>
+        <div>
+            <label class="form-label">ثبت تا تاریخ</label>
+            <JalaliDatePicker @bind-Value="_to" Placeholder="تا تاریخ (شمسی)" />
+        </div>
+        <div>
+            <label class="form-label" for="product-sort">مرتب‌سازی</label>
+            <select id="product-sort" class="form-input" @bind="_sort">
+                <option value="created-desc">تاریخ ثبت: جدیدترین</option>
+                <option value="created-asc">تاریخ ثبت: قدیمی‌ترین</option>
+                <option value="name">نام محصول</option>
+                <option value="price-asc">قیمت: کم به زیاد</option>
+                <option value="price-desc">قیمت: زیاد به کم</option>
+                <option value="stock-asc">موجودی: کم به زیاد</option>
+                <option value="stock-desc">موجودی: زیاد به کم</option>
+            </select>
+        </div>
+        <button class="btn-papey btn-outline" @onclick="ClearFilters">پاک کردن فیلترها</button>
     </div>
-    @if (_msg is not null) { <div class="alert-papey alert-info">@_msg</div> }
+    <p style="font-size:0.85rem; color:var(--papey-muted); margin-bottom:0" aria-live="polite">
+        نمایش @PersianHelpers.ToPersianDigits(FilteredProducts.Count.ToString()) از @PersianHelpers.ToPersianDigits(_products.Count.ToString()) محصول
+    </p>
 </div>
 
+<div style="overflow-x:auto">
 <table class="table-papey">
-    <thead><tr><th>تصویر</th><th>نام</th><th>نوع</th><th>دسته</th><th>قیمت</th><th>موجودی</th><th>وضعیت</th><th></th></tr></thead>
+    <thead><tr><th>تصویر</th><th>نام</th><th>نوع</th><th>دسته</th><th>قیمت</th><th>موجودی</th><th>فایل طرح</th><th>وضعیت</th><th>تاریخ ثبت</th><th></th></tr></thead>
     <tbody>
-        @foreach (var p in _products)
+        @foreach (var p in FilteredProducts)
         {
             <tr>
                 <td><img src="@(p.Media.OrderBy(m => m.DisplayOrder).FirstOrDefault()?.Url ?? p.ImageUrl)" style="width:48px; height:48px; object-fit:cover; border-radius:8px" /></td>
@@ -52,54 +109,110 @@
                 <td>@p.Price.ToToman()</td>
                 <td>@PersianHelpers.ToPersianDigits(p.Variants.Sum(v => v.Stock).ToString())</td>
                 <td>
+                    @if (p.DesignMedia.Count > 0)
+                    {
+                        <a class="btn-papey btn-sm btn-outline" href="/admin/products/@p.Id/designs.zip">ZIP (@PersianHelpers.ToPersianDigits(p.DesignMedia.Count.ToString()))</a>
+                    }
+                    else
+                    {
+                        <span>—</span>
+                    }
+                </td>
+                <td>
                     <button class="btn-papey btn-sm @(p.IsActive ? "btn-outline" : "btn-danger-papey")" @onclick="() => ToggleActive(p)">
                         @(p.IsActive ? "فعال" : "غیرفعال")
                     </button>
                 </td>
+                <td><time datetime="@p.CreatedAt.ToString("O")">@PersianHelpers.ToPersianDigits(p.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))</time></td>
                 <td>
                     <a class="btn-papey btn-sm" href="/admin/products/@p.Id">✏️ ویرایش</a>
                     <button class="btn-papey btn-sm btn-danger-papey" @onclick="() => Delete(p)">🗑</button>
                 </td>
             </tr>
         }
+        @if (FilteredProducts.Count == 0)
+        {
+            <tr><td colspan="10" style="text-align:center; padding:24px">محصولی مطابق فیلترها یافت نشد.</td></tr>
+        }
     </tbody>
 </table>
+</div>
 
 @code {
     private List<Product> _products = new();
     private List<Category> _categories = new();
     private List<ProductTypeEntity> _types = new();
-    private string _newName = "";
-    private decimal _newPrice = 1000000;
-    private int _newCategoryId;
-    private int _newTypeId;
-    private string? _newDesc;
     private string? _msg;
+    private string _search = "", _activeFilter = "", _stockFilter = "", _designFilter = "";
+    private string _sort = "created-desc";
+    private int? _categoryId, _typeId;
+    private DateTime? _from, _to;
+
+    private List<Product> FilteredProducts
+    {
+        get
+        {
+            IEnumerable<Product> products = _products;
+            var terms = PersianHelpers.ToEnglishDigits(_search.Trim()).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (terms.Length > 0)
+                products = products.Where(p => terms.All(term =>
+                    PersianHelpers.ToEnglishDigits($"{p.Id} {p.Name} {p.Slug}").Contains(term, StringComparison.OrdinalIgnoreCase)));
+            if (_categoryId is { } categoryId)
+            {
+                products = products.Where(p => p.CategoryId == categoryId || p.ProductCategories.Any(c => c.CategoryId == categoryId));
+            }
+            if (_typeId is { } typeId) products = products.Where(p => p.ProductTypeId == typeId);
+            if (_activeFilter != "") products = products.Where(p => p.IsActive == (_activeFilter == "active"));
+            if (_stockFilter != "") products = products.Where(p => p.Variants.Any(v => v.Stock > 0) == (_stockFilter == "in-stock"));
+            if (_designFilter != "") products = products.Where(p => p.DesignMedia.Count > 0 == (_designFilter == "with-design"));
+            if (_from is { } from) products = products.Where(p => p.CreatedAt.ToLocalTime().Date >= from.Date);
+            if (_to is { } to) products = products.Where(p => p.CreatedAt.ToLocalTime().Date <= to.Date);
+
+            var sorted = _sort switch
+            {
+                "created-asc" => products.OrderBy(p => p.CreatedAt),
+                "name" => products.OrderBy(p => p.Name),
+                "price-asc" => products.OrderBy(p => p.Price),
+                "price-desc" => products.OrderByDescending(p => p.Price),
+                "stock-asc" => products.OrderBy(p => p.Variants.Sum(v => v.Stock)),
+                "stock-desc" => products.OrderByDescending(p => p.Variants.Sum(v => v.Stock)),
+                _ => products.OrderByDescending(p => p.CreatedAt)
+            };
+            return sorted.ThenByDescending(p => p.Id).ToList();
+        }
+    }
+
+    private void ClearFilters()
+    {
+        _search = _activeFilter = _stockFilter = _designFilter = "";
+        _categoryId = _typeId = null;
+        _from = _to = null;
+        _sort = "created-desc";
+    }
 
     protected override async Task OnInitializedAsync()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
-        _categories = await db.Categories.OrderBy(c => c.DisplayOrder).ToListAsync();
-        _types = await db.ProductTypes.Where(t => t.IsActive).OrderBy(t => t.DisplayOrder).ToListAsync();
-        _products = await db.Products.Include(p => p.Category).Include(p => p.Variants).Include(p => p.Media).Include(p => p.ProductType)
-            .Include(p => p.ProductCategories).ThenInclude(pc => pc.Category).ToListAsync();
-        if (_categories.Count > 0) _newCategoryId = _categories[0].Id;
-        if (_types.Count > 0) _newTypeId = _types[0].Id;
+        _categories = await db.Categories.Include(c => c.ProductType).OrderBy(c => c.ProductType!.DisplayOrder).ThenBy(c => c.DisplayOrder).ToListAsync();
+        _types = await db.ProductTypes.OrderBy(t => t.DisplayOrder).ToListAsync();
+        _products = await db.Products.Include(p => p.Category).ThenInclude(c => c.ProductType).Include(p => p.Variants).Include(p => p.Media).Include(p => p.DesignMedia).Include(p => p.ProductType)
+            .Include(p => p.ProductCategories).ThenInclude(pc => pc.Category)
+            .OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.Id).ToListAsync();
     }
 
     private async Task AddProduct()
     {
         _msg = null;
-        if (string.IsNullOrWhiteSpace(_newName)) { _msg = "نام محصول الزامی است."; return; }
         await using var db = await DbFactory.CreateDbContextAsync();
+        var defaultCategory = _categories.FirstOrDefault();
+        var defaultCatId = defaultCategory?.Id ?? 0;
         var p = new Product
         {
-            Name = _newName.Trim(),
+            Name = "محصول جدید",
             Slug = "p-" + Guid.NewGuid().ToString("N")[..8],
-            Price = _newPrice,
-            CategoryId = _newCategoryId,
-            Description = _newDesc,
-            ProductTypeId = _newTypeId == 0 ? null : _newTypeId
+            Price = 1000000,
+            CategoryId = defaultCatId,
+            ProductTypeId = defaultCategory?.ProductTypeId
         };
         db.Products.Add(p);
         await db.SaveChangesAsync();
@@ -117,10 +230,23 @@
     {
         if (!await JS.InvokeAsync<bool>("confirm", $"محصول «{p.Name}» حذف شود؟")) return;
         await using var db = await DbFactory.CreateDbContextAsync();
+        var designs = await db.ProductDesignMedia.Where(design => design.ProductId == p.Id).ToListAsync();
         db.ProductVariants.RemoveRange(db.ProductVariants.Where(v => v.ProductId == p.Id));
         db.ProductMedia.RemoveRange(db.ProductMedia.Where(m => m.ProductId == p.Id));
-        db.Products.Remove(await db.Products.FindAsync(p.Id)!);
+        db.ProductDesignMedia.RemoveRange(designs);
+        var target = await db.Products.FindAsync(p.Id);
+        if (target is null) return;
+        db.Products.Remove(target);
         await db.SaveChangesAsync();
+        foreach (var design in designs)
+        {
+            try
+            {
+                var filePath = Path.Combine(Env.ContentRootPath, "App_Data", "product-designs", Path.GetFileName(design.StoredFileName));
+                File.Delete(filePath);
+            }
+            catch { }
+        }
         _products.Remove(p);
     }
 }

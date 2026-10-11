@@ -1,0 +1,217 @@
+@namespace Papey.Components
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager Nav
+
+<div class="catalog-page">
+    @if (_activeCategory is not null)
+    {
+        <div class="catalog-heading">
+            <p class="catalog-kicker">دسته‌بندی</p>
+            <h1>@_activeCategory.Name</h1>
+            @if (!string.IsNullOrWhiteSpace(_activeCategory.Description))
+            {
+                <p>@_activeCategory.Description</p>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="catalog-heading">
+            <p class="catalog-kicker">فروشگاه پاپی</p>
+            <h1>همه محصولات</h1>
+            <p>طرح مورد علاقه‌ات را با فیلترهای دقیق‌تر پیدا کن.</p>
+        </div>
+    }
+
+    <div class="catalog-layout">
+        <aside class="catalog-filters" aria-label="فیلتر محصولات">
+            <div class="catalog-filter-head">
+                <h2>فیلترها</h2>
+                <button type="button" class="filter-reset" @onclick="ClearFilters">پاک کردن</button>
+            </div>
+
+            <div class="filter-group clothing-type-filter">
+                <label>مدل لباس</label>
+                <div class="clothing-type-options">
+                    @foreach (var type in _productTypes)
+                    {
+                        <button type="button" class="clothing-type-option @GetClothingTypeClass(type) @(_selectedProductTypeId == type.Id ? "is-selected" : "")"
+                                @onclick="() => NavigateToProductType(type)">
+                            <span class="clothing-type-icon">@GetProductTypeIcon(type)</span>
+                            <span>@type.Name</span>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            @if (SelectedProductType is { } selectedType)
+            {
+                <div class="filter-group" @key="selectedType.Id">
+                    <label>طرح @selectedType.Name</label>
+                    <div class="subcategory-options">
+                        <button type="button" class="subcategory-option @(_activeCategory is null ? "is-selected" : "")"
+                                @onclick="() => NavigateToProductType(selectedType)">همه</button>
+                        @foreach (var category in selectedType.Categories.OrderBy(c => c.DisplayOrder))
+                        {
+                            <button type="button" class="subcategory-option @(_selectedCategoryId == category.Id ? "is-selected" : "")"
+                                    @onclick="() => NavigateToCategory(category)">@category.Name</button>
+                        }
+                    </div>
+                </div>
+            }
+
+            <div class="filter-group">
+                <label>بازه قیمت (تومان)</label>
+                <div class="price-filter-inputs">
+                    <input class="form-input" type="number" min="0" placeholder="از" @bind="_minPrice" />
+                    <input class="form-input" type="number" min="0" placeholder="تا" @bind="_maxPrice" />
+                </div>
+            </div>
+
+        </aside>
+
+        <section class="catalog-results">
+            <div class="catalog-toolbar">
+                <p><strong>@PersianHelpers.ToPersianDigits(FilteredProducts.Count.ToString())</strong> محصول</p>
+                <label>
+                    <span>مرتب‌سازی:</span>
+                    <select class="form-input" @bind="_sort">
+                        <option value="newest">جدیدترین</option>
+                        <option value="price-asc">ارزان‌ترین</option>
+                        <option value="price-desc">گران‌ترین</option>
+                        <option value="popularity">محبوب‌ترین</option>
+                        <option value="purchased">پرفروش‌ترین</option>
+                    </select>
+                </label>
+            </div>
+            <ProductGrid Products="FilteredProducts" />
+        </section>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? CategorySlug { get; set; }
+    [Parameter] public int? ProductTypeId { get; set; }
+
+    private List<Category> _categories = new();
+    private List<ProductTypeEntity> _productTypes = new();
+    private List<Product> _products = new();
+    private Dictionary<int, int> _favoriteCounts = new();
+    private Dictionary<int, int> _purchaseCounts = new();
+    private Category? _activeCategory;
+    private bool _hasLoaded;
+    private string? _loadedCategorySlug;
+    private int? _loadedProductTypeId;
+    private int? _selectedCategoryId;
+    private int? _selectedProductTypeId;
+    private decimal? _minPrice;
+    private decimal? _maxPrice;
+    private string _sort = "newest";
+
+    private ProductTypeEntity? SelectedProductType => _selectedProductTypeId is { } typeId
+        ? _productTypes.FirstOrDefault(type => type.Id == typeId)
+        : null;
+
+    private List<Product> FilteredProducts
+    {
+        get
+        {
+            IEnumerable<Product> query = _products;
+
+            if (_selectedProductTypeId is { } typeId)
+                query = query.Where(product => product.ProductTypeId == typeId);
+            if (_selectedCategoryId is { } categoryId)
+                query = query.Where(product => product.CategoryId == categoryId || product.ProductCategories.Any(link => link.CategoryId == categoryId));
+
+            if (_minPrice is { } minPrice)
+                query = query.Where(product => product.Price >= minPrice);
+            if (_maxPrice is { } maxPrice)
+                query = query.Where(product => product.Price <= maxPrice);
+
+            query = _sort switch
+            {
+                "price-asc" => query.OrderBy(product => product.Price),
+                "price-desc" => query.OrderByDescending(product => product.Price),
+                "popularity" => query.OrderByDescending(product => _favoriteCounts.GetValueOrDefault(product.Id)).ThenByDescending(product => product.CreatedAt),
+                "purchased" => query.OrderByDescending(product => _purchaseCounts.GetValueOrDefault(product.Id)).ThenByDescending(product => product.CreatedAt),
+                _ => query.OrderByDescending(product => product.CreatedAt)
+            };
+
+            return query.ToList();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_hasLoaded && string.Equals(_loadedCategorySlug, CategorySlug, StringComparison.OrdinalIgnoreCase) && _loadedProductTypeId == ProductTypeId) return;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _productTypes = await db.ProductTypes
+            .Where(type => type.IsActive)
+            .Include(type => type.Categories.Where(category => category.IsActive))
+            .OrderBy(type => type.DisplayOrder)
+            .ToListAsync();
+        _categories = _productTypes.SelectMany(type => type.Categories).OrderBy(category => category.DisplayOrder).ToList();
+        _activeCategory = string.IsNullOrWhiteSpace(CategorySlug)
+            ? null
+            : _categories.FirstOrDefault(category => string.Equals(category.Slug, CategorySlug, StringComparison.OrdinalIgnoreCase));
+
+        _products = await db.Products
+            .Where(product => product.IsActive && product.Category.IsActive)
+            .Include(product => product.Category)
+            .Include(product => product.Variants)
+            .Include(product => product.ProductCategories)
+                .ThenInclude(link => link.Category)
+            .ToListAsync();
+
+        var productIds = _products.Select(product => product.Id).ToList();
+        _favoriteCounts = await db.ProductFavorites
+            .Where(favorite => productIds.Contains(favorite.ProductId))
+            .GroupBy(favorite => favorite.ProductId)
+            .Select(group => new { ProductId = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(item => item.ProductId, item => item.Count);
+        _purchaseCounts = await db.OrderItems
+            .Where(item => productIds.Contains(item.ProductId) &&
+                           item.Order.Status != OrderStatus.Cancelled &&
+                           item.Order.Status != OrderStatus.PaymentFailed)
+            .GroupBy(item => item.ProductId)
+            .Select(group => new { ProductId = group.Key, Count = group.Sum(item => item.Quantity) })
+            .ToDictionaryAsync(item => item.ProductId, item => item.Count);
+
+        ResetFilters();
+        _loadedCategorySlug = CategorySlug;
+        _loadedProductTypeId = ProductTypeId;
+        _hasLoaded = true;
+    }
+
+    private void NavigateToProductType(ProductTypeEntity type)
+        => Nav.NavigateTo($"/products?type={type.Id}");
+
+    private void NavigateToCategory(Category category)
+        => Nav.NavigateTo($"/category/{Uri.EscapeDataString(category.Slug)}");
+
+    private void ClearFilters()
+    {
+        ResetFilters();
+        if (_activeCategory is not null || ProductTypeId is not null)
+            Nav.NavigateTo("/products");
+    }
+
+    private void ResetFilters()
+    {
+        _selectedCategoryId = _activeCategory?.Id;
+        _selectedProductTypeId = _activeCategory?.ProductTypeId ?? ProductTypeId;
+        _minPrice = null;
+        _maxPrice = null;
+        _sort = "newest";
+    }
+
+    private static string GetClothingTypeClass(ProductTypeEntity type)
+        => type.Name == "هودی" ? "is-hoodie" : "is-tshirt";
+
+    private static string GetProductTypeIcon(ProductTypeEntity type)
+        => string.IsNullOrWhiteSpace(type.FilterIcon)
+            ? type.Name == "هودی" ? "🧥" : "👕"
+            : type.FilterIcon;
+}

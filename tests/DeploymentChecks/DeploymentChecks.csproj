@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+    <Compile Include="../../Services/OtpSignInTickets.cs" Link="OtpSignInTickets.cs" />
+    <Compile Include="../../Services/DatabaseConnection.cs" Link="DatabaseConnection.cs" />
+  </ItemGroup>
+</Project>

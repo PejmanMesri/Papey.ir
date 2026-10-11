@@ -3,6 +3,7 @@
 @inject ZarinpalService Zarinpal
 @inject SmsService Sms
 @inject CartService Cart
+@inject IJSRuntime JS
 
 <PageTitle>نتیجه پرداخت | پاپی</PageTitle>
 
@@ -16,12 +17,47 @@
         {
             <p style="font-size:4rem; margin:8px">✅</p>
             <h2>پرداخت با موفقیت انجام شد</h2>
+            <p style="font-size:1.1rem; font-weight:800; color:var(--papey-success); margin:4px 0 12px">از خرید شما متشکریم 🌿</p>
             <p>سفارش شما با شماره <strong>@_order.OrderNumber</strong> ثبت شد.</p>
+
+            @if (_order.Items.Count > 0)
+            {
+                <div style="text-align:right; margin:16px 0">
+                    <h3 style="font-size:0.95rem; margin:0 0 8px">🛒 محصولات خریداری‌شده</h3>
+                    <table class="table-papey">
+                        <thead><tr><th>محصول</th><th>رنگ</th><th>سایز</th><th>تعداد</th><th>جمع</th></tr></thead>
+                        <tbody>
+                            @foreach (var i in _order.Items)
+                            {
+                                <tr>
+                                    <td>@i.ProductName</td>
+                                    <td>@i.Color</td>
+                                    <td>@i.Size</td>
+                                    <td>@PersianHelpers.ToPersianDigits(i.Quantity.ToString())</td>
+                                    <td>@i.LineTotal.ToToman()</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            <div class="alert-papey alert-info" style="font-size:0.9rem">🚚 تحویل ۷ الی ۱۰ روز کاری زمان می‌برد</div>
+
             <p style="color:var(--papey-muted); font-size:0.9rem">
                 کد پیگیری پرداخت: <strong>@PersianHelpers.ToPersianDigits(_order.PaymentRefId ?? "")</strong><br />
                 مبلغ: <strong>@_order.GrandTotal.ToToman()</strong>
             </p>
-            <a class="btn-papey" href="/">بازگشت به فروشگاه</a>
+            @if (_invoiceOpenAttempted)
+            {
+                <p style="font-size:0.82rem; color:var(--papey-muted)">
+                    @(_invoiceOpened ? "فاکتور سفارش در برگه جدید باز شد." : "باز شدن خودکار فاکتور توسط مرورگر مسدود شد؛ از دکمه زیر استفاده کنید.")
+                </p>
+            }
+            <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap">
+                <a class="btn-papey btn-outline" href="/account/orders/@_order.Id/invoice" target="_blank" rel="noopener">مشاهده فاکتور</a>
+                <a class="btn-papey" href="/">بازگشت به فروشگاه</a>
+            </div>
         }
         else
         {
@@ -43,6 +79,8 @@
     private bool _loading = true;
     private Order? _order;
     private string? _message;
+    private bool _invoiceOpenAttempted;
+    private bool _invoiceOpened;
 
     protected override async Task OnInitializedAsync()
     {
@@ -84,5 +122,14 @@
             _message = $"تأیید پرداخت ناموفق بود. {verify.Error}";
         }
         _loading = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _order?.Status != OrderStatus.Paid) return;
+
+        _invoiceOpenAttempted = true;
+        _invoiceOpened = await JS.InvokeAsync<bool>("papey.openOrderInvoiceOnce", _order.Id, $"/account/orders/{_order.Id}/invoice");
+        await InvokeAsync(StateHasChanged);
     }
 }

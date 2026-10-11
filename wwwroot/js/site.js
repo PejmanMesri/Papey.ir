@@ -1,13 +1,41 @@
 // Fallback interactivity layer for Papey.
-// If the Blazor Server circuit is not available (e.g. WebSocket blocked), plain HTML
-// data-* behaviors still work: color/size selection, quantity steppers, and cart removal.
+// Only intercept clicks when no Blazor Server circuit is active.
+// When Blazor is running, it handles @onclick bindings natively.
 (function () {
     'use strict';
 
+    window.papey = window.papey || {};
+    window.papey.openOrderInvoiceOnce = function (orderId, url) {
+        try {
+            var key = 'papey:invoice-opened:' + orderId;
+            if (window.sessionStorage.getItem(key)) return true;
+
+            var invoiceWindow = window.open(url, '_blank');
+            if (!invoiceWindow) return false;
+
+            // The document is same-origin, but it does not need access to the payment callback.
+            invoiceWindow.opener = null;
+            window.sessionStorage.setItem(key, '1');
+            return true;
+        } catch (_) {
+            return false;
+        }
+    };
+
     function fa(n) { return String(n).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]); }
 
-    // ---- Delegated clicks ----
+    function isBlazorConnected() {
+        // Blazor Server adds a "components-reconnect-modal" dialog.
+        // When the circuit is live the dialog stays closed / hidden.
+        // A more reliable check: Blazor sets window.Blazor after boot.
+        return !!(window.Blazor);
+    }
+
+    // ---- Delegated clicks (fallback only) ----
     document.addEventListener('click', function (e) {
+        // If Blazor circuit is alive, let Blazor handle all interactions
+        if (isBlazorConnected()) return;
+
         var dot = e.target.closest('.color-dot[data-color]');
         if (dot) {
             var wrap = dot.closest('.product-detail');

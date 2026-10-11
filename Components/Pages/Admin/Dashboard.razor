@@ -59,7 +59,7 @@
     <tbody>
         @foreach (var o in _latest)
         {
-            <tr>
+            <tr class="row-@o.Status">
                 <td>@o.OrderNumber</td>
                 <td>@o.CustomerName<br /><small style="color:var(--papey-muted)">@o.CustomerPhone</small></td>
                 <td>@o.GrandTotal.ToToman()</td>
@@ -83,8 +83,9 @@
         _totalUsers = await db.Users.CountAsync();
 
         var today = DateTime.UtcNow.Date;
+        // Paid orders (Pending/PaymentFailed/Cancelled excluded) — Cancelled never counts toward revenue
         var paid = await db.Orders
-            .Where(o => o.Status == OrderStatus.Paid)
+            .Where(o => o.Status != OrderStatus.Pending && o.Status != OrderStatus.PaymentFailed && o.Status != OrderStatus.Cancelled)
             .Select(o => new { o.GrandTotal, o.CreatedAt })
             .ToListAsync();
 
@@ -109,7 +110,9 @@
             .ToList();
         _maxViews = _dailyViews.Max(d => d.Count);
 
-        _latest = await db.Orders.OrderByDescending(o => o.CreatedAt).Take(8).ToListAsync();
+        _latest = await db.Orders
+            .Where(o => o.Status != OrderStatus.Cancelled)
+            .OrderByDescending(o => o.CreatedAt).Take(8).ToListAsync();
     }
 
     private static string Fa(int n) => PersianHelpers.ToPersianDigits(n.ToString());

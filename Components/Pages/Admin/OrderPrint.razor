@@ -1,0 +1,153 @@
+@page "/admin/print/order/{Id:int}"
+@attribute [Authorize(Roles = "Admin")]
+@layout PrintLayout
+@rendermode InteractiveServer
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject IJSRuntime JS
+@using System.Globalization
+
+<PageTitle>چاپ فاکتور سفارش</PageTitle>
+
+@if (_order is null)
+{
+    <p style="padding:20px; text-align:center">سفارش یافت نشد.</p>
+}
+else
+{
+    <div class="print-toolbar no-print">
+        <button class="btn-papey" @onclick="Print">🖨 چاپ فاکتور</button>
+        <a class="btn-papey btn-outline" href="/admin/sales">→ بازگشت به فروش</a>
+        <span style="font-size:0.8rem; color:var(--papey-muted)">چاپ مستقیم روی پرینتر حرارتی ۸۰ میلی‌متری (Bixolon SRP-330II)</span>
+    </div>
+
+    <div class="receipt" data-print-ready="true" data-order-id="@_order.Id">
+        <div class="rcpt-head">
+            <div class="rcpt-logo">پاپی</div>
+            <div class="rcpt-sub">فروشگاه لباس</div>
+        </div>
+
+        <div class="rcpt-sep"></div>
+
+        <div class="rcpt-meta">
+            <div><span>سفارش:</span> <strong>@_order.OrderNumber</strong></div>
+            <div><span>تاریخ:</span> @FaDate(_order.CreatedAt.ToLocalTime())</div>
+            <div><span>مشتری:</span> @_order.CustomerName</div>
+            <div><span>تلفن:</span> @PersianHelpers.ToPersianDigits(_order.CustomerPhone)</div>
+            <div class="rcpt-addr">
+                <div>آدرس: @_order.Province، @_order.City، @_order.FullAddress</div>
+                @if (_order.PostalCode is not null)
+                {
+                    <div>کد پستی: @PersianHelpers.ToPersianDigits(_order.PostalCode)</div>
+                }
+            </div>
+        </div>
+
+        <div class="rcpt-sep"></div>
+
+        <div class="rcpt-items">
+            @foreach (var i in _order.Items)
+            {
+                <div class="rcpt-item">
+                    <div class="ri-name">@i.ProductName</div>
+                    <div class="ri-variant">رنگ: @i.Color &nbsp;|&nbsp; سایز: @i.Size &nbsp;|&nbsp; تعداد: @Fa(i.Quantity)</div>
+                    <div class="ri-price">
+                        <span>واحد: @Money(i.UnitPrice)</span>
+                        <strong>@Money(i.LineTotal)</strong>
+                    </div>
+                </div>
+            }
+            @if (_order.Items.Count == 0)
+            {
+                <div style="text-align:center; padding:6px 0">(بدون قلم)</div>
+            }
+        </div>
+
+        <div class="rcpt-sep"></div>
+
+        <div class="rcpt-totals">
+            <div><span>جمع اقلام:</span> <span>@Money(_order.TotalAmount)</span></div>
+            <div class="rt-grand"><span>مبلغ نهایی:</span> <span>@Money(_order.GrandTotal) تومان</span></div>
+            <div class="rt-status"><span>وضعیت:</span> @PersianHelpers.StatusLabel(_order.Status)
+                @if (_order.PaymentRefId is not null)
+                {
+                    <text>&nbsp;| کد پیگیری: @PersianHelpers.ToPersianDigits(_order.PaymentRefId)</text>
+                }
+            </div>
+        </div>
+
+        <div class="rcpt-sep"></div>
+
+        <div class="rcpt-foot">سپاس از خرید شما 🌿</div>
+    </div>
+}
+
+<style>
+    /* ---- Bixolon SRP-330II: 80mm paper, 72mm (576-dot) printable width ---- */
+    @@page { size: 80mm auto; margin: 4mm; }
+
+    .print-toolbar { display: flex; gap: 10px; align-items: center; justify-content: center; padding: 14px; flex-wrap: wrap; }
+
+    .receipt { width: 72mm; margin: 0 auto; padding: 0; background: #fff; color: #000;
+               border: 1px solid #000; box-sizing: border-box;
+               direction: rtl; text-align: right;
+               font-family: 'B Titr', 'B Titr Bold', 'Vazirmatn', 'Vazir', Tahoma, sans-serif;
+               font-size: 10.5px; line-height: 1.8; }
+
+    .rcpt-head { text-align: center; }
+    .rcpt-logo { font-size: 21px; font-weight: 800; letter-spacing: 1px; }
+    .rcpt-sub { font-size: 11px; }
+
+    .rcpt-sep { border-top: 1px dashed #000; margin: 6px 0; }
+
+    .rcpt-meta div { display: flex; justify-content: space-between; }
+    .rcpt-meta span { font-weight: 400; }
+    .rcpt-addr { display: block !important; font-size: 10px; }
+    .rcpt-addr div { display: block; text-align: right; }
+
+    .rcpt-item { padding: 3px 0; }
+    .ri-name { font-weight: 700; font-size: 12px; }
+    .ri-variant { font-size: 10px; }
+    .ri-price { display: flex; justify-content: space-between; font-size: 10px; }
+
+    .rcpt-totals div { display: flex; justify-content: space-between; }
+    .rt-grand { font-weight: 800; font-size: 13px; margin-top: 2px; }
+    .rt-status { font-size: 10px; margin-top: 2px; }
+
+    .rcpt-foot { text-align: center; font-size: 11px; padding: 2px 0; }
+
+    @@media print {
+        .no-print { display: none !important; }
+        body { background: #fff !important; margin: 0; }
+        .receipt { width: auto; margin: 0; padding: 0; }
+    }
+</style>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    [SupplyParameterFromQuery(Name = "autoPrint")] public bool AutoPrint { get; set; } = true;
+
+    private Order? _order;
+    private static readonly PersianCalendar Pc = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _order = await db.Orders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == Id);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Open the print dialog automatically so one click = print
+        if (firstRender && _order is not null && AutoPrint)
+        {
+            await Task.Delay(400);
+            await JS.InvokeVoidAsync("print");
+        }
+    }
+
+    private Task Print() => JS.InvokeVoidAsync("print").AsTask();
+
+    private static string Money(decimal v) => PersianHelpers.ToPersianDigits(v.ToString("N0", CultureInfo.InvariantCulture));
+    private static string Fa(int n) => PersianHelpers.ToPersianDigits(n.ToString());
+    private static string FaDate(DateTime d) => PersianHelpers.ToPersianDigits($"{Pc.GetYear(d):0000}/{Pc.GetMonth(d):00}/{Pc.GetDayOfMonth(d):00} {d:HH:mm}");
+}

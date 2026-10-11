@@ -29,7 +29,7 @@ docker compose up -d --build
 
 ```bash
 docker compose up -d db   # فقط Postgres
-dotnet run --urls http://localhost:5200
+dotnet run --urls http://localhost:5032
 ```
 
 ## تنظیمات (.env)
@@ -40,7 +40,7 @@ dotnet run --urls http://localhost:5200
 | `DB_HOST` / `DB_PORT` | هاست/پورت دیتابیس (لوکال: `localhost:5434`) |
 | `ZARINPAL_MERCHANT_ID` | مرچنت‌کد زرین‌پال (سندباکس: همه صفر) |
 | `ZARINPAL_SANDBOX` | `true` برای سندباکس |
-| `ZARINPAL_CALLBACK_URL` | آدرس callback (مثلاً `http://localhost:5200/payment/callback`) |
+| `ZARINPAL_CALLBACK_URL` | آدرس callback — Docker: `http://localhost:8080/payment/callback` (لوکال بدون Docker: `http://localhost:5032/payment/callback`) |
 | `KAVENEGAR_API_KEY` | توکن KaveNegar |
 | `KAVENEGAR_SENDER` | شماره خط ارسال (اختیاری) |
 | `ADMIN_PHONES` | شماره‌های ادمین، با ویرگول جدا شوند |

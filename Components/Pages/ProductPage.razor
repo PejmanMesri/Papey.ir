@@ -2,6 +2,8 @@
 @rendermode InteractiveServer
 @inject IDbContextFactory<AppDbContext> DbFactory
 @inject CartService Cart
+@inject FavoriteService Favorites
+@inject NavigationManager Nav
 
 @if (_product is null)
 {
@@ -53,7 +55,8 @@ else
         </div>
         <div>
             <p style="color:var(--papey-muted); font-size:0.85rem">
-                <a href="/">خانه</a> / <a href="/category/@_product.Category.Slug">@_product.Category.Name</a>
+                <a href="/">خانه</a>
+                <span> / </span><a href="/category/@_product.Category.Slug">@_product.Category.Name</a>
             </p>
             <h1 style="margin:0 0 12px; font-size:1.7rem">@_product.Name</h1>
             <div class="price-row" style="margin-bottom: 24px">
@@ -79,9 +82,10 @@ else
             <div style="margin-bottom: 20px">
                 @foreach (var s in _sizes)
                 {
-                    var inStock = HasStock(_selectedColor!, s);
-                    <span class="size-chip @(_selectedSize == s ? "selected" : "") @(!inStock ? "out" : "")"
-                          @onclick="() => { if (inStock) _selectedSize = s; }">@s</span>
+                    var size = s;
+                    var inStock = HasStock(_selectedColor!, size);
+                    <span class="size-chip @(_selectedSize == size ? "selected" : "") @(!inStock ? "out" : "")"
+                          @onclick="() => SelectSize(size, inStock)">@size</span>
                 }
             </div>
 
@@ -92,13 +96,18 @@ else
                     <span>@PersianHelpers.ToPersianDigits(_qty.ToString())</span>
                     <button @onclick="() => { if (_qty < MaxQty) _qty++; }">+</button>
                 </div>
-                <small style="color:var(--papey-muted)">
-                    @(MaxQty > 0 ? $"موجودی: {PersianHelpers.ToPersianDigits(MaxQty.ToString())} عدد" : "ناموجود")
-                </small>
+                @if (MaxQty == 1)
+                {
+                    <small style="color:var(--papey-danger); font-weight:700">تنها ۱ عدد باقی مانده</small>
+                }
             </div>
 
             <button class="btn-papey" style="width:100%" disabled="@(!CanAdd)" @onclick="AddToCart">
                 🛒 افزودن به سبد خرید
+            </button>
+            <button class="btn-papey btn-outline favorite-detail-button @(_isFavorite ? "is-favorite" : "")"
+                    type="button" @onclick="ToggleFavoriteAsync">
+                @(_isFavorite ? "♥ حذف از علاقه‌مندی‌ها" : "♡ افزودن به علاقه‌مندی‌ها")
             </button>
 
             @if (_message is not null)
@@ -130,6 +139,7 @@ else
     private int _qty = 1;
     private string? _message;
     private bool _added;
+    private bool _isFavorite;
 
     private int MaxQty => _product?.Variants
         .FirstOrDefault(v => v.Color == _selectedColor && v.Size == _selectedSize)?.Stock ?? 0;
@@ -148,16 +158,36 @@ else
         {
             _media = _product.Media.OrderBy(m => m.DisplayOrder).ToList();
             _activeMedia = 0;
-            _colors = _product.Variants
-                .GroupBy(v => v.Color)
-                .Select(g => (g.Key, g.First().ColorHex))
+
+            // Load active colors & sizes from DB (respect DisplayOrder)
+            var activeColors = await db.Colors.Where(c => c.IsActive).OrderBy(c => c.DisplayOrder).ToListAsync();
+            var activeSizes = await db.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ToListAsync();
+
+            // Only show colors that have at least one variant with stock > 0
+            var variantColors = _product.Variants
+                .Where(v => v.Stock > 0)
+                .Select(v => v.Color).Distinct().ToHashSet();
+            _colors = activeColors
+                .Where(c => variantColors.Contains(c.Name))
+                .Select(c => (c.Name, c.Hex))
                 .ToList();
-            _sizes = _product.Variants.Select(v => v.Size).Distinct()
-                .OrderBy(s => s == "S" ? 0 : s == "M" ? 1 : s == "L" ? 2 : s == "XL" ? 3 : s == "XXL" ? 4 : 5).ToList();
+
             _selectedColor = _colors.FirstOrDefault().Name;
+
+            // Build sizes list filtered by selected color, ordered by DB order
+            _activeSizeOrder = activeSizes.Select(s => s.Name).ToList();
+            _sizes = _product.Variants
+                .Where(v => v.Color == _selectedColor)
+                .Select(v => v.Size).Distinct()
+                .OrderBy(s => _activeSizeOrder.IndexOf(s) is var idx && idx >= 0 ? idx : 999)
+                .ToList();
             _selectedSize = _sizes.FirstOrDefault(s => HasStock(_selectedColor, s)) ?? _sizes.FirstOrDefault();
+            _qty = 1;
+            _isFavorite = (await Favorites.GetProductIdsAsync()).Contains(_product.Id);
         }
     }
+
+    private List<string> _activeSizeOrder = new();
 
     private bool HasStock(string? color, string size)
         => _product?.Variants.Any(v => v.Color == color && v.Size == size && v.Stock > 0) ?? false;
@@ -165,8 +195,28 @@ else
     private void SelectColor(string color)
     {
         _selectedColor = color;
+        // Rebuild the size list for the newly-selected color, ordered by DB
+        _sizes = _product!.Variants
+            .Where(v => v.Color == color)
+            .Select(v => v.Size).Distinct()
+            .OrderBy(s => _activeSizeOrder.IndexOf(s) is var idx && idx >= 0 ? idx : 999)
+            .ToList();
+
+        // Pick the first in-stock size, or fall back to first size
         if (_selectedSize is null || !HasStock(color, _selectedSize))
-            _selectedSize = _sizes.FirstOrDefault(s => HasStock(color, s));
+            _selectedSize = _sizes.FirstOrDefault(s => HasStock(color, s)) ?? _sizes.FirstOrDefault();
+
+        // Reset quantity to 1 and clear any previous message
+        _qty = 1;
+        _message = null;
+    }
+
+    private void SelectSize(string size, bool inStock)
+    {
+        if (!inStock) return;
+        _selectedSize = size;
+        _qty = 1;
+        _message = null;
     }
 
     private async Task AddToCart()
@@ -175,5 +225,18 @@ else
         var ok = await Cart.AddAsync(_product!.Id, _selectedColor!, _selectedSize!, _qty);
         _added = ok;
         _message = ok ? "✓ محصول به سبد خرید اضافه شد." : "موجودی کافی نیست.";
+    }
+
+    private async Task ToggleFavoriteAsync()
+    {
+        if (_product is null) return;
+        if (!await Favorites.ToggleAsync(_product.Id))
+        {
+            var returnUrl = "/" + Nav.ToBaseRelativePath(Nav.Uri);
+            Nav.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}");
+            return;
+        }
+
+        _isFavorite = !_isFavorite;
     }
 }
