@@ -4,6 +4,8 @@
 @rendermode InteractiveServer
 @inject IDbContextFactory<AppDbContext> DbFactory
 @inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject IWebHostEnvironment Env
 
 <PageTitle>ویرایش محصول | پنل مدیریت پاپی</PageTitle>
 
@@ -13,23 +15,23 @@
 }
 else
 {
-    <h1 style="margin-top:0">✏️ ویرایش: @_product.Name</h1>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap">
+        <h1 style="margin:0">✏️ ویرایش: @_product.Name</h1>
+        <div style="display:flex; align-items:center; gap:8px">
+            <a class="btn-papey btn-outline" href="/admin/products">→ بازگشت به لیست</a>
+            <button class="btn-papey" @onclick="SaveInfo">💾 ذخیره اطلاعات</button>
+        </div>
+    </div>
 
     <div class="card-box" style="margin-bottom:24px">
         <h4 style="margin-top:0">اطلاعات اصلی</h4>
         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px">
-            <div><label class="form-label">نام *</label><input class="form-input" @bind="_product.Name" /></div>
-            <div><label class="form-label">قیمت (تومان)</label><input class="form-input" type="number" @bind="_product.Price" /></div>
-            <div><label class="form-label">قیمت قبل از تخفیف</label><input class="form-input" type="number" @bind="_product.OldPrice" /></div>
-            <div>
-                <label class="form-label">دسته‌بندی اصلی</label>
-                <select class="form-input" @bind="_product.CategoryId">
-                    @foreach (var c in _categories) { <option value="@c.Id">@c.Name</option> }
-                </select>
-            </div>
+            <div><input class="form-input" placeholder="نام محصول *" @bind="_product.Name" /></div>
+            <div><input class="form-input" type="number" placeholder="قیمت (تومان)" @bind="_product.Price" /></div>
+            <div><input class="form-input" type="number" placeholder="قیمت قبل از تخفیف" @bind="_product.OldPrice" /></div>
             <div>
                 <label class="form-label">نوع محصول</label>
-                <select class="form-input" @bind="_product.ProductTypeId">
+                <select class="form-input" value="@_product.ProductTypeId" @onchange="OnProductTypeChanged">
                     <option value="">— بدون نوع —</option>
                     @foreach (var t in _types) { <option value="@t.Id">@t.Name</option> }
                 </select>
@@ -41,23 +43,25 @@ else
             </div>
         </div>
         <div class="form-group" style="margin-top:12px">
-            <label class="form-label">دسته‌بندی‌های بیشتر (این محصول در چند دسته نمایش داده شود)</label>
-            <div style="display:flex; gap:16px; flex-wrap:wrap">
-                @foreach (var c in _categories.Where(c => c.Id != _product.CategoryId))
-                {
-                    <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem">
-                        <input type="checkbox" checked="@_selectedCatIds.Contains(c.Id)" @onchange="e => ToggleCategory(c.Id, (bool)e.Value!)" /> @c.Name
-                    </label>
-                }
-            </div>
+            <label class="form-label">دسته‌بندی‌ها (متناسب با نوع محصول)</label>
+            @if (_product.ProductTypeId is not { } selectedTypeId)
+            {
+                <p style="font-size:0.82rem; color:var(--papey-muted); margin:0">ابتدا نوع محصول را انتخاب کنید.</p>
+            }
+            else
+            {
+                <div class="admin-category-picker">
+                    @foreach (var category in _categories.Where(c => c.ProductTypeId == selectedTypeId).OrderBy(c => c.DisplayOrder))
+                    {
+                        <label class="admin-category-root">
+                            <input type="checkbox" checked="@_selectedCatIds.Contains(category.Id)" @onchange="e => ToggleCategory(category.Id, (bool)e.Value!)" /> @category.Name
+                        </label>
+                    }
+                </div>
+            }
         </div>
         <div class="form-group" style="margin-top:12px">
-            <label class="form-label">توضیحات</label>
-            <textarea class="form-input" rows="3" @bind="_product.Description"></textarea>
-        </div>
-        <div style="display:flex; gap:12px; align-items:center; margin-top:16px; border-top:1px solid var(--papey-border); padding-top:16px">
-            <button class="btn-papey" @onclick="SaveInfo">💾 ذخیره اطلاعات</button>
-            @if (_infoMsg is not null) { <span class="alert-papey alert-success" style="margin:0; padding:10px 16px">@_infoMsg</span> }
+            <textarea class="form-input" rows="3" placeholder="توضیحات محصول..." @bind="_product.Description"></textarea>
         </div>
     </div>
 
@@ -93,9 +97,39 @@ else
         </div>
     </div>
 
+    <div class="card-box" style="margin-bottom:24px">
+        <h4 style="margin-top:0">🎨 فایل‌های طرح (فقط مدیریت)</h4>
+        <p style="font-size:0.8rem; color:var(--papey-muted)">
+            تصاویر اصلی طرح این محصول هستند و در فروشگاه عمومی نمایش داده نمی‌شوند. فرمت‌های JPG، PNG و WebP تا ۱۵ مگابایت قابل بارگذاری‌اند.
+        </p>
+        <InputFile OnChange="UploadDesigns" multiple accept=".jpg,.jpeg,.png,.webp" class="form-input" />
+        @if (_designUploading) { <p>در حال آپلود فایل‌های طرح...</p> }
+        @if (_designUploadError is not null) { <div class="alert-papey alert-danger">@_designUploadError</div> }
+
+        @if (_designMedia.Count > 0)
+        {
+            <div style="margin-top:12px">
+                <a class="btn-papey btn-sm" href="/admin/products/@Id/designs.zip">⬇ دانلود همه طرح‌ها (ZIP)</a>
+            </div>
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:16px">
+                @foreach (var design in _designMedia)
+                {
+                    <div style="width:150px; text-align:center; border:1px solid var(--papey-border); border-radius:10px; padding:8px">
+                        <img src="/admin/products/@Id/designs/@design.Id" alt="@design.OriginalFileName" style="width:100%; height:110px; object-fit:cover; border-radius:8px" />
+                        <p style="margin:6px 0; overflow-wrap:anywhere; font-size:0.72rem">@design.OriginalFileName</p>
+                        <div style="display:flex; justify-content:center; gap:4px">
+                            <a class="btn-papey btn-sm btn-outline" href="/admin/products/@Id/designs/@design.Id/download">⬇</a>
+                            <button class="btn-papey btn-sm btn-danger-papey" @onclick="() => DeleteDesign(design)">🗑</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
     <div class="card-box">
         <h4 style="margin-top:0">🎨 رنگ‌ها و سایزها و موجودی</h4>
-        <p style="font-size:0.8rem; color:var(--papey-muted)">تیک = این ترکیب برای محصول فعال است. عدد = موجودی انبار.</p>
+        <p style="font-size:0.8rem; color:var(--papey-muted)">تیک = این ترکیب برای محصول فعال است. با وارد کردن عدد هم ترکیب فعال می‌شود. عدد = موجودی انبار.</p>
         <div style="overflow-x:auto">
             <table class="table-papey">
                 <thead>
@@ -114,13 +148,11 @@ else
                             @foreach (var s in _sizes)
                             {
                                 var v = _product.Variants.FirstOrDefault(x => x.ColorId == c.Id && x.SizeId == s.Id);
-                                <td>
+                                <td style="white-space:nowrap">
                                     <input type="checkbox" checked="@(v is not null)" @onchange="e => ToggleVariant(c, s, (bool)e.Value!)" />
-                                    @if (v is not null)
-                                    {
-                                        <input type="number" min="0" style="width:64px" class="form-input" value="@v.Stock"
-                                               @onchange="e => SetStock(v, e.Value?.ToString())" />
-                                    }
+                                    <input type="number" min="0" class="form-input" value="@(v?.Stock ?? 0)"
+                                           style="width:64px; opacity:@(v is null ? "0.45" : "1")"
+                                           @onchange="e => SetStock(c, s, e.Value?.ToString())" />
                                 </td>
                             }
                         </tr>
@@ -141,9 +173,17 @@ else
     private List<Size> _sizes = new();
     private List<ProductTypeEntity> _types = new();
     private List<ProductMedia> _media = new();
+    private List<ProductDesignMedia> _designMedia = new();
     private HashSet<int> _selectedCatIds = new();
-    private string? _infoMsg, _variantMsg, _uploadError;
-    private bool _uploading;
+    private string? _variantMsg, _uploadError, _designUploadError;
+    private bool _uploading, _designUploading;
+    private static readonly Dictionary<string, string> DesignContentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [".jpg"] = "image/jpeg",
+        [".jpeg"] = "image/jpeg",
+        [".png"] = "image/png",
+        [".webp"] = "image/webp"
+    };
 
     protected override async Task OnInitializedAsync() => await Reload();
 
@@ -152,39 +192,67 @@ else
         await using var db = await DbFactory.CreateDbContextAsync();
         _product = await db.Products.Include(p => p.Variants).Include(p => p.ProductCategories).FirstOrDefaultAsync(p => p.Id == Id);
         _selectedCatIds = _product?.ProductCategories.Select(pc => pc.CategoryId).ToHashSet() ?? new();
-        _categories = await db.Categories.OrderBy(c => c.DisplayOrder).ToListAsync();
+        _categories = await db.Categories
+            .Include(c => c.ProductType)
+            .OrderBy(c => c.ProductType!.DisplayOrder)
+            .ThenBy(c => c.DisplayOrder)
+            .ToListAsync();
         _types = await db.ProductTypes.Where(t => t.IsActive).OrderBy(t => t.DisplayOrder).ToListAsync();
         _colors = await db.Colors.Where(c => c.IsActive).OrderBy(c => c.DisplayOrder).ToListAsync();
         _sizes = await db.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ToListAsync();
         _media = await db.ProductMedia.Where(m => m.ProductId == Id).OrderBy(m => m.DisplayOrder).ToListAsync();
+        _designMedia = await db.ProductDesignMedia.Where(m => m.ProductId == Id).OrderBy(m => m.DisplayOrder).ToListAsync();
     }
 
     private async Task SaveInfo()
     {
-        _infoMsg = null;
         await using var db = await DbFactory.CreateDbContextAsync();
         var t = await db.Products.FindAsync(Id);
         if (t is null) return;
         t.Name = _product!.Name; t.Price = _product.Price; t.OldPrice = _product.OldPrice;
-        t.CategoryId = _product.CategoryId; t.ProductTypeId = _product.ProductTypeId;
+        t.ProductTypeId = _product.ProductTypeId;
         t.Description = _product.Description; t.IsNew = _product.IsNew;
         t.IsFeatured = _product.IsFeatured; t.IsActive = _product.IsActive;
         t.ImageUrl = _media.OrderBy(m => m.DisplayOrder).FirstOrDefault(m => m.Type == MediaType.Image)?.Url ?? t.ImageUrl;
 
+        var validCategoryIds = _categories
+            .Where(c => c.ProductTypeId == t.ProductTypeId && _selectedCatIds.Contains(c.Id))
+            .Select(c => c.Id)
+            .ToHashSet();
+        if (t.ProductTypeId is null || validCategoryIds.Count == 0)
+        {
+            _variantMsg = "نوع محصول و حداقل یک دسته‌بندی مرتبط را انتخاب کنید.";
+            return;
+        }
+
+        // The first selected category is the product's primary category; the
+        // join rows retain any additional categories under the same product type.
+        var firstCat = _categories
+            .Where(c => validCategoryIds.Contains(c.Id))
+            .OrderBy(c => c.DisplayOrder)
+            .FirstOrDefault();
+        if (firstCat is not null) t.CategoryId = firstCat.Id;
+
         // Sync extra categories
         var existing = await db.ProductCategories.Where(pc => pc.ProductId == Id).ToListAsync();
-        db.ProductCategories.RemoveRange(existing.Where(pc => !_selectedCatIds.Contains(pc.CategoryId)));
-        foreach (var catId in _selectedCatIds)
+        db.ProductCategories.RemoveRange(existing.Where(pc => !validCategoryIds.Contains(pc.CategoryId)));
+        foreach (var catId in validCategoryIds)
             if (!existing.Any(pc => pc.CategoryId == catId))
                 db.ProductCategories.Add(new ProductCategory { ProductId = Id, CategoryId = catId });
         await db.SaveChangesAsync();
-        _infoMsg = "✓ ذخیره شد.";
+        Nav.NavigateTo("/admin/products");
     }
 
     private void ToggleCategory(int catId, bool selected)
     {
         if (selected) _selectedCatIds.Add(catId);
         else _selectedCatIds.Remove(catId);
+    }
+
+    private void OnProductTypeChanged(ChangeEventArgs args)
+    {
+        _product!.ProductTypeId = int.TryParse(args.Value?.ToString(), out var typeId) ? typeId : null;
+        _selectedCatIds.Clear();
     }
 
     private async Task UploadMedia(InputFileChangeEventArgs e)
@@ -219,6 +287,67 @@ else
         _uploading = false;
     }
 
+    private async Task UploadDesigns(InputFileChangeEventArgs e)
+    {
+        _designUploading = true;
+        _designUploadError = null;
+        var errors = new List<string>();
+        var pending = new List<(IBrowserFile File, string StoredFileName, string ContentType)>();
+
+        try
+        {
+            var folder = Path.Combine(Env.ContentRootPath, "App_Data", "product-designs");
+            Directory.CreateDirectory(folder);
+
+            foreach (var file in e.GetMultipleFiles(20))
+            {
+                var extension = Path.GetExtension(file.Name);
+                if (!DesignContentTypes.TryGetValue(extension, out var contentType))
+                {
+                    errors.Add($"{file.Name}: فرمت فایل مجاز نیست.");
+                    continue;
+                }
+                if (file.Size > 15 * 1024 * 1024)
+                {
+                    errors.Add($"{file.Name}: حجم فایل بیشتر از ۱۵ مگابایت است.");
+                    continue;
+                }
+
+                var storedFileName = $"{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
+                var filePath = Path.Combine(folder, storedFileName);
+                await using var output = File.Create(filePath);
+                await file.OpenReadStream(15 * 1024 * 1024).CopyToAsync(output);
+                pending.Add((file, storedFileName, contentType));
+            }
+
+            if (pending.Count > 0)
+            {
+                await using var db = await DbFactory.CreateDbContextAsync();
+                db.ProductDesignMedia.AddRange(pending.Select((item, index) => new ProductDesignMedia
+                {
+                    ProductId = Id,
+                    StoredFileName = item.StoredFileName,
+                    OriginalFileName = Path.GetFileName(item.File.Name),
+                    ContentType = item.ContentType,
+                    FileSize = item.File.Size,
+                    DisplayOrder = _designMedia.Count + index
+                }));
+                await db.SaveChangesAsync();
+                await Reload();
+            }
+
+            if (errors.Count > 0) _designUploadError = string.Join(" ", errors);
+        }
+        catch (Exception ex)
+        {
+            _designUploadError = "خطا در آپلود فایل طرح: " + ex.Message;
+        }
+        finally
+        {
+            _designUploading = false;
+        }
+    }
+
     private async Task MoveMedia(ProductMedia m, int dir)
     {
         await using var db = await DbFactory.CreateDbContextAsync();
@@ -237,6 +366,23 @@ else
         var t = await db.ProductMedia.FindAsync(m.Id);
         if (t is not null) { db.ProductMedia.Remove(t); await db.SaveChangesAsync(); }
         try { System.IO.File.Delete(Path.Combine("wwwroot", m.Url.TrimStart('/'))); } catch { }
+        await Reload();
+    }
+
+    private async Task DeleteDesign(ProductDesignMedia design)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var target = await db.ProductDesignMedia.FirstOrDefaultAsync(item => item.Id == design.Id && item.ProductId == Id);
+        if (target is null) return;
+
+        db.ProductDesignMedia.Remove(target);
+        await db.SaveChangesAsync();
+        try
+        {
+            var filePath = Path.Combine(Env.ContentRootPath, "App_Data", "product-designs", Path.GetFileName(target.StoredFileName));
+            File.Delete(filePath);
+        }
+        catch { }
         await Reload();
     }
 
@@ -265,11 +411,28 @@ else
         await Reload();
     }
 
-    private async Task SetStock(ProductVariant v, string? val)
+    private async Task SetStock(Color c, Size s, string? val)
     {
         if (!int.TryParse(val, out var stock) || stock < 0) return;
+        _variantMsg = null;
         await using var db = await DbFactory.CreateDbContextAsync();
-        var t = await db.ProductVariants.FindAsync(v.Id);
-        if (t is not null) { t.Stock = stock; await db.SaveChangesAsync(); v.Stock = stock; _variantMsg = "✓ موجودی به‌روزرسانی شد."; }
+        var t = await db.ProductVariants.FirstOrDefaultAsync(v => v.ProductId == Id && v.ColorId == c.Id && v.SizeId == s.Id);
+        if (t is null)
+        {
+            // Typing a quantity enables the combination (creates the variant)
+            db.ProductVariants.Add(new ProductVariant
+            {
+                ProductId = Id, ColorId = c.Id, Color = c.Name, ColorHex = c.Hex,
+                SizeId = s.Id, Size = s.Name, Stock = stock
+            });
+            _variantMsg = "✓ تنوع اضافه شد.";
+        }
+        else
+        {
+            t.Stock = stock;
+            _variantMsg = "✓ موجودی به‌روزرسانی شد.";
+        }
+        await db.SaveChangesAsync();
+        await Reload();
     }
 }

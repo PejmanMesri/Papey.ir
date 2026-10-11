@@ -5,20 +5,20 @@
 
 <section class="hero">
     <div>
-        <h1>تیشرت‌هایی با هویت ایرانی</h1>
-        <p>از دماوند تا پارسه — طرح‌های اصیل با بهترین کیفیت پارچه و چاپ. همین حالا استایل خودت را بساز.</p>
-        <a class="btn-hero" href="/category/irani">مشاهده محصولات</a>
+        <h1>تیشرت و هودی با طرح‌های خاص</h1>
+        <p>از انیمه و گیم تا هنر و موسیقی؛ طرح مورد علاقه‌ات را با بهترین کیفیت پارچه و چاپ انتخاب کن.</p>
+        <a class="btn-hero" href="/products">مشاهده محصولات</a>
     </div>
     <div class="hero-art">👕</div>
 </section>
 
-<div class="section-title"><h2>دسته‌بندی‌ها</h2></div>
+<div class="section-title"><h2>انواع محصول</h2></div>
 <div class="cat-row">
-    @foreach (var c in _categories)
+    @foreach (var type in _types)
     {
-        <a class="cat-circle" href="/category/@c.Slug">
-            <div class="circle">@CategoryIcon(c.Slug)</div>
-            <div class="name">@c.Name</div>
+        <a class="cat-circle" href="/products?type=@type.Id">
+            <div class="circle">@ProductTypeIcon(type)</div>
+            <div class="name">@type.Name</div>
         </a>
     }
 </div>
@@ -39,26 +39,23 @@
 </div>
 
 @code {
-    private List<Category> _categories = new();
+    private List<ProductTypeEntity> _types = new();
     private List<Product> _newProducts = new();
     private List<Product> _featured = new();
 
     protected override async Task OnInitializedAsync()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
-        _categories = await db.Categories.Where(c => c.ShowInNav && c.IsActive).OrderBy(c => c.DisplayOrder).ToListAsync();
+        _types = await db.ProductTypes
+            .Where(type => type.IsActive)
+            .OrderBy(type => type.DisplayOrder)
+            .ToListAsync();
         _newProducts = await db.Products.Where(p => p.IsActive && p.IsNew).Take(8).ToListAsync();
         _featured = await db.Products.Where(p => p.IsActive && p.IsFeatured).Take(8).ToListAsync();
     }
 
-    private static string CategoryIcon(string slug) => slug switch
-    {
-        "irani" => "🏛️",
-        "pinteresti" => "✨",
-        "mashini" => "🚗",
-        "varzeshi" => "⚽",
-        "set" => "👫",
-        "custom" => "🎨",
-        _ => "👕"
-    };
+    private static string ProductTypeIcon(ProductTypeEntity type)
+        => string.IsNullOrWhiteSpace(type.FilterIcon)
+            ? type.Name == "هودی" ? "🧥" : "👕"
+            : type.FilterIcon;
 }

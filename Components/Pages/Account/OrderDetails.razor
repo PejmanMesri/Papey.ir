@@ -1,0 +1,215 @@
+@page "/account/orders/{Id:int}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject AuthService Auth
+@inject CartService Cart
+@inject NavigationManager Nav
+
+<PageTitle>جزئیات سفارش | پاپی</PageTitle>
+
+<div class="account-shell">
+    <AccountSidebar />
+
+    <div class="account-content">
+        @if (_order is null)
+        {
+            <div class="card-box order-not-found">
+                <h1>سفارش یافت نشد</h1>
+                <p>این سفارش وجود ندارد یا به حساب کاربری شما تعلق ندارد.</p>
+                <a class="btn-papey" href="/account/orders">بازگشت به سفارش‌ها</a>
+            </div>
+        }
+        else
+        {
+            <div class="order-detail-head">
+                <div>
+                    <a class="back-link" href="/account/orders">← بازگشت به سفارش‌ها</a>
+                    <h1>سفارش @PersianHelpers.ToPersianDigits(_order.OrderNumber)</h1>
+                    <p>ثبت‌شده در @FaDate(_order.CreatedAt.ToLocalTime())</p>
+                </div>
+                <span class="status-chip status-@_order.Status">@PersianHelpers.StatusLabel(_order.Status)</span>
+            </div>
+
+            <div class="order-action-bar">
+                <a class="btn-papey btn-outline btn-sm" href="/account/orders/@_order.Id/invoice" target="_blank">فاکتور</a>
+                <a class="btn-papey btn-outline btn-sm" href="/account/orders/@_order.Id/invoice/official" target="_blank">فاکتور رسمی</a>
+                <a class="btn-papey btn-outline btn-sm" href="/account/orders/@_order.Id/invoice/thermal" target="_blank">پرینت حرارتی</a>
+                <button class="btn-papey btn-sm" type="button" disabled="@_addingToCart" @onclick="OrderAgainAsync">
+                    @(_addingToCart ? "در حال افزودن..." : "سفارش دوباره")
+                </button>
+            </div>
+
+            @if (_orderAgainMessage is not null)
+            {
+                <div class="alert-papey @(_orderAgainSuccess ? "alert-success" : "alert-danger")">@_orderAgainMessage</div>
+            }
+
+            <section class="card-box order-summary-card">
+                <h2>اطلاعات سفارش</h2>
+                <div class="order-summary-grid">
+                    <div><span>شماره سفارش</span><strong>@PersianHelpers.ToPersianDigits(_order.OrderNumber)</strong></div>
+                    <div><span>تاریخ ثبت</span><strong>@FaDate(_order.CreatedAt.ToLocalTime())</strong></div>
+                    <div><span>وضعیت</span><strong>@PersianHelpers.StatusLabel(_order.Status)</strong></div>
+                    <div><span>مبلغ نهایی</span><strong>@_order.GrandTotal.ToToman()</strong></div>
+                    <div><span>روش پرداخت</span><strong>@PaymentMethod</strong></div>
+                    @if (_order.PaymentRefId is not null)
+                    {
+                        <div><span>کد پیگیری پرداخت</span><strong>@PersianHelpers.ToPersianDigits(_order.PaymentRefId)</strong></div>
+                    }
+                </div>
+            </section>
+
+            <section class="card-box order-updates-card">
+                <h2>بروزرسانی‌های سفارش</h2>
+                <ol class="order-updates">
+                    <li>
+                        <span class="order-update-dot"></span>
+                        <div>
+                            <strong>سفارش ثبت شد</strong>
+                            <p>@FaDate(_order.CreatedAt.ToLocalTime())</p>
+                        </div>
+                    </li>
+                    @if (_order.PaidAt is not null)
+                    {
+                        <li>
+                            <span class="order-update-dot"></span>
+                            <div>
+                                <strong>پرداخت با موفقیت انجام شد</strong>
+                                <p>@FaDate(_order.PaidAt.Value.ToLocalTime())@(_order.PaymentRefId is null ? "" : $" | کد پیگیری: {PersianHelpers.ToPersianDigits(_order.PaymentRefId)}")</p>
+                            </div>
+                        </li>
+                    }
+                    @if (_order.Status == OrderStatus.PaymentFailed)
+                    {
+                        <li class="is-failed">
+                            <span class="order-update-dot"></span>
+                            <div>
+                                <strong>پرداخت ناموفق بود</strong>
+                                <p>برای خرید دوباره می‌توانید محصولات را مجدداً به سبد خرید اضافه کنید.</p>
+                            </div>
+                        </li>
+                    }
+                </ol>
+            </section>
+
+            <section class="card-box order-items-card">
+                <h2>مشخصات سفارش</h2>
+                <div class="order-items-table-wrap">
+                    <table class="table-papey">
+                        <thead><tr><th>محصول</th><th>رنگ</th><th>سایز</th><th>قیمت واحد</th><th>تعداد</th><th>مجموع</th></tr></thead>
+                        <tbody>
+                            @foreach (var item in _order.Items)
+                            {
+                                <tr>
+                                    <td data-label="محصول"><strong>@item.ProductName</strong></td>
+                                    <td data-label="رنگ">@item.Color</td>
+                                    <td data-label="سایز">@item.Size</td>
+                                    <td data-label="قیمت واحد">@item.UnitPrice.ToToman()</td>
+                                    <td data-label="تعداد">@Fa(item.Quantity)</td>
+                                    <td data-label="مجموع"><strong>@item.LineTotal.ToToman()</strong></td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr><th colspan="5">جمع اقلام</th><td>@_order.TotalAmount.ToToman()</td></tr>
+                            @if (_order.ShippingCost > 0)
+                            {
+                                <tr><th colspan="5">هزینه ارسال</th><td>@_order.ShippingCost.ToToman()</td></tr>
+                            }
+                            <tr class="order-grand-total"><th colspan="5">مبلغ نهایی</th><td>@_order.GrandTotal.ToToman()</td></tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </section>
+
+            <section class="order-addresses-grid">
+                <div class="card-box">
+                    <h2>آدرس صورتحساب</h2>
+                    <address>
+                        <strong>@_order.CustomerName</strong><br />
+                        @PersianHelpers.ToPersianDigits(_order.CustomerPhone)<br />
+                        @_order.Province، @_order.City<br />
+                        @_order.FullAddress
+                        @if (!string.IsNullOrWhiteSpace(_order.PostalCode))
+                        {
+                            <br /><span>کد پستی: @PersianHelpers.ToPersianDigits(_order.PostalCode)</span>
+                        }
+                    </address>
+                </div>
+                <div class="card-box">
+                    <h2>آدرس حمل و نقل</h2>
+                    <address>
+                        <strong>@_order.CustomerName</strong><br />
+                        @PersianHelpers.ToPersianDigits(_order.CustomerPhone)<br />
+                        @_order.Province، @_order.City<br />
+                        @_order.FullAddress
+                        @if (!string.IsNullOrWhiteSpace(_order.PostalCode))
+                        {
+                            <br /><span>کد پستی: @PersianHelpers.ToPersianDigits(_order.PostalCode)</span>
+                        }
+                    </address>
+                </div>
+            </section>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Order? _order;
+    private bool _addingToCart;
+    private bool _orderAgainSuccess;
+    private string? _orderAgainMessage;
+
+    private string PaymentMethod => _order?.Status == OrderStatus.PaymentFailed
+        ? "پرداخت ناموفق"
+        : "پرداخت امن زرین‌پال";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _order = null;
+        if (Auth.CurrentUserId is not { } userId) return;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _order = await db.Orders
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.Id == Id && o.UserId == userId);
+    }
+
+    private async Task OrderAgainAsync()
+    {
+        if (_order is null) return;
+
+        _addingToCart = true;
+        _orderAgainMessage = null;
+        var addedItems = 0;
+        var unavailableItems = 0;
+
+        foreach (var item in _order.Items)
+        {
+            if (await Cart.AddAsync(item.ProductId, item.Color, item.Size, item.Quantity))
+                addedItems++;
+            else
+                unavailableItems++;
+        }
+
+        _addingToCart = false;
+        _orderAgainSuccess = addedItems > 0;
+        _orderAgainMessage = addedItems switch
+        {
+            0 => "هیچ‌یک از اقلام این سفارش در حال حاضر موجود نیستند.",
+            _ when unavailableItems > 0 => $"{Fa(addedItems)} قلم به سبد خرید اضافه شد؛ {Fa(unavailableItems)} قلم موجودی کافی نداشت.",
+            _ => "تمام اقلام سفارش به سبد خرید اضافه شد."
+        };
+
+        if (addedItems > 0)
+            await InvokeAsync(StateHasChanged);
+    }
+
+    private static string Fa(int value) => PersianHelpers.ToPersianDigits(value.ToString());
+
+    private static string FaDate(DateTime value)
+        => PersianHelpers.ToPersianDigits(value.ToString("yyyy/MM/dd HH:mm"));
+}

@@ -60,9 +60,8 @@ else
             <div style="display:flex; justify-content:space-between; margin:12px 0">
                 <span>جمع کالاها:</span><strong>@Cart.Total.ToToman()</strong>
             </div>
-            <div style="display:flex; justify-content:space-between; margin:12px 0; color:var(--papey-muted)">
-                <span>هزینه ارسال:</span>
-                <span>@(Cart.Total >= 2000000 ? "رایگان 🎉" : 95000m.ToToman())</span>
+            <div class="alert-papey alert-info" style="font-size:0.8rem; font-weight:500">
+                🚚 تمام سفارش‌ها به صورت پس‌پرداخت توسط تیپاکس ارسال می‌شوند
             </div>
             <hr style="border-color:var(--papey-border)" />
             <div style="display:flex; justify-content:space-between; font-size:1.15rem; font-weight:900; margin:16px 0">
@@ -87,7 +86,7 @@ else
 }
 
 @code {
-    private decimal GrandTotal => Cart.Total + (Cart.Total >= 2000000 ? 0 : 95000);
+    private decimal GrandTotal => Cart.Total;
 
     protected override async Task OnInitializedAsync()
     {

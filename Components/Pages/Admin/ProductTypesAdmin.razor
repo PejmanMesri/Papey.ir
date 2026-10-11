@@ -9,12 +9,13 @@
 <h1 style="margin-top:0">🏷 انواع محصول</h1>
 
 <div class="card-box" style="max-width:640px">
-    <div style="display:flex; gap:12px; align-items:end; margin-bottom:16px">
+    <div style="display:flex; gap:12px; align-items:end; margin-bottom:16px; flex-wrap:wrap">
         <div><label class="form-label">نام نوع</label><input class="form-input" @bind="_newName" placeholder="مثلاً شلوار" /></div>
+        <div><label class="form-label">آیکن فیلتر</label><input class="form-input" @bind="_newIcon" maxlength="64" placeholder="مثلاً 👕" /></div>
         <button class="btn-papey" @onclick="Add">➕ افزودن</button>
     </div>
     <table class="table-papey">
-        <thead><tr><th>نام</th><th>محصولات</th><th>ترتیب</th><th>وضعیت</th><th></th></tr></thead>
+        <thead><tr><th>نام</th><th>آیکن فیلتر</th><th>محصولات</th><th>ترتیب</th><th>وضعیت</th><th></th></tr></thead>
         <tbody>
             @foreach (var t in _types)
             {
@@ -25,6 +26,16 @@
                             <input class="form-input" style="width:110px" @bind="_editName" />
                         }
                         else { <strong>@t.Name</strong> }
+                    </td>
+                    <td>
+                        @if (_editId == t.Id)
+                        {
+                            <input class="form-input" style="width:90px" maxlength="64" @bind="_editIcon" />
+                        }
+                        else
+                        {
+                            <span style="font-size:1.35rem">@(string.IsNullOrWhiteSpace(t.FilterIcon) ? "—" : t.FilterIcon)</span>
+                        }
                     </td>
                     <td>@PersianHelpers.ToPersianDigits(_productCounts.GetValueOrDefault(t.Id, 0).ToString())</td>
                     <td>
@@ -43,7 +54,7 @@
                         }
                         else
                         {
-                            <button class="btn-papey btn-sm btn-outline" @onclick="() => { _editId = t.Id; _editName = t.Name; }">✏️</button>
+                            <button class="btn-papey btn-sm btn-outline" @onclick="() => { _editId = t.Id; _editName = t.Name; _editIcon = t.FilterIcon ?? string.Empty; }">✏️</button>
                         }
                     </td>
                 </tr>
@@ -56,9 +67,9 @@
 @code {
     private List<ProductTypeEntity> _types = new();
     private Dictionary<int, int> _productCounts = new();
-    private string _newName = "";
+    private string _newName = "", _newIcon = "";
     private int? _editId;
-    private string _editName = "";
+    private string _editName = "", _editIcon = "";
     private string? _msg;
 
     protected override async Task OnInitializedAsync() => await Reload();
@@ -76,9 +87,14 @@
         _msg = null;
         if (string.IsNullOrWhiteSpace(_newName)) { _msg = "نام نوع الزامی است."; return; }
         await using var db = await DbFactory.CreateDbContextAsync();
-        db.ProductTypes.Add(new ProductTypeEntity { Name = _newName.Trim(), DisplayOrder = _types.Count });
+        db.ProductTypes.Add(new ProductTypeEntity
+        {
+            Name = _newName.Trim(),
+            FilterIcon = string.IsNullOrWhiteSpace(_newIcon) ? null : _newIcon.Trim(),
+            DisplayOrder = _types.Count
+        });
         await db.SaveChangesAsync();
-        _newName = "";
+        _newName = _newIcon = "";
         await Reload();
     }
 
@@ -106,7 +122,12 @@
     {
         await using var db = await DbFactory.CreateDbContextAsync();
         var x = await db.ProductTypes.FindAsync(t.Id);
-        if (x is not null) { x.Name = _editName.Trim(); await db.SaveChangesAsync(); }
+        if (x is not null)
+        {
+            x.Name = _editName.Trim();
+            x.FilterIcon = string.IsNullOrWhiteSpace(_editIcon) ? null : _editIcon.Trim();
+            await db.SaveChangesAsync();
+        }
         _editId = null;
         await Reload();
     }

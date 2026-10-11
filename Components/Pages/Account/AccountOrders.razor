@@ -1,0 +1,67 @@
+@page "/account/orders"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject AuthService Auth
+
+<PageTitle>سفارش‌های من | پاپی</PageTitle>
+
+<div class="account-shell">
+    <AccountSidebar />
+    <div class="account-content">
+        <div class="account-page-head"><h1>🧾 سفارش‌های من</h1></div>
+
+        <div class="card-box account-orders-card">
+            @if (_orders.Count == 0)
+            {
+                <div class="empty-orders">
+                    <p class="empty-orders-icon">🧾</p>
+                    <h2>سفارشی ثبت نشده است</h2>
+                    <p>بعد از تکمیل خرید، جزئیات سفارش و فاکتورهای آن را از همین بخش می‌بینید.</p>
+                    <a class="btn-papey" href="/products">مشاهده محصولات</a>
+                </div>
+            }
+            else
+            {
+                <div class="account-orders-table-wrap">
+                    <table class="table-papey account-orders-table">
+                    <thead><tr><th>سفارش</th><th>تاریخ</th><th>وضعیت</th><th>کد پیگیری</th><th>مجموع</th><th>عملیات‌ها</th></tr></thead>
+                    <tbody>
+                        @foreach (var o in _orders)
+                        {
+                            <tr class="row-@o.Status">
+                                <td data-label="سفارش"><strong>@o.OrderNumber</strong></td>
+                                <td data-label="تاریخ">@PersianHelpers.ToPersianDigits(o.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))</td>
+                                <td data-label="وضعیت"><span class="status-chip status-@o.Status">@PersianHelpers.StatusLabel(o.Status)</span></td>
+                                <td data-label="کد پیگیری">@PersianHelpers.ToPersianDigits(o.PaymentRefId ?? "—")</td>
+                                <td data-label="مجموع"><strong>@o.GrandTotal.ToToman()</strong><br /><small>@PersianHelpers.ToPersianDigits(o.Items.Sum(i => i.Quantity).ToString()) کالا</small></td>
+                                <td data-label="عملیات‌ها">
+                                    <div class="order-row-actions">
+                                        <a class="btn-papey btn-sm btn-outline" href="/account/orders/@o.Id">مشاهده</a>
+                                        <a class="btn-papey btn-sm btn-outline" href="/account/orders/@o.Id/invoice/thermal" target="_blank">حرارتی</a>
+                                        <a class="btn-papey btn-sm btn-outline" href="/account/orders/@o.Id/invoice" target="_blank">فاکتور</a>
+                                        <a class="btn-papey btn-sm btn-outline" href="/account/orders/@o.Id/invoice/official" target="_blank">فاکتور رسمی</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Order> _orders = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.CurrentUserId is { } uid)
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+            _orders = await db.Orders.Where(o => o.UserId == uid).Include(o => o.Items).OrderByDescending(o => o.CreatedAt).ToListAsync();
+        }
+    }
+}

@@ -1,0 +1,179 @@
+@page "/account/addresses"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject AuthService Auth
+
+<PageTitle>آدرس‌های من | پاپی</PageTitle>
+
+<div class="account-shell">
+    <AccountSidebar />
+    <div class="account-content">
+        <div class="account-page-head"><h1>📍 آدرس‌های من</h1></div>
+
+        <div class="account-two-col">
+            <div>
+                @if (_msg is not null) { <div class="alert-papey alert-success">@_msg</div> }
+                @if (_addresses.Count == 0)
+                {
+                    <div class="card-box"><p style="color:var(--papey-muted); font-size:0.9rem">آدرسی ثبت نشده است. از فرم کنار، اولین آدرس خود را اضافه کنید.</p></div>
+                }
+                @foreach (var a in _addresses)
+                {
+                    <div class="card-box" style="margin-bottom:14px; padding:16px">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
+                            <strong>@a.Title</strong>
+                            @if (a.IsDefault) { <span class="status-chip status-Paid">پیش‌فرض</span> }
+                        </div>
+                        <div style="color:var(--papey-muted); font-size:0.85rem">
+                            @a.ReceiverName — @PersianHelpers.ToPersianDigits(a.ReceiverPhone)<br />
+                            @a.Province، @a.City<br />
+                            @a.FullAddress
+                            @if (!string.IsNullOrEmpty(a.PostalCode)) { <span><br />کدپستی: @PersianHelpers.ToPersianDigits(a.PostalCode)</span> }
+                        </div>
+                        <div style="display:flex; gap:6px; margin-top:10px; flex-wrap:wrap">
+                            @if (!a.IsDefault)
+                            {
+                                <button class="btn-papey btn-sm btn-outline" @onclick="() => SetDefault(a.Id)">⭐ پیش‌فرض کن</button>
+                            }
+                            <button class="btn-papey btn-sm btn-outline" @onclick="() => StartEdit(a)">✏️ ویرایش</button>
+                            <button class="btn-papey btn-sm btn-danger-papey" @onclick="() => Delete(a.Id)">🗑 حذف</button>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="card-box" style="height:fit-content">
+                <h3 style="margin-top:0">@(_editingId is null ? "➕ افزودن آدرس جدید" : "✏️ ویرایش آدرس")</h3>
+                <div class="form-group"><label class="form-label">عنوان *</label><input class="form-input" @bind="_form.Title" placeholder="مثلاً خانه" /></div>
+                <div class="form-group"><label class="form-label">نام گیرنده *</label><input class="form-input" @bind="_form.ReceiverName" /></div>
+                <div class="form-group"><label class="form-label">شماره موبایل *</label><input class="form-input" @bind="_form.ReceiverPhone" placeholder="09xxxxxxxxx" maxlength="11" /></div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+                    <div class="form-group"><label class="form-label">استان *</label><input class="form-input" @bind="_form.Province" /></div>
+                    <div class="form-group"><label class="form-label">شهر *</label><input class="form-input" @bind="_form.City" /></div>
+                </div>
+                <div class="form-group"><label class="form-label">آدرس کامل *</label><textarea class="form-input" rows="3" @bind="_form.FullAddress"></textarea></div>
+                <div class="form-group"><label class="form-label">کد پستی</label><input class="form-input" @bind="_form.PostalCode" maxlength="10" /></div>
+                <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem; margin-bottom:12px">
+                    <input type="checkbox" @bind="_form.IsDefault" /> آدرس پیش‌فرض
+                </label>
+                @if (_formError is not null) { <div class="alert-papey alert-danger">@_formError</div> }
+                <div style="display:flex; gap:8px">
+                    <button class="btn-papey" style="flex:1" @onclick="Save">@(_editingId is null ? "افزودن" : "ذخیره تغییرات")</button>
+                    @if (_editingId is not null)
+                    {
+                        <button class="btn-papey btn-outline" @onclick="ResetForm">انصراف</button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Models.Address> _addresses = new();
+    private int? _editingId;
+    private string? _msg, _formError;
+    private Models.Address _form = new();
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
+    {
+        if (Auth.CurrentUserId is not { } uid) return;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _addresses = await db.Addresses.Where(a => a.UserId == uid).OrderByDescending(a => a.IsDefault).ThenByDescending(a => a.Id).ToListAsync();
+    }
+
+    private void StartEdit(Models.Address a)
+    {
+        _editingId = a.Id;
+        _form = new Models.Address
+        {
+            Title = a.Title, ReceiverName = a.ReceiverName, ReceiverPhone = a.ReceiverPhone,
+            Province = a.Province, City = a.City, FullAddress = a.FullAddress,
+            PostalCode = a.PostalCode, IsDefault = a.IsDefault
+        };
+        _formError = null;
+    }
+
+    private void ResetForm()
+    {
+        _editingId = null;
+        _form = new Models.Address();
+        _formError = null;
+    }
+
+    private async Task Save()
+    {
+        if (Auth.CurrentUserId is not { } uid) return;
+        _formError = null;
+        if (string.IsNullOrWhiteSpace(_form.Title) || string.IsNullOrWhiteSpace(_form.ReceiverName) ||
+            string.IsNullOrWhiteSpace(_form.ReceiverPhone) || string.IsNullOrWhiteSpace(_form.Province) ||
+            string.IsNullOrWhiteSpace(_form.City) || string.IsNullOrWhiteSpace(_form.FullAddress))
+        {
+            _formError = "همه فیلدهای ستاره‌دار الزامی است.";
+            return;
+        }
+        if (!System.Text.RegularExpressions.Regex.IsMatch(_form.ReceiverPhone.Trim(), @"^09\d{9}$"))
+        {
+            _formError = "شماره موبایل معتبر وارد کنید (09xxxxxxxxx)";
+            return;
+        }
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        if (_form.IsDefault)
+        {
+            var defaults = await db.Addresses.Where(x => x.UserId == uid && x.IsDefault).ToListAsync();
+            foreach (var d in defaults) d.IsDefault = false;
+        }
+
+        if (_editingId is { } id)
+        {
+            var t = await db.Addresses.FirstOrDefaultAsync(a => a.Id == id && a.UserId == uid);
+            if (t is null) { _formError = "آدرس یافت نشد."; return; }
+            t.Title = _form.Title.Trim(); t.ReceiverName = _form.ReceiverName.Trim();
+            t.ReceiverPhone = _form.ReceiverPhone.Trim(); t.Province = _form.Province.Trim();
+            t.City = _form.City.Trim(); t.FullAddress = _form.FullAddress.Trim();
+            t.PostalCode = _form.PostalCode?.Trim(); t.IsDefault = _form.IsDefault;
+            _msg = "✓ آدرس به‌روزرسانی شد.";
+        }
+        else
+        {
+            db.Addresses.Add(new Models.Address
+            {
+                UserId = uid,
+                Title = _form.Title.Trim(), ReceiverName = _form.ReceiverName.Trim(),
+                ReceiverPhone = _form.ReceiverPhone.Trim(), Province = _form.Province.Trim(),
+                City = _form.City.Trim(), FullAddress = _form.FullAddress.Trim(),
+                PostalCode = _form.PostalCode?.Trim(),
+                IsDefault = _form.IsDefault || !_addresses.Any()
+            });
+            _msg = "✓ آدرس جدید اضافه شد.";
+        }
+        await db.SaveChangesAsync();
+        ResetForm();
+        await Reload();
+    }
+
+    private async Task SetDefault(int id)
+    {
+        if (Auth.CurrentUserId is not { } uid) return;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var all = await db.Addresses.Where(a => a.UserId == uid).ToListAsync();
+        foreach (var a in all) a.IsDefault = a.Id == id;
+        await db.SaveChangesAsync();
+        _msg = "✓ آدرس پیش‌فرض تغییر کرد.";
+        await Reload();
+    }
+
+    private async Task Delete(int id)
+    {
+        if (Auth.CurrentUserId is not { } uid) return;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var t = await db.Addresses.FirstOrDefaultAsync(a => a.Id == id && a.UserId == uid);
+        if (t is not null) { db.Addresses.Remove(t); await db.SaveChangesAsync(); }
+        _msg = "✓ آدرس حذف شد.";
+        await Reload();
+    }
+}

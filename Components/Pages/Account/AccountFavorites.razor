@@ -1,0 +1,81 @@
+@page "/account/favorites"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject AuthService Auth
+@inject FavoriteService Favorites
+
+<PageTitle>علاقه‌مندی‌های من | پاپی</PageTitle>
+
+<div class="account-shell">
+    <AccountSidebar />
+
+    <div class="account-content">
+        <div class="account-page-head"><h1>♡ علاقه‌مندی‌های من</h1></div>
+
+        @if (_favorites.Count == 0)
+        {
+            <div class="card-box empty-favorites">
+                <p class="empty-favorites-icon">♡</p>
+                <h2>هنوز محصولی را ذخیره نکرده‌اید</h2>
+                <p>محصولات دلخواه‌تان را با انتخاب قلب کنار آن‌ها به این فهرست اضافه کنید.</p>
+                <a class="btn-papey" href="/products">مشاهده محصولات</a>
+            </div>
+        }
+        else
+        {
+            <p class="favorites-count">@PersianHelpers.ToPersianDigits(_favorites.Count.ToString()) محصول ذخیره شده است.</p>
+            <div class="product-grid">
+                @foreach (var favorite in _favorites)
+                {
+                    var product = favorite.Product;
+                    <article class="product-card">
+                        @if (product.IsNew) { <span class="badge-new">جدید</span> }
+                        @if (product.OldPrice is not null && product.OldPrice > product.Price)
+                        {
+                            <span class="badge-sale">٪@PersianHelpers.ToPersianDigits(((int)((product.OldPrice - product.Price) / product.OldPrice * 100)).ToString()) تخفیف</span>
+                        }
+                        <a class="img-wrap" href="/product/@product.Slug">
+                            <img src="@product.ImageUrl" alt="@product.Name" loading="lazy" />
+                        </a>
+                        <button class="favorite-button is-favorite" type="button"
+                                title="حذف از علاقه‌مندی‌ها" aria-label="حذف @product.Name از علاقه‌مندی‌ها"
+                                @onclick="() => RemoveAsync(product.Id)">♥</button>
+                        <div class="info">
+                            <h3><a href="/product/@product.Slug">@product.Name</a></h3>
+                            <div class="price-row">
+                                <span class="price">@product.Price.ToToman()</span>
+                                @if (product.OldPrice is not null)
+                                {
+                                    <span class="old-price">@product.OldPrice.Value.ToToman()</span>
+                                }
+                            </div>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<ProductFavorite> _favorites = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.CurrentUserId is not { } userId) return;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _favorites = await db.ProductFavorites
+            .Where(f => f.UserId == userId && f.Product.IsActive)
+            .Include(f => f.Product)
+            .OrderByDescending(f => f.CreatedAt)
+            .ToListAsync();
+    }
+
+    private async Task RemoveAsync(int productId)
+    {
+        if (await Favorites.ToggleAsync(productId))
+            _favorites.RemoveAll(f => f.ProductId == productId);
+    }
+}

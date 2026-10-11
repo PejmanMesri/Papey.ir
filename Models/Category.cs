@@ -20,11 +20,15 @@ public class Category
 
     public int DisplayOrder { get; set; }
 
-    /// <summary>Show this category in the site navigation and home category row.</summary>
+    /// <summary>Show this category in the navigation menu of its product type.</summary>
     public bool ShowInNav { get; set; } = true;
 
     /// <summary>Inactive categories are hidden from the storefront entirely.</summary>
     public bool IsActive { get; set; } = true;
+
+    /// <summary>The product type this category belongs to, such as تیشرت or هودی.</summary>
+    public int? ProductTypeId { get; set; }
+    public ProductTypeEntity? ProductType { get; set; }
 
     public List<Product> Products { get; set; } = new();
 }

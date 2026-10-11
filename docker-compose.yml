@@ -26,10 +26,13 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
     ports:
       - "8080:8080"
+    volumes:
+      - papey_private_data:/app/App_Data
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
   papey_pgdata:
+  papey_private_data:
 

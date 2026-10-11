@@ -1,5 +1,6 @@
 @inherits LayoutComponentBase
 @inject CartService Cart
+@inject FavoriteService Favorites
 @inject IDbContextFactory<AppDbContext> DbFactory
 @implements IDisposable
 
@@ -8,11 +9,23 @@
         <a class="logo" href="/">پاپی<span>.</span></a>
         <nav class="main-nav">
             <NavLink href="/" Match="NavLinkMatch.All">خانه</NavLink>
-            @foreach (var c in _navCategories)
+            @foreach (var type in _navTypes)
             {
-                <NavLink href="@($"/category/{c.Slug}")">@c.Name</NavLink>
+                <div class="nav-category">
+                    <a href="/products?type=@type.Id">@type.Name</a>
+                    @if (type.Categories.Count > 0)
+                    {
+                        <div class="nav-submenu">
+                            @foreach (var category in type.Categories.OrderBy(category => category.DisplayOrder))
+                            {
+                                <NavLink href="@($"/category/{category.Slug}")">@category.Name</NavLink>
+                            }
+                        </div>
+                    }
+                </div>
             }
             <NavLink href="/products">محصولات</NavLink>
+            <NavLink href="/size-guide">راهنمای سایز</NavLink>
         </nav>
         <form class="search-box" method="get" action="/search">
             <button type="submit">🔍</button>
@@ -28,12 +41,29 @@
             </a>
             <AuthorizeView>
                 <Authorized>
+                    <a href="/account/favorites" class="header-favorites">
+                        @(_favoriteCount > 0 ? "♥" : "♡") علاقه‌مندی‌ها
+                        @if (_favoriteCount > 0)
+                        {
+                            <span class="cart-badge">@PersianHelpers.ToPersianDigits(_favoriteCount.ToString())</span>
+                        }
+                    </a>
                     @if (context.User.IsInRole("Admin"))
                     {
                         <a href="/admin">⚙️ پنل مدیریت</a>
                     }
-                    <a href="/account">👤 حساب من</a>
-                    <a href="/logout">خروج</a>
+                    <div class="account-menu">
+                        <span class="account-toggle" tabindex="0">👤 حساب من ▾</span>
+                        <div class="account-dropdown">
+                            <a href="/account">🏠 پیشخوان</a>
+                            <a href="/account/orders">🧾 سفارش‌ها</a>
+                            <a href="/account/favorites">♡ علاقه‌مندی‌ها</a>
+                            <a href="/account/addresses">📍 نشانی‌ها</a>
+                            <a href="/account/profile">👤 جزئیات حساب</a>
+                            <hr />
+                            <a href="/logout">🚪 خروج</a>
+                        </div>
+                    </div>
                 </Authorized>
                 <NotAuthorized>
                     <a href="/login">ورود</a>
@@ -59,14 +89,6 @@
                 </p>
             </div>
             <div>
-                <h4>دسته‌بندی‌ها</h4>
-                @foreach (var c in _navCategories)
-                {
-                    <a href="@($"/category/{c.Slug}")">@c.Name</a>
-                }
-                <a href="/products">همه محصولات</a>
-            </div>
-            <div>
                 <h4>خدمات مشتریان</h4>
                 <a href="/about">درباره ما</a>
                 <a href="/contact">نحوه ارتباط با ما</a>
@@ -90,17 +112,34 @@
 </div>
 
 @code {
-    private List<Category> _navCategories = new();
+    private List<ProductTypeEntity> _navTypes = new();
+    private int _favoriteCount;
 
     protected override async Task OnInitializedAsync()
     {
         Cart.OnChange += StateHasChanged;
+        Favorites.OnChange += RefreshFavoriteCount;
         await Cart.LoadAsync();
+        await RefreshFavoriteCountAsync();
         await using var db = await DbFactory.CreateDbContextAsync();
-        _navCategories = await db.Categories
-            .Where(c => c.ShowInNav && c.IsActive)
-            .OrderBy(c => c.DisplayOrder)
+        _navTypes = await db.ProductTypes
+            .Where(type => type.IsActive)
+            .Include(type => type.Categories.Where(category => category.IsActive && category.ShowInNav))
+            .OrderBy(type => type.DisplayOrder)
             .ToListAsync();
     }
-    public void Dispose() => Cart.OnChange -= StateHasChanged;
+
+    private void RefreshFavoriteCount() => _ = RefreshFavoriteCountAsync();
+
+    private async Task RefreshFavoriteCountAsync()
+    {
+        _favoriteCount = await Favorites.GetCountAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Cart.OnChange -= StateHasChanged;
+        Favorites.OnChange -= RefreshFavoriteCount;
+    }
 }

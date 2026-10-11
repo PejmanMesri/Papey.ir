@@ -43,6 +43,8 @@ public class Product
 
     public List<ProductVariant> Variants { get; set; } = new();
     public List<ProductMedia> Media { get; set; } = new();
+    public List<ProductDesignMedia> DesignMedia { get; set; } = new();
+    public List<ProductFavorite> FavoritedBy { get; set; } = new();
 }
 
 /// <summary>Join table: a cloth can belong to multiple categories.</summary>

@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @inject AuthService Auth
 @inject NavigationManager Nav
+@inject OtpSignInTickets SignInTickets
 
 <PageTitle>ورود | پاپی</PageTitle>
 
@@ -19,8 +20,8 @@
         }
 
         <div style="display:flex; gap:8px; margin-bottom:20px">
-            <button class="btn-papey @(_tab == "password" ? "" : "btn-outline")" style="flex:1" @onclick='() => _tab = "password"'>ورود با رمز عبور</button>
-            <button class="btn-papey @(_tab == "otp" ? "" : "btn-outline")" style="flex:1" @onclick='() => _tab = "otp"'>ورود با پیامک</button>
+            <button class="btn-papey @(_tab == "password" ? "" : "btn-outline")" style="flex:1; font-size:0.85rem" @onclick='() => _tab = "password"'>ورود با رمز</button>
+            <button class="btn-papey @(_tab == "otp" ? "" : "btn-outline")" style="flex:1; font-size:0.85rem" @onclick='() => _tab = "otp"'>ورود با پیامک</button>
         </div>
 
         @if (_tab == "password")
@@ -37,6 +38,57 @@
                 </div>
                 <button class="btn-papey" style="width:100%" type="submit">ورود</button>
             </form>
+            <p style="text-align:center; margin-top:12px; font-size:0.85rem">
+                <a href="#" style="color:var(--papey-accent-dark); font-weight:700" @onclick='() => _tab = "forgot"' @onclick:preventDefault>رمز عبور را فراموش کرده‌اید؟</a>
+            </p>
+        }
+        else if (_tab == "forgot")
+        {
+            <h3 style="margin:0 0 14px; font-size:1rem">🔑 فراموشی رمز عبور</h3>
+            @if (_forgotDone)
+            {
+                <div class="alert-papey alert-success">✓ رمز عبور با موفقیت تغییر کرد. اکنون وارد شوید.</div>
+                <button class="btn-papey" style="width:100%" @onclick='() => { _tab = "password"; ResetForgot(); }'>ورود با رمز جدید</button>
+            }
+            else if (!_forgotOtpSent)
+            {
+                <p style="font-size:0.85rem; color:var(--papey-muted)">شماره موبایل حساب خود را وارد کنید تا کد بازیابی ارسال شود.</p>
+                <div class="form-group">
+                    <label class="form-label">شماره موبایل</label>
+                    <input class="form-input" @bind="_forgotPhone" placeholder="09xxxxxxxxx" maxlength="11" />
+                </div>
+                @if (_forgotError is not null)
+                {
+                    <div class="alert-papey alert-danger">@_forgotError</div>
+                }
+                <button class="btn-papey" style="width:100%" @onclick="SendForgotOtp" disabled="@_sending">
+                    @(_sending ? "در حال ارسال..." : "ارسال کد بازیابی")
+                </button>
+            }
+            else
+            {
+                <p style="font-size:0.85rem; color:var(--papey-muted)">کد ۵ رقمی به شماره @_forgotPhone ارسال شد.</p>
+                @if (_forgotDevCode is not null)
+                {
+                    <div class="alert-papey alert-info" style="font-size:0.85rem">حالت توسعه — کد: <strong>@_forgotDevCode</strong></div>
+                }
+                <div class="form-group">
+                    <label class="form-label">کد تایید</label>
+                    <input class="form-input" @bind="_forgotCode" maxlength="5" style="text-align:center; letter-spacing:8px; font-size:1.3rem" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">رمز عبور جدید</label>
+                    <input class="form-input" type="password" @bind="_forgotNewPass" placeholder="حداقل ۶ کاراکتر" />
+                </div>
+                @if (_forgotError is not null)
+                {
+                    <div class="alert-papey alert-danger">@_forgotError</div>
+                }
+                <button class="btn-papey" style="width:100%" @onclick="ResetPassword" disabled="@_sending">
+                    @(_sending ? "در حال بررسی..." : "تغییر رمز عبور")
+                </button>
+                <button class="btn-papey btn-outline" style="width:100%; margin-top:8px" @onclick="ResetForgot">ویرایش شماره</button>
+            }
         }
         else
         {
@@ -92,6 +144,15 @@
     private string? _devCode;
     private string? _otpError;
 
+    // Forgot-password flow
+    private string _forgotPhone = "";
+    private string _forgotCode = "";
+    private string _forgotNewPass = "";
+    private bool _forgotOtpSent;
+    private bool _forgotDone;
+    private string? _forgotDevCode;
+    private string? _forgotError;
+
     private string ReturnUrlQuery => string.IsNullOrEmpty(ReturnUrl) ? "" : $"?returnUrl={Uri.EscapeDataString(ReturnUrl)}";
     private string RedirectTarget => !string.IsNullOrEmpty(ReturnUrl) && ReturnUrl.StartsWith('/') ? ReturnUrl : "/";
 
@@ -119,6 +180,36 @@
         _sending = false;
         if (user is null) { _otpError = "کد وارد شده صحیح نیست یا منقضی شده است."; return; }
         // Sign-in must happen in a real HTTP request (cookie headers), not over the Blazor circuit
-        Nav.NavigateTo($"/account/otp-complete?userId={user.Id}&returnUrl={Uri.EscapeDataString(RedirectTarget)}", forceLoad: true);
+        var token = SignInTickets.Create(user.Id);
+        Nav.NavigateTo($"/account/otp-complete?token={token}&returnUrl={Uri.EscapeDataString(RedirectTarget)}", forceLoad: true);
+    }
+
+    private async Task SendForgotOtp()
+    {
+        _sending = true; _forgotError = null;
+        var (ok, devCode, error) = await Auth.RequestOtpAsync(_forgotPhone, requireExistingUser: true);
+        _sending = false;
+        if (!ok) { _forgotError = error; return; }
+        _forgotDevCode = devCode;
+        _forgotOtpSent = true;
+    }
+
+    private void ResetForgot()
+    {
+        _forgotOtpSent = false;
+        _forgotDone = false;
+        _forgotCode = "";
+        _forgotNewPass = "";
+        _forgotDevCode = null;
+        _forgotError = null;
+    }
+
+    private async Task ResetPassword()
+    {
+        _sending = true; _forgotError = null;
+        var (ok, error) = await Auth.ResetPasswordByOtpAsync(_forgotPhone, _forgotCode, _forgotNewPass);
+        _sending = false;
+        if (!ok) { _forgotError = error; return; }
+        _forgotDone = true;
     }
 }

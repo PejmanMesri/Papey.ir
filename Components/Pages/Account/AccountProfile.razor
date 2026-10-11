@@ -1,0 +1,113 @@
+@page "/account/profile"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject AuthService Auth
+
+<PageTitle>پروفایل | پاپی</PageTitle>
+
+<div class="account-shell">
+    <AccountSidebar />
+    <div class="account-content">
+        <div class="account-page-head"><h1>⚙️ جزئیات حساب</h1></div>
+
+        <div class="account-two-col">
+            <div class="card-box">
+                <h3 style="margin-top:0">👤 اطلاعات پروفایل</h3>
+                <div class="form-group">
+                    <label class="form-label">نام کاربری</label>
+                    <input class="form-input" value="@_username" disabled />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">شماره موبایل (نام کاربری پیامکی)</label>
+                    <input class="form-input" value="@PersianHelpers.ToPersianDigits(_phone ?? "—")" disabled />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">نام و نام خانوادگی</label>
+                    <input class="form-input" @bind="_fullName" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">ایمیل</label>
+                    <input class="form-input" @bind="_email" placeholder="example@mail.com" />
+                </div>
+                @if (_profileMsg is not null) { <div class="alert-papey alert-success">@_profileMsg</div> }
+                @if (_profileError is not null) { <div class="alert-papey alert-danger">@_profileError</div> }
+                <button class="btn-papey" style="width:100%" @onclick="SaveProfile">💾 ذخیره پروفایل</button>
+                <p style="font-size:0.75rem; color:var(--papey-muted); margin-top:10px">
+                    نام کاربری و شماره موبایل، شناسه ورود شما هستند و قابل تغییر نیستند.
+                </p>
+            </div>
+
+            <div class="card-box">
+                <h3 style="margin-top:0">🔑 تغییر رمز عبور</h3>
+                <div class="form-group">
+                    <label class="form-label">رمز عبور فعلی</label>
+                    <input class="form-input" type="password" @bind="_currentPass" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">رمز عبور جدید</label>
+                    <input class="form-input" type="password" @bind="_newPass" placeholder="حداقل ۶ کاراکتر" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">تکرار رمز عبور جدید</label>
+                    <input class="form-input" type="password" @bind="_confirmPass" />
+                </div>
+                @if (_passMsg is not null) { <div class="alert-papey alert-success">@_passMsg</div> }
+                @if (_passError is not null) { <div class="alert-papey alert-danger">@_passError</div> }
+                <button class="btn-papey" style="width:100%" @onclick="ChangePassword">🔐 تغییر رمز عبور</button>
+                <p style="font-size:0.75rem; color:var(--papey-muted); margin-top:10px">
+                    رمز عبور را فراموش کرده‌اید؟ از <a href="/login" style="color:var(--papey-accent-dark); font-weight:700">صفحه ورود</a> گزینه «فراموشی رمز عبور» را استفاده کنید.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _username = "";
+    private string? _phone, _fullName, _email;
+    private string _currentPass = "", _newPass = "", _confirmPass = "";
+    private string? _profileMsg, _profileError, _passMsg, _passError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.CurrentUserId is { } uid)
+        {
+            var user = await Auth.GetUserByIdAsync(uid);
+            if (user is not null)
+            {
+                _username = user.Username;
+                _phone = user.Phone;
+                _fullName = user.FullName;
+                _email = user.Email;
+            }
+        }
+    }
+
+    private async Task SaveProfile()
+    {
+        _profileMsg = null; _profileError = null;
+        if (Auth.CurrentUserId is not { } uid) return;
+        var (ok, error) = await Auth.UpdateProfileAsync(uid, _fullName, _email);
+        if (ok) _profileMsg = "✓ پروفایل ذخیره شد.";
+        else _profileError = error;
+    }
+
+    private async Task ChangePassword()
+    {
+        _passMsg = null; _passError = null;
+        if (Auth.CurrentUserId is not { } uid) return;
+        if (_newPass != _confirmPass)
+        {
+            _passError = "تکرار رمز عبور جدید مطابقت ندارد.";
+            return;
+        }
+        var (ok, error) = await Auth.ChangePasswordAsync(uid, _currentPass, _newPass);
+        if (ok)
+        {
+            _passMsg = "✓ رمز عبور با موفقیت تغییر کرد.";
+            _currentPass = _newPass = _confirmPass = "";
+        }
+        else _passError = error;
+    }
+}

@@ -35,6 +35,11 @@ public class ProductTypeEntity
     [Required, MaxLength(50)]
     public string Name { get; set; } = string.Empty;
 
+    [MaxLength(64)]
+    public string? FilterIcon { get; set; }
+
     public int DisplayOrder { get; set; }
     public bool IsActive { get; set; } = true;
+
+    public List<Category> Categories { get; set; } = new();
 }

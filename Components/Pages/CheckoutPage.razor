@@ -94,8 +94,8 @@ else
             <div style="display:flex; justify-content:space-between; margin:8px 0">
                 <span>جمع کالاها:</span><span>@Cart.Total.ToToman()</span>
             </div>
-            <div style="display:flex; justify-content:space-between; margin:8px 0">
-                <span>هزینه ارسال:</span><span>@(_shipping == 0 ? "رایگان" : _shipping.ToToman())</span>
+            <div class="alert-papey alert-info" style="font-size:0.85rem; font-weight:500; margin:12px 0">
+                🚚 تمام سفارش‌ها به صورت پس‌پرداخت توسط تیپاکس ارسال می‌شوند
             </div>
             <div style="display:flex; justify-content:space-between; font-size:1.1rem; font-weight:900; margin:16px 0">
                 <span>قابل پرداخت:</span><span>@_grand.ToToman()</span>
@@ -109,8 +109,9 @@ else
     private List<Address> _savedAddresses = new();
     private string? _error;
     private bool _processing;
-    private decimal _shipping => Cart.Total >= 2000000 ? 0 : 95000;
-    private decimal _grand => Cart.Total + _shipping;
+    // Shipping is pay-on-delivery via Tipax — charged by the courier, not the shop
+    private decimal _shipping => 0;
+    private decimal _grand => Cart.Total;
 
     public class CheckoutModel
     {

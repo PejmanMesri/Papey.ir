@@ -1,6 +1,17 @@
 bin/
 obj/
 .vs/
+.vscode/
 *.user
 .git/
 .env
+.env.*
+App_Data/
+deploy-artifacts/
+tests/
+# Publish output must never enter the build context — stray .razor.js files
+# inside them break `dotnet publish` in the container (ReconnectModal.razor.js error)
+publish-test7/
+test-publish/
+publish*/
+**/publish*/

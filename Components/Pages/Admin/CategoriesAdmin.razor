@@ -10,9 +10,19 @@
 
 <div class="card-box" style="margin-bottom:24px">
     <h4 style="margin-top:0">@(_editId is null ? "افزودن دسته‌بندی" : "ویرایش دسته‌بندی")</h4>
-    <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px">
+    <div style="display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:12px">
         <div><label class="form-label">نام *</label><input class="form-input" @bind="_form.Name" /></div>
         <div><label class="form-label">Slug (انگلیسی)</label><input class="form-input" @bind="_form.Slug" placeholder="auto" /></div>
+        <div>
+            <label class="form-label">نوع محصول *</label>
+            <select class="form-input" @bind="_form.ProductTypeId">
+                <option value="">— انتخاب نوع محصول —</option>
+                @foreach (var type in _types)
+                {
+                    <option value="@type.Id">@type.Name</option>
+                }
+            </select>
+        </div>
         <div><label class="form-label">توضیح</label><input class="form-input" @bind="_form.Description" /></div>
         <div style="display:flex; align-items:end; gap:16px; padding-bottom:10px">
             <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem; white-space:nowrap">
@@ -34,12 +44,13 @@
 </div>
 
 <table class="table-papey">
-    <thead><tr><th>نام</th><th>Slug</th><th>توضیح</th><th>محصولات</th><th>در منو</th><th>وضعیت</th><th>ترتیب</th><th></th></tr></thead>
+    <thead><tr><th>نام</th><th>نوع محصول</th><th>Slug</th><th>توضیح</th><th>محصولات</th><th>در منو</th><th>وضعیت</th><th>ترتیب</th><th></th></tr></thead>
     <tbody>
         @foreach (var c in _categories)
         {
             <tr>
                 <td><strong>@c.Name</strong></td>
+                <td>@(c.ProductType?.Name ?? "—")</td>
                 <td><code>@c.Slug</code></td>
                 <td>@c.Description</td>
                 <td>@PersianHelpers.ToPersianDigits(c.Products.Count.ToString())</td>
@@ -60,6 +71,7 @@
 
 @code {
     private List<Category> _categories = new();
+    private List<ProductTypeEntity> _types = new();
     private Category _form = new();
     private int? _editId;
     private string? _msg;
@@ -69,13 +81,27 @@
     private async Task Reload()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
-        _categories = await db.Categories.Include(c => c.Products).OrderBy(c => c.DisplayOrder).ToListAsync();
+        _categories = await db.Categories
+            .Include(c => c.ProductType)
+            .Include(c => c.Products)
+            .OrderBy(c => c.ProductType!.DisplayOrder)
+            .ThenBy(c => c.DisplayOrder)
+            .ToListAsync();
+        _types = await db.ProductTypes.Where(type => type.IsActive).OrderBy(type => type.DisplayOrder).ToListAsync();
     }
 
     private void Edit(Category c)
     {
         _editId = c.Id;
-        _form = new Category { Name = c.Name, Slug = c.Slug, Description = c.Description, ShowInNav = c.ShowInNav, IsActive = c.IsActive };
+        _form = new Category
+        {
+            Name = c.Name,
+            Slug = c.Slug,
+            Description = c.Description,
+            ProductTypeId = c.ProductTypeId,
+            ShowInNav = c.ShowInNav,
+            IsActive = c.IsActive
+        };
     }
 
     private void CancelEdit() { _editId = null; _form = new(); _msg = null; }
@@ -84,11 +110,26 @@
     {
         _msg = null;
         if (string.IsNullOrWhiteSpace(_form.Name)) { _msg = "نام الزامی است."; return; }
+        if (_form.ProductTypeId is null || !_types.Any(type => type.Id == _form.ProductTypeId))
+        {
+            _msg = "نوع محصول را انتخاب کنید.";
+            return;
+        }
         var slug = string.IsNullOrWhiteSpace(_form.Slug) ? "cat-" + Guid.NewGuid().ToString("N")[..6] : _form.Slug.Trim().ToLower();
         await using var db = await DbFactory.CreateDbContextAsync();
         if (_editId is null)
         {
-            db.Categories.Add(new Category { Name = _form.Name.Trim(), Slug = slug, Description = _form.Description, DisplayOrder = _categories.Count, ShowInNav = _form.ShowInNav, IsActive = _form.IsActive });
+            var siblingCount = await db.Categories.CountAsync(c => c.ProductTypeId == _form.ProductTypeId);
+            db.Categories.Add(new Category
+            {
+                Name = _form.Name.Trim(),
+                Slug = slug,
+                Description = _form.Description,
+                ProductTypeId = _form.ProductTypeId,
+                DisplayOrder = siblingCount,
+                ShowInNav = _form.ShowInNav,
+                IsActive = _form.IsActive
+            });
         }
         else
         {
@@ -97,6 +138,7 @@
             t.Name = _form.Name.Trim();
             t.Slug = slug;
             t.Description = _form.Description;
+            t.ProductTypeId = _form.ProductTypeId;
             t.ShowInNav = _form.ShowInNav;
             t.IsActive = _form.IsActive;
         }
@@ -109,7 +151,7 @@
     private async Task Move(Category c, int dir)
     {
         await using var db = await DbFactory.CreateDbContextAsync();
-        var list = await db.Categories.OrderBy(x => x.DisplayOrder).ToListAsync();
+        var list = await db.Categories.Where(x => x.ProductTypeId == c.ProductTypeId).OrderBy(x => x.DisplayOrder).ToListAsync();
         var i = list.FindIndex(x => x.Id == c.Id);
         var j = i + dir;
         if (i < 0 || j < 0 || j >= list.Count) return;
@@ -121,12 +163,14 @@
     private async Task Delete(Category c)
     {
         await using var db = await DbFactory.CreateDbContextAsync();
-        if (await db.Products.AnyAsync(p => p.CategoryId == c.Id))
+        if (await db.Products.AnyAsync(p => p.CategoryId == c.Id) || await db.ProductCategories.AnyAsync(pc => pc.CategoryId == c.Id))
         {
             _msg = "این دسته‌بندی دارای محصول است و قابل حذف نیست.";
             return;
         }
-        db.Categories.Remove(await db.Categories.FindAsync(c.Id)!);
+        var target = await db.Categories.FindAsync(c.Id);
+        if (target is null) return;
+        db.Categories.Remove(target);
         await db.SaveChangesAsync();
         await Reload();
     }

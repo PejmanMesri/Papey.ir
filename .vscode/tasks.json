@@ -1,0 +1,10 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "publish-check",
+			"type": "shell",
+			"command": "cd C:\\Users\\TECCAF\\source\\repos\\Papey && dotnet publish -c Release -o ./test-publish && dir .\\test-publish\\wwwroot\\_framework\\"
+		}
+	]
+}

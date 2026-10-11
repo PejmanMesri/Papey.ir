@@ -1,0 +1,110 @@
+@page "/account"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject AuthService Auth
+
+<PageTitle>پیشخوان حساب کاربری | پاپی</PageTitle>
+
+<div class="account-shell">
+    <AccountSidebar />
+
+    <div class="account-content">
+        <div class="account-hero">
+            <div>
+                <h1>سلام، <strong>@_displayName</strong> 👋</h1>
+                <p>از پیشخوان حساب کاربری‌تان می‌توانید <a href="/account/orders">سفارش‌های اخیر</a> را مشاهده، <a href="/account/addresses">نشانی‌های خود</a> را مدیریت و <a href="/account/profile">جزئیات حساب و رمز عبور</a> را ویرایش کنید.</p>
+            </div>
+        </div>
+
+        <div class="account-stat-grid">
+            <a href="/account/orders" class="account-stat">
+                <span class="account-stat-num">@PersianHelpers.ToPersianDigits(_totalOrders.ToString())</span>
+                <span class="account-stat-lbl">کل سفارش‌ها</span>
+            </a>
+            <div class="account-stat">
+                <span class="account-stat-num" style="color:#f57f17">@PersianHelpers.ToPersianDigits(_activeOrders.ToString())</span>
+                <span class="account-stat-lbl">سفارش‌های در جریان</span>
+            </div>
+            <div class="account-stat">
+                <span class="account-stat-num" style="color:var(--papey-success)">@PersianHelpers.ToPersianDigits(_deliveredOrders.ToString())</span>
+                <span class="account-stat-lbl">تحویل‌شده</span>
+            </div>
+            <a href="/account/addresses" class="account-stat">
+                <span class="account-stat-num" style="color:var(--papey-accent-dark)">@PersianHelpers.ToPersianDigits(_addressCount.ToString())</span>
+                <span class="account-stat-lbl">نشانی‌های ثبت‌شده</span>
+            </a>
+        </div>
+
+        <h3 class="account-section-h">دسترسی سریع</h3>
+        <div class="account-quick-grid">
+            <a href="/account/orders" class="account-quick">
+                <span class="account-quick-ico">🧾</span>
+                <span class="account-quick-lbl">سفارش‌ها</span>
+            </a>
+            <a href="/account/favorites" class="account-quick">
+                <span class="account-quick-ico">♡</span>
+                <span class="account-quick-lbl">علاقه‌مندی‌ها</span>
+            </a>
+            <a href="/account/addresses" class="account-quick">
+                <span class="account-quick-ico">📍</span>
+                <span class="account-quick-lbl">نشانی‌ها</span>
+            </a>
+            <a href="/account/profile" class="account-quick">
+                <span class="account-quick-ico">👤</span>
+                <span class="account-quick-lbl">جزئیات حساب</span>
+            </a>
+            <a href="/cart" class="account-quick">
+                <span class="account-quick-ico">🛒</span>
+                <span class="account-quick-lbl">سبد خرید</span>
+            </a>
+            <a href="/size-guide" class="account-quick">
+                <span class="account-quick-ico">📏</span>
+                <span class="account-quick-lbl">راهنمای سایز</span>
+            </a>
+            <a href="/logout" class="account-quick logout">
+                <span class="account-quick-ico">🚪</span>
+                <span class="account-quick-lbl">خروج</span>
+            </a>
+        </div>
+
+        @if (_lastOrder is not null)
+        {
+            <h3 class="account-section-h">آخرین سفارش</h3>
+            <a href="/account/orders" class="account-last-order">
+                <div class="alo-main">
+                    <strong>سفارش @PersianHelpers.ToPersianDigits(_lastOrder.OrderNumber)</strong>
+                    <span class="alo-date">@PersianHelpers.ToPersianDigits(_lastOrder.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd"))</span>
+                </div>
+                <span class="status-chip status-@_lastOrder.Status">@PersianHelpers.StatusLabel(_lastOrder.Status)</span>
+                <div class="alo-total">@_lastOrder.GrandTotal.ToToman()</div>
+            </a>
+        }
+    </div>
+</div>
+
+@code {
+    private string _displayName = "کاربر";
+    private int _totalOrders, _activeOrders, _deliveredOrders, _addressCount;
+    private Order? _lastOrder;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.CurrentUserId is not { } uid) return;
+
+        var user = await Auth.GetUserByIdAsync(uid);
+        if (user is not null)
+            _displayName = !string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : user.Username;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var orders = await db.Orders.Where(o => o.UserId == uid)
+            .OrderByDescending(o => o.CreatedAt).ToListAsync();
+
+        _totalOrders = orders.Count;
+        _deliveredOrders = orders.Count(o => o.Status == Models.OrderStatus.Delivered);
+        _activeOrders = orders.Count(o => o.Status is Models.OrderStatus.Pending or Models.OrderStatus.Paid
+            or Models.OrderStatus.Processing or Models.OrderStatus.Shipped);
+        _lastOrder = orders.FirstOrDefault();
+        _addressCount = await db.Addresses.CountAsync(a => a.UserId == uid);
+    }
+}

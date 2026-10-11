@@ -19,6 +19,19 @@ public static class PersianHelpers
         return sb.ToString();
     }
 
+    /// <summary>Converts Persian (۰-۹) and Arabic (٠-٩) digits to Latin (0-9) — for search matching.</summary>
+    public static string ToEnglishDigits(string input)
+    {
+        var sb = new StringBuilder(input.Length);
+        foreach (var c in input)
+        {
+            if (c is >= '۰' and <= '۹') sb.Append((char)('0' + (c - '۰')));
+            else if (c is >= '٠' and <= '٩') sb.Append((char)('0' + (c - '٠')));
+            else sb.Append(c);
+        }
+        return sb.ToString();
+    }
+
     public static string StatusLabel(Models.OrderStatus status) => status switch
     {
         Models.OrderStatus.Pending => "در انتظار پرداخت",
