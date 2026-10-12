@@ -40,7 +40,8 @@
                         </a>
                         <button class="favorite-button is-favorite" type="button"
                                 title="حذف از علاقه‌مندی‌ها" aria-label="حذف @product.Name از علاقه‌مندی‌ها"
-                                @onclick="() => RemoveAsync(product.Id)">♥</button>
+                                aria-pressed="true"
+                                @onclick="() => RemoveAsync(product.Id)"><FavoriteIcon /></button>
                         <div class="info">
                             <h3><a href="/product/@product.Slug">@product.Name</a></h3>
                             <div class="price-row">

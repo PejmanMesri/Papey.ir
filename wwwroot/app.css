@@ -111,11 +111,14 @@ img { max-width: 100%; }
 .product-card .img-wrap img { width: 100%; height: 100%; object-fit: cover; }
 .badge-new, .badge-sale { position: absolute; top: 12px; z-index: 2; font-size: 0.7rem; font-weight: 700; padding: 4px 10px; border-radius: 12px; color: #fff; }
 .badge-new { background: var(--papey-dark); right: 12px; }
-.badge-sale { background: var(--papey-danger); left: 12px; }
-.favorite-button { position: absolute; top: 12px; left: 12px; z-index: 3; width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255,255,255,0.94); color: var(--papey-dark); box-shadow: 0 3px 12px rgba(0,0,0,0.16); cursor: pointer; font-family: inherit; font-size: 1.45rem; line-height: 1; transition: transform .15s ease, color .15s ease, background .15s ease; }
-.badge-sale ~ .favorite-button { top: 52px; }
-.favorite-button:hover { transform: scale(1.08); background: #fff; }
-.favorite-button.is-favorite { color: #c62828; }
+.badge-sale { background: var(--papey-danger); right: 12px; }
+.badge-new + .badge-sale { top: 42px; }
+.favorite-button { position: absolute; top: 10px; left: 10px; z-index: 3; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 1px solid rgba(38,34,28,.10); border-radius: 50%; background: #fff; color: #52483e; box-shadow: 0 2px 8px rgba(38,34,28,.09); cursor: pointer; transition: color .15s ease, background .15s ease, box-shadow .15s ease; }
+.favorite-button .favorite-icon { display: block; width: 21px; height: 21px; flex-shrink: 0; }
+.favorite-button:hover { color: #b53245; background: #fff6f7; box-shadow: 0 3px 10px rgba(38,34,28,.13); }
+.favorite-button:focus-visible { outline: 3px solid var(--papey-accent-dark); outline-offset: 3px; }
+.favorite-button.is-favorite { color: #b53245; background: #fff1f3; border-color: #efccd2; }
+.favorite-button.is-favorite .favorite-icon { fill: currentColor; }
 .product-card .info { padding: 14px; }
 .product-card .info h3 { font-size: 0.95rem; font-weight: 600; margin: 0 0 8px; min-height: 2.4em; }
 .price-row { display: flex; align-items: baseline; gap: 8px; }
