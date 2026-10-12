@@ -71,9 +71,9 @@ else
             <div>
                 @foreach (var c in _colors)
                 {
-                    <span class="color-dot @(_selectedColor == c.Name ? "selected" : "")"
-                          style="background:@c.Hex" title="@c.Name"
-                          @onclick="() => SelectColor(c.Name)"></span>
+                    <button type="button" class="color-dot @(_selectedColor == c.Name ? "selected" : "")"
+                          style="background:@c.Hex" title="@c.Name" aria-label="@c.Name" aria-pressed="@(_selectedColor == c.Name)"
+                          @onclick="() => SelectColor(c.Name)"></button>
                 }
             </div>
             <div class="color-name">@_selectedColor</div>
@@ -84,8 +84,9 @@ else
                 {
                     var size = s;
                     var inStock = HasStock(_selectedColor!, size);
-                    <span class="size-chip @(_selectedSize == size ? "selected" : "") @(!inStock ? "out" : "")"
-                          @onclick="() => SelectSize(size, inStock)">@size</span>
+                    <button type="button" class="size-chip @(_selectedSize == size ? "selected" : "") @(!inStock ? "out" : "")"
+                          disabled="@(!inStock)" aria-pressed="@(_selectedSize == size)" aria-label="سایز @size"
+                          @onclick="() => SelectSize(size, inStock)">@size</button>
                 }
             </div>
 

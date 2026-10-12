@@ -1,5 +1,7 @@
 # پاپی | Papey — فروشگاه تیشرت (Blazor + .NET 10)
 
+Desktop printing integration: [PRINTING_API.md](PRINTING_API.md) — paid-order queue, SignalR notifications, receipt URLs, and client protocol.
+
 فروشگاه اینترنتی تیشرت **پاپی** (Papey.ir) با Blazor Server روی .NET 10، مشابه tshock.ir
 
 ## امکانات

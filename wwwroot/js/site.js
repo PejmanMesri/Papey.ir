@@ -4,6 +4,19 @@
 (function () {
     'use strict';
 
+    document.addEventListener('click', function (event) {
+        document.querySelectorAll('details[data-navigation-menu][open]').forEach(function (menu) {
+            if (!menu.contains(event.target) || event.target.closest('a[href]')) menu.open = false;
+        });
+    });
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') return;
+        document.querySelectorAll('details[data-navigation-menu][open]').forEach(function (menu) {
+            menu.open = false;
+            menu.querySelector('summary').focus();
+        });
+    });
+
     window.papey = window.papey || {};
     window.papey.openOrderInvoiceOnce = function (orderId, url) {
         try {

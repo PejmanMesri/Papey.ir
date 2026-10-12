@@ -31,7 +31,7 @@ public sealed class OrderPrintQueue(IDbContextFactory<AppDbContext> dbFactory)
             WHERE j."PrintedAt" IS NULL AND j."AvailableAt" <= {now}
               AND (j."LeaseExpiresAt" IS NULL OR j."LeaseExpiresAt" <= {now})
               AND o."PaidAt" IS NOT NULL
-              AND o."Status" IN ({OrderStatus.Paid}, {OrderStatus.Processing}, {OrderStatus.Shipped}, {OrderStatus.Delivered})
+              AND o."Status" IN ({(int)OrderStatus.Paid}, {(int)OrderStatus.Processing}, {(int)OrderStatus.Shipped}, {(int)OrderStatus.Delivered})
             ORDER BY j."CreatedAt", j."Id"
             LIMIT 1 FOR UPDATE OF j SKIP LOCKED
             """).ToListAsync(ct);

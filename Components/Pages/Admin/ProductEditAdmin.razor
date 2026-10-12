@@ -17,7 +17,7 @@ else
 {
     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap">
         <h1 style="margin:0">✏️ ویرایش: @_product.Name</h1>
-        <div style="display:flex; align-items:center; gap:8px">
+        <div style="display:flex; align-items:center; flex-wrap:wrap; gap:8px">
             <a class="btn-papey btn-outline" href="/admin/products">→ بازگشت به لیست</a>
             <button class="btn-papey" @onclick="SaveInfo">💾 ذخیره اطلاعات</button>
         </div>
@@ -25,7 +25,7 @@ else
 
     <div class="card-box" style="margin-bottom:24px">
         <h4 style="margin-top:0">اطلاعات اصلی</h4>
-        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px">
+        <div class="admin-form-grid">
             <div><input class="form-input" placeholder="نام محصول *" @bind="_product.Name" /></div>
             <div><input class="form-input" type="number" placeholder="قیمت (تومان)" @bind="_product.Price" /></div>
             <div><input class="form-input" type="number" placeholder="قیمت قبل از تخفیف" @bind="_product.OldPrice" /></div>
@@ -36,7 +36,7 @@ else
                     @foreach (var t in _types) { <option value="@t.Id">@t.Name</option> }
                 </select>
             </div>
-            <div style="display:flex; gap:16px; align-items:end">
+            <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:end">
                 <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem"><input type="checkbox" @bind="_product.IsNew" /> جدید</label>
                 <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem"><input type="checkbox" @bind="_product.IsFeatured" /> محبوب</label>
                 <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem"><input type="checkbox" @bind="_product.IsActive" /> فعال</label>

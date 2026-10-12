@@ -14,20 +14,20 @@
         <div><label class="form-label">آیکن فیلتر</label><input class="form-input" @bind="_newIcon" maxlength="64" placeholder="مثلاً 👕" /></div>
         <button class="btn-papey" @onclick="Add">➕ افزودن</button>
     </div>
-    <table class="table-papey">
+    <table class="table-papey mobile-card-table">
         <thead><tr><th>نام</th><th>آیکن فیلتر</th><th>محصولات</th><th>ترتیب</th><th>وضعیت</th><th></th></tr></thead>
         <tbody>
             @foreach (var t in _types)
             {
                 <tr>
-                    <td>
+                    <td data-label="نام">
                         @if (_editId == t.Id)
                         {
                             <input class="form-input" style="width:110px" @bind="_editName" />
                         }
                         else { <strong>@t.Name</strong> }
                     </td>
-                    <td>
+                    <td data-label="آیکن فیلتر">
                         @if (_editId == t.Id)
                         {
                             <input class="form-input" style="width:90px" maxlength="64" @bind="_editIcon" />
@@ -37,17 +37,17 @@
                             <span style="font-size:1.35rem">@(string.IsNullOrWhiteSpace(t.FilterIcon) ? "—" : t.FilterIcon)</span>
                         }
                     </td>
-                    <td>@PersianHelpers.ToPersianDigits(_productCounts.GetValueOrDefault(t.Id, 0).ToString())</td>
-                    <td>
+                    <td data-label="محصولات">@PersianHelpers.ToPersianDigits(_productCounts.GetValueOrDefault(t.Id, 0).ToString())</td>
+                    <td data-label="ترتیب">
                         <button class="btn-papey btn-sm btn-outline" @onclick="() => Move(t, -1)">↑</button>
                         <button class="btn-papey btn-sm btn-outline" @onclick="() => Move(t, 1)">↓</button>
                     </td>
-                    <td>
+                    <td data-label="وضعیت">
                         <button class="btn-papey btn-sm @(t.IsActive ? "btn-outline" : "btn-danger-papey")" @onclick="() => Toggle(t)">
                             @(t.IsActive ? "فعال" : "غیرفعال")
                         </button>
                     </td>
-                    <td>
+                    <td data-label="عملیات">
                         @if (_editId == t.Id)
                         {
                             <button class="btn-papey btn-sm" @onclick="() => SaveEdit(t)">✓</button>

@@ -127,6 +127,7 @@ else
     [SupplyParameterFromQuery(Name = "autoPrint")] public bool AutoPrint { get; set; } = true;
 
     private Order? _order;
+    private int? _autoPrintedOrderId;
     private static readonly PersianCalendar Pc = new();
 
     protected override async Task OnParametersSetAsync()
@@ -138,8 +139,9 @@ else
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         // Open the print dialog automatically so one click = print
-        if (firstRender && _order is not null && AutoPrint)
+        if (_order is not null && AutoPrint && _autoPrintedOrderId != _order.Id)
         {
+            _autoPrintedOrderId = _order.Id;
             await Task.Delay(400);
             await JS.InvokeVoidAsync("print");
         }

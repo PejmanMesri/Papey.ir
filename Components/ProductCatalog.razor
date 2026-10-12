@@ -26,6 +26,8 @@
 
     <div class="catalog-layout">
         <aside class="catalog-filters" aria-label="فیلتر محصولات">
+            <button type="button" class="catalog-filter-toggle" aria-expanded="@_filtersOpen" @onclick="() => _filtersOpen = !_filtersOpen">☷ فیلتر محصولات <span>@(_filtersOpen ? "بستن −" : "باز کردن +")</span></button>
+            <div class="catalog-filter-body @(_filtersOpen ? "is-open" : "")">
             <div class="catalog-filter-head">
                 <h2>فیلترها</h2>
                 <button type="button" class="filter-reset" @onclick="ClearFilters">پاک کردن</button>
@@ -69,6 +71,7 @@
                 </div>
             </div>
 
+            </div>
         </aside>
 
         <section class="catalog-results">
@@ -91,6 +94,7 @@
 </div>
 
 @code {
+    private bool _filtersOpen;
     [Parameter] public string? CategorySlug { get; set; }
     [Parameter] public int? ProductTypeId { get; set; }
 

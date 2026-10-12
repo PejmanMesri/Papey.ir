@@ -17,7 +17,7 @@
 
 <div class="card-box" style="margin-bottom:20px">
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; align-items:end">
-        <div style="grid-column:span 2">
+        <div style="grid-column:1 / -1">
             <label class="form-label">🔍 جستجو</label>
             <input class="form-input" placeholder="شماره سفارش، نام مشتری، تلفن، کد پیگیری، نام کاربری..." @bind="_search" @bind:event="oninput" />
         </div>
@@ -49,7 +49,7 @@
     </div>
 </div>
 
-<table class="table-papey">
+<table class="table-papey mobile-card-table">
     <thead>
         <tr><th>شماره سفارش</th><th>مشتری</th><th>اقلام</th><th>مبلغ</th><th>وضعیت</th><th>کد پیگیری</th><th>تاریخ</th><th></th></tr>
     </thead>
@@ -57,11 +57,11 @@
         @foreach (var o in Filtered)
         {
             <tr class="row-@o.Status">
-                <td><strong>@o.OrderNumber</strong></td>
-                <td>@o.CustomerName<br /><small style="color:var(--papey-muted)">@o.CustomerPhone</small></td>
-                <td><small>@string.Join("، ", o.Items.Select(i => $"{i.ProductName} ×{PersianHelpers.ToPersianDigits(i.Quantity.ToString())}"))</small></td>
-                <td>@o.GrandTotal.ToToman()</td>
-                <td>
+                <td data-label="شماره سفارش"><strong>@o.OrderNumber</strong></td>
+                <td data-label="مشتری">@o.CustomerName<br /><small style="color:var(--papey-muted)">@o.CustomerPhone</small></td>
+                <td data-label="اقلام"><small>@string.Join("، ", o.Items.Select(i => $"{i.ProductName} ×{PersianHelpers.ToPersianDigits(i.Quantity.ToString())}"))</small></td>
+                <td data-label="مبلغ">@o.GrandTotal.ToToman()</td>
+                <td data-label="وضعیت">
                     @if (o.Status is OrderStatus.Pending or OrderStatus.PaymentFailed)
                     {
                         <span class="status-chip status-@o.Status" title="این وضعیت به‌صورت خودکار توسط درگاه تعیین می‌شود">
@@ -79,9 +79,9 @@
                         </select>
                     }
                 </td>
-                <td><small>@PersianHelpers.ToPersianDigits(o.PaymentRefId ?? "—")</small></td>
-                <td>@PersianHelpers.ToPersianDigits(o.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))</td>
-                <td>
+                <td data-label="کد پیگیری"><small>@PersianHelpers.ToPersianDigits(o.PaymentRefId ?? "—")</small></td>
+                <td data-label="تاریخ">@PersianHelpers.ToPersianDigits(o.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))</td>
+                <td data-label="عملیات">
                     <div style="display:flex; gap:4px">
                         <button class="btn-papey btn-sm btn-outline" @onclick="() => ToggleDetail(o.Id)">
                             @(_expandedId == o.Id ? "▲ بستن" : "🔍 جزئیات")
@@ -95,12 +95,12 @@
                 <tr>
                     <td colspan="8" style="padding:0">
                         <div class="card-box" style="margin:8px; border-radius:0">
-                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:24px">
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap:24px">
                                 <div>
                                     <h4 style="margin-top:0">👤 مشخصات مشتری</h4>
                                     @foreach (var (label, value) in CustomerRows(o))
                                     {
-                                        <div style="display:flex; gap:8px; padding:4px 0; font-size:0.9rem">
+                                        <div class="order-detail-field">
                                             <span style="color:var(--papey-muted); min-width:130px">@label:</span>
                                             <span style="font-weight:600">@value</span>
                                         </div>
@@ -112,7 +112,7 @@
                                     {
                                         @foreach (var (label, value) in AccountRows(o))
                                         {
-                                            <div style="display:flex; gap:8px; padding:4px 0; font-size:0.9rem">
+                                            <div class="order-detail-field">
                                                 <span style="color:var(--papey-muted); min-width:130px">@label:</span>
                                                 <span style="font-weight:600">@value</span>
                                             </div>
@@ -125,7 +125,7 @@
                                     <h4>💳 پرداخت</h4>
                                     @foreach (var (label, value) in PaymentRows(o))
                                     {
-                                        <div style="display:flex; gap:8px; padding:4px 0; font-size:0.9rem">
+                                        <div class="order-detail-field">
                                             <span style="color:var(--papey-muted); min-width:130px">@label:</span>
                                             <span style="font-weight:600">@value</span>
                                         </div>
@@ -134,7 +134,7 @@
                             </div>
                             <h4>🛒 اقلام سفارش</h4>
                             <div style="overflow-x:auto">
-                                <table class="table-papey">
+                                <table class="table-papey mobile-card-table">
                                     <thead>
                                         <tr><th>محصول</th><th>رنگ</th><th>سایز</th><th>قیمت واحد</th><th>تعداد</th><th>جمع</th></tr>
                                     </thead>
@@ -142,12 +142,12 @@
                                         @foreach (var i in o.Items)
                                         {
                                             <tr>
-                                                <td>@i.ProductName</td>
-                                                <td>@i.Color</td>
-                                                <td>@i.Size</td>
-                                                <td>@i.UnitPrice.ToToman()</td>
-                                                <td>@Fa(i.Quantity)</td>
-                                                <td><strong>@i.LineTotal.ToToman()</strong></td>
+                                                <td data-label="محصول">@i.ProductName</td>
+                                                <td data-label="رنگ">@i.Color</td>
+                                                <td data-label="سایز">@i.Size</td>
+                                                <td data-label="قیمت واحد">@i.UnitPrice.ToToman()</td>
+                                                <td data-label="تعداد">@Fa(i.Quantity)</td>
+                                                <td data-label="جمع"><strong>@i.LineTotal.ToToman()</strong></td>
                                             </tr>
                                         }
                                     </tbody>

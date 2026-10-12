@@ -9,13 +9,15 @@
 
 <PageTitle>محصولات | پنل مدیریت پاپی</PageTitle>
 
-<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px">
+<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:24px">
     <h1 style="margin:0">👕 محصولات</h1>
     <button class="btn-papey" @onclick="AddProduct">➕ افزودن محصول جدید</button>
 </div>
 @if (_msg is not null) { <div class="alert-papey alert-info">@_msg</div> }
 
 <div class="card-box" style="margin-bottom:20px">
+    <button type="button" class="catalog-filter-toggle" aria-expanded="@_filtersOpen" @onclick="() => _filtersOpen = !_filtersOpen">☷ جستجو و فیلتر محصولات <span>@(_filtersOpen ? "بستن −" : "باز کردن +")</span></button>
+    <div class="admin-filter-body @(_filtersOpen ? "is-open" : "")">
     <div class="admin-product-filters">
         <div>
             <label class="form-label" for="product-search">جستجو</label>
@@ -84,31 +86,32 @@
         </div>
         <button class="btn-papey btn-outline" @onclick="ClearFilters">پاک کردن فیلترها</button>
     </div>
+    </div>
     <p style="font-size:0.85rem; color:var(--papey-muted); margin-bottom:0" aria-live="polite">
         نمایش @PersianHelpers.ToPersianDigits(FilteredProducts.Count.ToString()) از @PersianHelpers.ToPersianDigits(_products.Count.ToString()) محصول
     </p>
 </div>
 
 <div style="overflow-x:auto">
-<table class="table-papey">
+<table class="table-papey mobile-card-table">
     <thead><tr><th>تصویر</th><th>نام</th><th>نوع</th><th>دسته</th><th>قیمت</th><th>موجودی</th><th>فایل طرح</th><th>وضعیت</th><th>تاریخ ثبت</th><th></th></tr></thead>
     <tbody>
         @foreach (var p in FilteredProducts)
         {
             <tr>
-                <td><img src="@(p.Media.OrderBy(m => m.DisplayOrder).FirstOrDefault()?.Url ?? p.ImageUrl)" style="width:48px; height:48px; object-fit:cover; border-radius:8px" /></td>
-                <td><strong>@p.Name</strong></td>
-                <td>@(p.ProductType?.Name ?? "—")</td>
-                <td>
+                <td data-label="تصویر"><img src="@(p.Media.OrderBy(m => m.DisplayOrder).FirstOrDefault()?.Url ?? p.ImageUrl)" style="width:48px; height:48px; object-fit:cover; border-radius:8px" /></td>
+                <td data-label="نام"><strong>@p.Name</strong></td>
+                <td data-label="نوع">@(p.ProductType?.Name ?? "—")</td>
+                <td data-label="دسته">
                     @p.Category.Name
                     @foreach (var extra in p.ProductCategories.Select(pc => pc.Category).Where(c => c.Id != p.CategoryId))
                     {
                         <span class="status-chip status-Processing" style="margin-right:4px">@extra.Name</span>
                     }
                 </td>
-                <td>@p.Price.ToToman()</td>
-                <td>@PersianHelpers.ToPersianDigits(p.Variants.Sum(v => v.Stock).ToString())</td>
-                <td>
+                <td data-label="قیمت">@p.Price.ToToman()</td>
+                <td data-label="موجودی">@PersianHelpers.ToPersianDigits(p.Variants.Sum(v => v.Stock).ToString())</td>
+                <td data-label="فایل طرح">
                     @if (p.DesignMedia.Count > 0)
                     {
                         <a class="btn-papey btn-sm btn-outline" href="/admin/products/@p.Id/designs.zip">ZIP (@PersianHelpers.ToPersianDigits(p.DesignMedia.Count.ToString()))</a>
@@ -118,13 +121,13 @@
                         <span>—</span>
                     }
                 </td>
-                <td>
+                <td data-label="وضعیت">
                     <button class="btn-papey btn-sm @(p.IsActive ? "btn-outline" : "btn-danger-papey")" @onclick="() => ToggleActive(p)">
                         @(p.IsActive ? "فعال" : "غیرفعال")
                     </button>
                 </td>
-                <td><time datetime="@p.CreatedAt.ToString("O")">@PersianHelpers.ToPersianDigits(p.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))</time></td>
-                <td>
+                <td data-label="تاریخ ثبت"><time datetime="@p.CreatedAt.ToString("O")">@PersianHelpers.ToPersianDigits(p.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))</time></td>
+                <td data-label="عملیات">
                     <a class="btn-papey btn-sm" href="/admin/products/@p.Id">✏️ ویرایش</a>
                     <button class="btn-papey btn-sm btn-danger-papey" @onclick="() => Delete(p)">🗑</button>
                 </td>
@@ -139,6 +142,7 @@
 </div>
 
 @code {
+    private bool _filtersOpen;
     private List<Product> _products = new();
     private List<Category> _categories = new();
     private List<ProductTypeEntity> _types = new();
