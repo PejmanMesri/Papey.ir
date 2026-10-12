@@ -18,9 +18,9 @@
 }
 else
 {
-    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:24px; margin-bottom:48px">
+    <div class="checkout-layout">
         <div>
-            <table class="table-papey">
+            <table class="table-papey mobile-card-table">
                 <thead>
                     <tr><th>محصول</th><th>قیمت واحد</th><th>تعداد</th><th>جمع</th><th></th></tr>
                 </thead>
@@ -28,7 +28,7 @@ else
                     @foreach (var item in Cart.Items)
                     {
                         <tr>
-                            <td>
+                            <td data-label="محصول">
                                 <div style="display:flex; gap:12px; align-items:center">
                                     <img src="@item.ImageUrl" style="width:60px; height:60px; border-radius:8px; object-fit:cover" />
                                     <div>
@@ -40,16 +40,16 @@ else
                                     </div>
                                 </div>
                             </td>
-                            <td>@item.UnitPrice.ToToman()</td>
-                            <td>
+                            <td data-label="قیمت واحد">@item.UnitPrice.ToToman()</td>
+                            <td data-label="تعداد">
                                 <div class="qty-box" style="margin:0">
                                     <button @onclick="() => Cart.SetQuantity(item.ProductVariantId, item.Quantity + 1)">+</button>
                                     <span>@PersianHelpers.ToPersianDigits(item.Quantity.ToString())</span>
                                     <button @onclick="() => Cart.SetQuantity(item.ProductVariantId, item.Quantity - 1)">−</button>
                                 </div>
                             </td>
-                            <td><strong>@item.LineTotal.ToToman()</strong></td>
-                            <td><button class="btn-papey btn-danger-papey btn-sm" @onclick="() => Cart.Remove(item.ProductVariantId)">✕</button></td>
+                            <td data-label="جمع"><strong>@item.LineTotal.ToToman()</strong></td>
+                            <td data-label="عملیات"><button class="btn-papey btn-danger-papey btn-sm" @onclick="() => Cart.Remove(item.ProductVariantId)">✕</button></td>
                         </tr>
                     }
                 </tbody>

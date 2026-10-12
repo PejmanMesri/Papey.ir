@@ -5,6 +5,19 @@ Docker web service and a free PostgreSQL 17 database in Frankfurt. Deploy the
 Blueprint from the deployment branch in the private GitHub repository.
 No paid service, persistent disk, or payment method is required by this configuration.
 
+## Current deployment (2026-10-11)
+
+- Address: https://papey-store.onrender.com
+- Render status: Live, commit `31b622c11147f6ba03421db185690709b1f9ce39`.
+- Branch: `codex/free-hosting-20261011`.
+- Both resources use the free plan. Database expiry: **2026-11-10**.
+- Render's container build, database startup, and deployment health check passed.
+  Local deployment checks and Release publish passed before deployment.
+- Public storefront verification is blocked on this computer: DNS resolves the
+  address to private IP `10.10.34.36`, and HTTPS connections are refused.
+  VPN-free access on this network is unavailable; storefront/cart browser checks
+  could not be completed. No system network settings were changed.
+
 ## Important plan limits
 
 - This is a temporary test deployment. Render's free Postgres database expires
@@ -16,8 +29,8 @@ No paid service, persistent disk, or payment method is required by this configur
   storage and are lost when the service restarts, redeploys, or sleeps. Existing
   media included in the source remains available. Login cookies and in-memory
   carts may be invalidated on restart. Use durable storage before live sales.
-- Render supplies an HTTPS `onrender.com` address. VPN-free access from Iran
-  has not been verified; this can vary by ISP and network conditions.
+- Render supplies an HTTPS `onrender.com` address. This computer's network cannot
+  reach the address; access from other Iranian ISPs remains unverified.
 - Liara was checked on 2026-10-11: the signed-in account showed paid .NET/Docker
   plans, zero credit, and a provider subdomain limited to seven days. No Liara
   service was created.

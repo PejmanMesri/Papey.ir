@@ -1,61 +1,57 @@
 @page "/"
 @inject IDbContextFactory<AppDbContext> DbFactory
-
-<PageTitle>پاپی | فروشگاه تیشرت‌های خاص</PageTitle>
-
-<section class="hero">
-    <div>
-        <h1>تیشرت و هودی با طرح‌های خاص</h1>
-        <p>از انیمه و گیم تا هنر و موسیقی؛ طرح مورد علاقه‌ات را با بهترین کیفیت پارچه و چاپ انتخاب کن.</p>
-        <a class="btn-hero" href="/products">مشاهده محصولات</a>
+<PageTitle>پاپی | تیشرت و هودی با طرح‌های خاص</PageTitle>
+<section class="home-hero">
+    <div class="home-hero-copy">
+        <span class="home-eyebrow">پاپی • برای سلیقه‌ی تو</span>
+        <h1>طرح تو.<br /><span>استایل تو.</span></h1>
+        <p>از انیمه و گیم تا هنر و موسیقی؛ تیشرت و هودی‌ای پیدا کن که از علاقه‌های تو حرف می‌زند.</p>
+        <div class="home-hero-actions"><a class="btn-papey" href="/products">پیدا کردن طرح من ←</a><a class="home-guide-link" href="/size-guide">راهنمای انتخاب سایز</a></div>
     </div>
-    <div class="hero-art">👕</div>
+    <div class="home-hero-gallery">
+        @foreach (var product in _newProducts.Take(2))
+        {
+            <a class="home-hero-product" href="/product/@product.Slug"><img src="@product.ImageUrl" alt="@product.Name" fetchpriority="high" /><span>@product.Name <span aria-hidden="true">↗</span></span></a>
+        }
+        @if (_newProducts.Count == 0) { <div class="home-hero-empty">پاپی<span>طرح‌های خاص برای روزهای تو</span></div> }
+    </div>
 </section>
-
-<div class="section-title"><h2>انواع محصول</h2></div>
-<div class="cat-row">
-    @foreach (var type in _types)
-    {
-        <a class="cat-circle" href="/products?type=@type.Id">
-            <div class="circle">@ProductTypeIcon(type)</div>
-            <div class="name">@type.Name</div>
-        </a>
-    }
-</div>
-
-<div class="section-title"><h2>جدیدترین محصولات</h2></div>
-<ProductGrid Products="_newProducts" />
-
-<div class="section-title"><h2>محبوب‌ترین‌ها</h2></div>
-<ProductGrid Products="_featured" />
-
-<div class="section-title"><h2>سوالات پرتکرار</h2></div>
-<div style="max-width:800px; margin: 0 auto 40px">
-    <details class="faq-item"><summary>کیفیت پارچه‌ها چطوره؟</summary><div class="faq-body">تمام تیشرت‌های پاپی از نخ‌پنبه ۱۰۰٪ با گرماژ بالا تولید می‌شوند و پس از شست‌وشو تغییر فرم نمی‌دهند.</div></details>
-    <details class="faq-item"><summary>کیفیت طراحی روی لباس چطوره؟</summary><div class="faq-body">چاپ‌ها با دستگاه‌های دیجیتال و سیلک با رنگ‌های درجه‌یک انجام می‌شود و تا سال‌ها بدون ترک و رنگ‌رفتگی می‌ماند.</div></details>
-    <details class="faq-item"><summary>ارسال سفارش‌ها چقدر طول می‌کشه؟</summary><div class="faq-body">سفارش‌ها ظرف ۱ تا ۳ روز کاری پردازش و با پست پیشتاز ارسال می‌شوند. تهران ۱-۲ روز، سایر شهرها ۳-۵ روز کاری.</div></details>
-    <details class="faq-item"><summary>چطور هزینه سفارش را پرداخت کنم؟</summary><div class="faq-body">پرداخت از طریق درگاه امن زرین‌پال با تمام کارت‌های شتاب انجام می‌شود.</div></details>
-    <details class="faq-item"><summary>آیا برای خرید لازم است ثبت‌نام کنم؟</summary><div class="faq-body">خیر، می‌توانید بدون ثبت‌نام خرید کنید. اما با ثبت‌نام آدرس‌های شما ذخیره شده و خریدهای بعدی سریع‌تر انجام می‌شود.</div></details>
-</div>
-
+<section class="home-category-section" aria-label="انتخاب مدل لباس">
+    <div class="home-section-heading"><div><span class="home-eyebrow">از اینجا شروع کن</span><h2>کدام مدل برای توست؟</h2></div></div>
+    <div class="home-categories">
+        @foreach (var type in _types)
+        {
+            <a class="home-category" href="/products?type=@type.Id"><span class="home-category-icon" aria-hidden="true">@ProductTypeIcon(type)</span><div><h3>@type.Name</h3><span>دیدن همه طرح‌ها ←</span></div></a>
+        }
+    </div>
+</section>
+<section class="home-products-section">
+    <div class="home-section-heading"><div><span class="home-eyebrow">تازه رسیده</span><h2>جدیدترین طرح‌ها</h2></div><a href="/products">همه محصولات ←</a></div>
+    <ProductGrid Products="_newProducts" />
+</section>
+@if (_featured.Count > 0)
+{
+    <section class="home-products-section"><div class="home-section-heading"><div><span class="home-eyebrow">انتخاب‌های پاپی</span><h2>طرح‌های منتخب</h2></div><a href="/products">گشتن در فروشگاه ←</a></div><ProductGrid Products="_featured" /></section>
+}
+<section class="home-help">
+    <div><span class="home-eyebrow">با خیال راحت انتخاب کن</span><h2>برای خرید کمک می‌خواهی؟</h2><p>سایزت را پیدا کن یا برای انتخاب طرح با ما در ارتباط باش.</p><a class="btn-papey btn-outline" href="/contact">ارتباط با پاپی</a></div>
+    <div>
+        <details class="faq-item"><summary>چطور سایز مناسب را انتخاب کنم؟</summary><div class="faq-body">اندازه‌های لباس را با <a href="/size-guide">جدول راهنمای سایز</a> مقایسه کن؛ سپس رنگ و سایز را در صفحه محصول انتخاب کن.</div></details>
+        <details class="faq-item"><summary>سفارش چطور ارسال می‌شود؟</summary><div class="faq-body">ارسال با تیپاکس انجام می‌شود و هزینه ارسال هنگام تحویل از گیرنده دریافت می‌شود. آماده‌سازی سفارش ۷ تا ۱۰ روز کاری زمان می‌برد.</div></details>
+        <details class="faq-item"><summary>چطور خرید و سفارشم را پیگیری کنم؟</summary><div class="faq-body">وارد حساب شو، محصولات را به سبد اضافه کن و پس از ثبت نشانی، پرداخت را انجام بده. وضعیت خرید در بخش <a href="/account/orders">سفارش‌های من</a> نمایش داده می‌شود.</div></details>
+    </div>
+</section>
 @code {
     private List<ProductTypeEntity> _types = new();
     private List<Product> _newProducts = new();
     private List<Product> _featured = new();
-
     protected override async Task OnInitializedAsync()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
-        _types = await db.ProductTypes
-            .Where(type => type.IsActive)
-            .OrderBy(type => type.DisplayOrder)
-            .ToListAsync();
-        _newProducts = await db.Products.Where(p => p.IsActive && p.IsNew).Take(8).ToListAsync();
-        _featured = await db.Products.Where(p => p.IsActive && p.IsFeatured).Take(8).ToListAsync();
+        _types = await db.ProductTypes.Where(t => t.IsActive).OrderBy(t => t.DisplayOrder).ToListAsync();
+        _newProducts = await db.Products.Where(p => p.IsActive).OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.Id).Take(8).ToListAsync();
+        _featured = await db.Products.Where(p => p.IsActive && p.IsFeatured).OrderByDescending(p => p.CreatedAt).Take(4).ToListAsync();
     }
-
     private static string ProductTypeIcon(ProductTypeEntity type)
-        => string.IsNullOrWhiteSpace(type.FilterIcon)
-            ? type.Name == "هودی" ? "🧥" : "👕"
-            : type.FilterIcon;
+        => string.IsNullOrWhiteSpace(type.FilterIcon) ? type.Name == "هودی" ? "🧥" : "👕" : type.FilterIcon;
 }

@@ -4,9 +4,39 @@
 @inject IDbContextFactory<AppDbContext> DbFactory
 @implements IDisposable
 
+<a class="skip-link" href="#main-content">رفتن به محتوای صفحه</a>
 <header class="site-header">
     <div class="container-papey header-inner">
         <a class="logo" href="/">پاپی<span>.</span></a>
+        <details class="mobile-menu" data-navigation-menu>
+            <summary aria-label="باز کردن منوی فروشگاه">☰ <span>منو</span></summary>
+            <nav class="mobile-menu-panel" aria-label="منوی فروشگاه">
+                <a href="/">خانه</a>
+                <a href="/products">همه محصولات</a>
+                @foreach (var type in _navTypes)
+                {
+                    <details class="mobile-category">
+                        <summary>@type.Name</summary>
+                        <a href="/products?type=@type.Id">همه @type.Name</a>
+                        @foreach (var category in type.Categories.OrderBy(c => c.DisplayOrder))
+                        {
+                            <a href="@($"/category/{category.Slug}")">@category.Name</a>
+                        }
+                    </details>
+                }
+                <a href="/size-guide">راهنمای سایز</a>
+                <AuthorizeView>
+                    <Authorized>
+                        <a href="/account">حساب من</a>
+                        <a href="/account/orders">سفارش‌های من</a>
+                        <a href="/account/favorites">علاقه‌مندی‌ها</a>
+                        @if (context.User.IsInRole("Admin")) { <a href="/admin">پنل مدیریت</a> }
+                        <a href="/logout">خروج</a>
+                    </Authorized>
+                    <NotAuthorized><a href="/login">ورود به حساب</a><a href="/register">ثبت‌نام</a></NotAuthorized>
+                </AuthorizeView>
+            </nav>
+        </details>
         <nav class="main-nav">
             <NavLink href="/" Match="NavLinkMatch.All">خانه</NavLink>
             @foreach (var type in _navTypes)
@@ -28,11 +58,11 @@
             <NavLink href="/size-guide">راهنمای سایز</NavLink>
         </nav>
         <form class="search-box" method="get" action="/search">
-            <button type="submit">🔍</button>
-            <input type="text" name="q" placeholder="جستجوی محصول..." />
+            <button type="submit" aria-label="جستجو">🔍</button>
+            <input type="search" name="q" aria-label="جستجوی محصول" placeholder="جستجوی طرح یا محصول..." />
         </form>
         <div class="header-actions">
-            <a href="/cart">
+            <a href="/cart" class="header-cart">
                 🛒 سبد خرید
                 @if (Cart.TotalQuantity > 0)
                 {
@@ -74,7 +104,7 @@
     </div>
 </header>
 
-<main class="container-papey">
+<main class="container-papey" id="main-content" tabindex="-1">
     @Body
 </main>
 

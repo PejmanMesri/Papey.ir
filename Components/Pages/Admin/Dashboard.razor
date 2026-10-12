@@ -10,7 +10,7 @@
 <div class="stat-grid">
     <div class="stat-card">💰 فروش امروز<div class="num">@_todaySales.ToToman()</div></div>
     <div class="stat-card">🧾 سفارش‌های امروز<div class="num">@Fa(_todayOrders)</div></div>
-    <div class="stat-card">� بازدید امروز<div class="num">@Fa(_todayViews)</div></div>
+    <div class="stat-card">👁 بازدید امروز<div class="num">@Fa(_todayViews)</div></div>
     <div class="stat-card">📅 فروش ۳۰ روز اخیر<div class="num">@_monthSales.ToToman()</div></div>
     <div class="stat-card">👤 کاربران<div class="num">@Fa(_totalUsers)</div></div>
 </div>
@@ -22,7 +22,7 @@
         {
             var h = _maxDaily > 0 ? (int)(d.Amount / _maxDaily * 140) : 0;
             <div title="@PersianHelpers.ToPersianDigits(d.Date.ToString("MM/dd")): @d.Amount.ToToman()"
-                 style="flex:1; background:var(--papey-accent); border-radius:4px 4px 0 0; height:@(Math.Max(h, 2))px; min-width:8px"></div>
+                 style="flex:1; background:var(--papey-accent); border-radius:4px 4px 0 0; height:@(Math.Max(h, 2))px; min-width:0"></div>
         }
     </div>
     <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--papey-muted); margin-top:6px">
@@ -41,7 +41,7 @@
         {
             var h = _maxViews > 0 ? (int)((double)d.Count / _maxViews * 140) : 0;
             <div title="@PersianHelpers.ToPersianDigits(d.Date.ToString("MM/dd")): @Fa(d.Count) بازدید"
-                 style="flex:1; background:#1565c0; border-radius:4px 4px 0 0; height:@(Math.Max(h, 2))px; min-width:8px"></div>
+                 style="flex:1; background:#1565c0; border-radius:4px 4px 0 0; height:@(Math.Max(h, 2))px; min-width:0"></div>
         }
     </div>
     <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--papey-muted); margin-top:6px">
@@ -54,17 +54,17 @@
 </div>
 
 <h3>آخرین سفارش‌ها</h3>
-<table class="table-papey">
+<table class="table-papey mobile-card-table">
     <thead><tr><th>شماره</th><th>مشتری</th><th>مبلغ</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
     <tbody>
         @foreach (var o in _latest)
         {
             <tr class="row-@o.Status">
-                <td>@o.OrderNumber</td>
-                <td>@o.CustomerName<br /><small style="color:var(--papey-muted)">@o.CustomerPhone</small></td>
-                <td>@o.GrandTotal.ToToman()</td>
-                <td><span class="status-chip status-@o.Status">@PersianHelpers.StatusLabel(o.Status)</span></td>
-                <td>@PersianHelpers.ToPersianDigits(o.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))</td>
+                <td data-label="شماره">@o.OrderNumber</td>
+                <td data-label="مشتری">@o.CustomerName<br /><small style="color:var(--papey-muted)">@o.CustomerPhone</small></td>
+                <td data-label="مبلغ">@o.GrandTotal.ToToman()</td>
+                <td data-label="وضعیت"><span class="status-chip status-@o.Status">@PersianHelpers.StatusLabel(o.Status)</span></td>
+                <td data-label="تاریخ">@PersianHelpers.ToPersianDigits(o.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))</td>
             </tr>
         }
     </tbody>

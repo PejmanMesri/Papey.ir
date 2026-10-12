@@ -8,7 +8,7 @@
 
 <h1 style="margin-top:0">🎨 رنگ‌ها و سایزها</h1>
 
-<div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px">
+<div class="form-grid">
     <div class="card-box">
         <h3 style="margin-top:0">رنگ‌ها</h3>
         <div style="display:flex; gap:12px; align-items:end; margin-bottom:16px; flex-wrap:wrap">
@@ -20,29 +20,29 @@
             <div><label class="form-label">کد</label><input class="form-input" @bind="_newColorHex" style="width:90px" /></div>
             <button class="btn-papey" @onclick="AddColor">➕ افزودن</button>
         </div>
-        <table class="table-papey">
+        <table class="table-papey mobile-card-table">
             <thead><tr><th>رنگ</th><th>نام</th><th>کد</th><th>ترتیب</th><th>وضعیت</th><th></th></tr></thead>
             <tbody>
                 @foreach (var c in _colors)
                 {
                     <tr>
-                        <td><span class="color-dot" style="background:@c.Hex; cursor:default"></span></td>
-                        <td>
+                        <td data-label="رنگ"><span class="color-dot" style="background:@c.Hex; cursor:default"></span></td>
+                        <td data-label="نام">
                             @if (_editColorId == c.Id)
                             {
                                 <input class="form-input" style="width:100px" @bind="_editColorName" />
                             }
                             else { <strong>@c.Name</strong> }
                         </td>
-                        <td><code>@c.Hex</code></td>
-                        <td>
+                        <td data-label="کد"><code>@c.Hex</code></td>
+                        <td data-label="ترتیب">
                             <button class="btn-papey btn-sm btn-outline" @onclick="() => MoveColor(c, -1)">↑</button>
                             <button class="btn-papey btn-sm btn-outline" @onclick="() => MoveColor(c, 1)">↓</button>
                         </td>
-                        <td>
+                        <td data-label="وضعیت">
                             <button class="btn-papey btn-sm @(c.IsActive ? "btn-outline" : "btn-danger-papey")" @onclick="() => ToggleColor(c)">@(c.IsActive ? "فعال" : "غیرفعال")</button>
                         </td>
-                        <td>
+                        <td data-label="عملیات">
                             @if (_editColorId == c.Id)
                             {
                                 <button class="btn-papey btn-sm" @onclick="() => SaveColor(c)">✓</button>
@@ -61,31 +61,31 @@
 
     <div class="card-box">
         <h3 style="margin-top:0">سایزها</h3>
-        <div style="display:flex; gap:12px; align-items:end; margin-bottom:16px">
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:end; margin-bottom:16px">
             <div><label class="form-label">نام سایز</label><input class="form-input" @bind="_newSizeName" placeholder="مثلاً 3XL" /></div>
             <button class="btn-papey" @onclick="AddSize">➕ افزودن</button>
         </div>
-        <table class="table-papey">
+        <table class="table-papey mobile-card-table">
             <thead><tr><th>نام</th><th>ترتیب</th><th>وضعیت</th><th></th></tr></thead>
             <tbody>
                 @foreach (var s in _sizes)
                 {
                     <tr>
-                        <td>
+                        <td data-label="نام">
                             @if (_editSizeId == s.Id)
                             {
                                 <input class="form-input" style="width:80px" @bind="_editSizeName" />
                             }
                             else { <strong>@s.Name</strong> }
                         </td>
-                        <td>
+                        <td data-label="ترتیب">
                             <button class="btn-papey btn-sm btn-outline" @onclick="() => MoveSize(s, -1)">↑</button>
                             <button class="btn-papey btn-sm btn-outline" @onclick="() => MoveSize(s, 1)">↓</button>
                         </td>
-                        <td>
+                        <td data-label="وضعیت">
                             <button class="btn-papey btn-sm @(s.IsActive ? "btn-outline" : "btn-danger-papey")" @onclick="() => ToggleSize(s)">@(s.IsActive ? "فعال" : "غیرفعال")</button>
                         </td>
-                        <td>
+                        <td data-label="عملیات">
                             @if (_editSizeId == s.Id)
                             {
                                 <button class="btn-papey btn-sm" @onclick="() => SaveSize(s)">✓</button>

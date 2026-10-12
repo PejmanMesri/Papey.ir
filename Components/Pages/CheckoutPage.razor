@@ -20,7 +20,7 @@
 }
 else
 {
-    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:24px; margin-bottom:48px">
+    <div class="checkout-layout">
         <div class="card-box">
             <h3 style="margin-top:0">اطلاعات گیرنده و آدرس</h3>
 
@@ -40,7 +40,7 @@ else
 
             <EditForm Model="_model" OnValidSubmit="SubmitOrder" FormName="checkout-form">
                 <DataAnnotationsValidator />
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px">
+                <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label">نام و نام خانوادگی گیرنده *</label>
                         <InputText class="form-input" @bind-Value="_model.CustomerName" />

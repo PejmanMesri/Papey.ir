@@ -10,7 +10,7 @@
 
 <div class="card-box" style="margin-bottom:24px">
     <h4 style="margin-top:0">@(_editId is null ? "افزودن دسته‌بندی" : "ویرایش دسته‌بندی")</h4>
-    <div style="display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:12px">
+    <div class="admin-form-grid">
         <div><label class="form-label">نام *</label><input class="form-input" @bind="_form.Name" /></div>
         <div><label class="form-label">Slug (انگلیسی)</label><input class="form-input" @bind="_form.Slug" placeholder="auto" /></div>
         <div>
@@ -43,24 +43,24 @@
     @if (_msg is not null) { <div class="alert-papey alert-danger">@_msg</div> }
 </div>
 
-<table class="table-papey">
+<table class="table-papey mobile-card-table">
     <thead><tr><th>نام</th><th>نوع محصول</th><th>Slug</th><th>توضیح</th><th>محصولات</th><th>در منو</th><th>وضعیت</th><th>ترتیب</th><th></th></tr></thead>
     <tbody>
         @foreach (var c in _categories)
         {
             <tr>
-                <td><strong>@c.Name</strong></td>
-                <td>@(c.ProductType?.Name ?? "—")</td>
-                <td><code>@c.Slug</code></td>
-                <td>@c.Description</td>
-                <td>@PersianHelpers.ToPersianDigits(c.Products.Count.ToString())</td>
-                <td>@(c.ShowInNav ? "✓" : "—")</td>
-                <td>@(c.IsActive ? "فعال" : "غیرفعال")</td>
-                <td>
+                <td data-label="نام"><strong>@c.Name</strong></td>
+                <td data-label="نوع محصول">@(c.ProductType?.Name ?? "—")</td>
+                <td data-label="Slug"><code>@c.Slug</code></td>
+                <td data-label="توضیح">@c.Description</td>
+                <td data-label="محصولات">@PersianHelpers.ToPersianDigits(c.Products.Count.ToString())</td>
+                <td data-label="در منو">@(c.ShowInNav ? "✓" : "—")</td>
+                <td data-label="وضعیت">@(c.IsActive ? "فعال" : "غیرفعال")</td>
+                <td data-label="ترتیب">
                     <button class="btn-papey btn-sm btn-outline" @onclick="() => Move(c, -1)">↑</button>
                     <button class="btn-papey btn-sm btn-outline" @onclick="() => Move(c, 1)">↓</button>
                 </td>
-                <td>
+                <td data-label="عملیات">
                     <button class="btn-papey btn-sm btn-outline" @onclick="() => Edit(c)">✏️</button>
                     <button class="btn-papey btn-sm btn-danger-papey" @onclick="() => Delete(c)">🗑</button>
                 </td>
