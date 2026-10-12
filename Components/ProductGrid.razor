@@ -25,8 +25,9 @@ else
                         type="button"
                         title="@(_favoriteProductIds.Contains(p.Id) ? "حذف از علاقه‌مندی‌ها" : "افزودن به علاقه‌مندی‌ها")"
                         aria-label="@(_favoriteProductIds.Contains(p.Id) ? $"حذف {p.Name} از علاقه‌مندی‌ها" : $"افزودن {p.Name} به علاقه‌مندی‌ها")"
+                        aria-pressed="@_favoriteProductIds.Contains(p.Id).ToString().ToLowerInvariant()"
                         @onclick="() => ToggleFavoriteAsync(p.Id)">
-                    @(_favoriteProductIds.Contains(p.Id) ? "♥" : "♡")
+                    <FavoriteIcon />
                 </button>
                 <div class="info">
                     <h3><a href="/product/@p.Slug">@p.Name</a></h3>
