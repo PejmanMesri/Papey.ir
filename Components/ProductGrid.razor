@@ -13,11 +13,8 @@ else
         @foreach (var p in Products)
         {
             <div class="product-card">
+                <div class="product-media">
                 @if (p.IsNew) { <span class="badge-new">جدید</span> }
-                @if (p.OldPrice is not null && p.OldPrice > p.Price)
-                {
-                    <span class="badge-sale">٪@PersianHelpers.ToPersianDigits(((int)((p.OldPrice - p.Price) / p.OldPrice * 100)).ToString()) تخفیف</span>
-                }
                 <a class="img-wrap" href="/product/@p.Slug">
                     <img src="@p.ImageUrl" alt="@p.Name" loading="lazy" />
                 </a>
@@ -29,6 +26,7 @@ else
                         @onclick="() => ToggleFavoriteAsync(p.Id)">
                     <FavoriteIcon />
                 </button>
+                </div>
                 <div class="info">
                     <h3><a href="/product/@p.Slug">@p.Name</a></h3>
                     <div class="price-row">
@@ -38,6 +36,10 @@ else
                             <span class="old-price">@p.OldPrice.Value.ToToman()</span>
                         }
                     </div>
+                    @if (p.OldPrice is > 0 && p.OldPrice > p.Price)
+                    {
+                        <span class="product-discount"><bdi>@PersianHelpers.ToPersianDigits(((int)((p.OldPrice.Value - p.Price) / p.OldPrice.Value * 100)).ToString())٪</bdi> تخفیف</span>
+                    }
                 </div>
             </div>
         }
