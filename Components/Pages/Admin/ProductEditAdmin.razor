@@ -1,4 +1,5 @@
 @page "/admin/products/{Id:int}"
+@page "/admin/products/new"
 @attribute [Authorize(Roles = "Admin")]
 @layout AdminLayout
 @rendermode InteractiveServer
@@ -7,7 +8,7 @@
 @inject NavigationManager Nav
 @inject IWebHostEnvironment Env
 
-<PageTitle>ویرایش محصول | پنل مدیریت پاپی</PageTitle>
+<PageTitle>@(IsNew ? "افزودن محصول" : "ویرایش محصول") | پنل مدیریت پاپی</PageTitle>
 
 @if (_product is null)
 {
@@ -19,11 +20,15 @@ else
     <header class="editor-header">
         <div>
             <a class="editor-back" href="/admin/products">→ محصولات</a>
-            <h1>ویرایش محصول</h1>
-            <p>@_product.Name</p>
+            <h1>@(IsNew ? "افزودن محصول جدید" : "ویرایش محصول")</h1>
+            <p>@(IsNew ? "مشخصات محصول را تکمیل کنید." : _product.Name)</p>
         </div>
-        <button type="button" class="btn-papey editor-save" disabled="@_saving" @onclick="SaveInfo">@(_saving ? "در حال ذخیره…" : "ذخیره تغییرات")</button>
+        <button type="button" class="btn-papey editor-save" disabled="@_saving" @onclick="SaveInfo">@(_saving ? "در حال ذخیره…" : IsNew ? "ذخیره و ادامه" : "ذخیره تغییرات")</button>
     </header>
+    @if (IsNew)
+    {
+        <div class="alert-papey alert-info" role="status">محصول فقط با زدن «ذخیره و ادامه» ایجاد می‌شود. پس از ذخیره، تصاویر، فایل‌های طرح و موجودی را تکمیل کنید.</div>
+    }
     @if (_infoError is not null) { <div class="alert-papey alert-danger" role="alert">@_infoError</div> }
 
     <div class="editor-overview">
@@ -93,7 +98,7 @@ else
                 </select>
                 <p class="editor-hint">انتخاب هر جایگاه، محصول قبلی آن را جایگزین می‌کند. محصول باید فعال باشد.</p>
             </section>
-            <p class="editor-save-note">پس از تکمیل این بخش‌ها، «ذخیره تغییرات» را بزنید.</p>
+            <p class="editor-save-note">پس از تکمیل این بخش‌ها، «@(IsNew ? "ذخیره و ادامه" : "ذخیره تغییرات")» را بزنید.</p>
         </aside>
     </div>
 
@@ -103,7 +108,7 @@ else
             📐 نسبت پیشنهادی تصویر: <strong>۱:۱ (مربعی)</strong> — حداقل ۸۰۰×۸۰۰ پیکسل.
             ویدیو: MP4/WebM حداکثر ۵۰ مگابایت.
         </p>
-        <label class="editor-upload"><strong>افزودن تصویر یا ویدیو</strong><span>فایل را از دستگاه خود انتخاب کنید</span><InputFile OnChange="UploadMedia" accept="image/*,video/mp4,video/webm" disabled="@_uploading" /></label>
+        <label class="editor-upload"><strong>افزودن تصویر یا ویدیو</strong><span>فایل را از دستگاه خود انتخاب کنید</span><InputFile OnChange="UploadMedia" accept="image/*,video/mp4,video/webm" disabled="@(IsNew || _uploading)" /></label>
         @if (_uploading) { <p>در حال آپلود...</p> }
         @if (_uploadError is not null) { <div class="alert-papey alert-danger">@_uploadError</div> }
 
@@ -134,7 +139,7 @@ else
         <p style="font-size:0.8rem; color:var(--papey-muted)">
             تصاویر اصلی طرح این محصول هستند و در فروشگاه عمومی نمایش داده نمی‌شوند. فرمت‌های JPG، PNG و WebP تا ۱۵ مگابایت قابل بارگذاری‌اند.
         </p>
-        <label class="editor-upload"><strong>افزودن فایل طرح</strong><span>فقط در پنل مدیریت قابل مشاهده است</span><InputFile OnChange="UploadDesigns" multiple accept=".jpg,.jpeg,.png,.webp" disabled="@_designUploading" /></label>
+        <label class="editor-upload"><strong>افزودن فایل طرح</strong><span>فقط در پنل مدیریت قابل مشاهده است</span><InputFile OnChange="UploadDesigns" multiple accept=".jpg,.jpeg,.png,.webp" disabled="@(IsNew || _designUploading)" /></label>
         @if (_designUploading) { <p>در حال آپلود فایل‌های طرح...</p> }
         @if (_designUploadError is not null) { <div class="alert-papey alert-danger">@_designUploadError</div> }
 
@@ -161,6 +166,8 @@ else
 
     <section class="editor-card editor-stock">
         <div class="editor-section-title"><span>۰۵</span><div><h2>رنگ، سایز و موجودی</h2><p>ترکیب‌های قابل سفارش را فعال کنید.</p></div></div>
+        @if (IsNew) { <p class="editor-hint">این بخش پس از ذخیره محصول فعال می‌شود.</p> }
+        <fieldset class="editor-stock-fields" disabled="@IsNew">
         <label class="unlimited-stock-toggle">
             <input id="unlimited-stock" type="checkbox" checked="@_product.HasUnlimitedStock" @onchange="SetUnlimitedStock" />
             موجودی نامحدود (بدون محدودیت تعداد)
@@ -201,6 +208,7 @@ else
                 </tbody>
             </table>
         </div>
+        </fieldset>
         @if (_variantMsg is not null) { <div class="alert-papey alert-success" style="margin-top:8px">@_variantMsg</div> }
     </section>
     <p class="editor-save-note">تغییرات فایل‌ها و موجودی هنگام انجام ذخیره می‌شوند.</p>
@@ -210,6 +218,7 @@ else
 @code {
     [Parameter] public int Id { get; set; }
 
+    private bool IsNew => Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].TrimEnd('/') == "admin/products/new";
     private Product? _product;
     private List<Category> _categories = new();
     private List<Color> _colors = new();
@@ -229,18 +238,16 @@ else
         [".webp"] = "image/webp"
     };
 
-    protected override async Task OnInitializedAsync() => await Reload();
+    protected override async Task OnParametersSetAsync()
+    {
+        _infoError = null;
+        _variantMsg = null;
+        await Reload();
+    }
 
     private async Task Reload(bool preserveDraft = false)
     {
         await using var db = await DbFactory.CreateDbContextAsync();
-        var fresh = await db.Products.Include(p => p.Variants).Include(p => p.ProductCategories).FirstOrDefaultAsync(p => p.Id == Id);
-        if (preserveDraft && _product is not null && fresh is not null) _product.Variants = fresh.Variants;
-        else
-        {
-            _product = fresh;
-            _selectedCatIds = _product?.ProductCategories.Select(pc => pc.CategoryId).ToHashSet() ?? new();
-        }
         _categories = await db.Categories
             .Include(c => c.ProductType)
             .OrderBy(c => c.ProductType!.DisplayOrder)
@@ -249,6 +256,24 @@ else
         _types = await db.ProductTypes.Where(t => t.IsActive).OrderBy(t => t.DisplayOrder).ToListAsync();
         _colors = await db.Colors.Where(c => c.IsActive).OrderBy(c => c.DisplayOrder).ToListAsync();
         _sizes = await db.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ToListAsync();
+        if (IsNew)
+        {
+            if (!preserveDraft || _product is null)
+            {
+                _product = new Product { ProductTypeId = _types.FirstOrDefault()?.Id };
+                _selectedCatIds = new();
+            }
+            _media = [];
+            _designMedia = [];
+            return;
+        }
+        var fresh = await db.Products.Include(p => p.Variants).Include(p => p.ProductCategories).FirstOrDefaultAsync(p => p.Id == Id);
+        if (preserveDraft && _product is not null && fresh is not null) _product.Variants = fresh.Variants;
+        else
+        {
+            _product = fresh;
+            _selectedCatIds = _product?.ProductCategories.Select(pc => pc.CategoryId).ToHashSet() ?? new();
+        }
         _media = await db.ProductMedia.Where(m => m.ProductId == Id).OrderBy(m => m.DisplayOrder).ToListAsync();
         _designMedia = await db.ProductDesignMedia.Where(m => m.ProductId == Id).OrderBy(m => m.DisplayOrder).ToListAsync();
     }
@@ -270,8 +295,9 @@ else
     private async Task SaveInfoCore()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
-        var t = await db.Products.FindAsync(Id);
-        if (t is null) return;
+        var creating = IsNew;
+        var t = creating ? new Product { Slug = "p-" + Guid.NewGuid().ToString("N") } : await db.Products.FindAsync(Id);
+        if (t is null) { _infoError = "محصول یافت نشد."; return; }
         t.Name = _product!.Name.Trim(); t.Price = _product.Price; t.OldPrice = _product.OldPrice;
         t.ProductTypeId = _product.ProductTypeId;
         t.Description = _product.Description; t.IsNew = _product.IsNew;
@@ -297,23 +323,32 @@ else
             .FirstOrDefault();
         if (firstCat is not null) t.CategoryId = firstCat.Id;
 
-        // Sync extra categories
-        var existing = await db.ProductCategories.Where(pc => pc.ProductId == Id).ToListAsync();
-        db.ProductCategories.RemoveRange(existing.Where(pc => !validCategoryIds.Contains(pc.CategoryId)));
-        foreach (var catId in validCategoryIds)
-            if (!existing.Any(pc => pc.CategoryId == catId))
-                db.ProductCategories.Add(new ProductCategory { ProductId = Id, CategoryId = catId });
+        // New products and category associations are committed together only on Save.
+        if (creating)
+        {
+            foreach (var catId in validCategoryIds)
+                t.ProductCategories.Add(new ProductCategory { CategoryId = catId });
+            db.Products.Add(t);
+        }
+        else
+        {
+            var existing = await db.ProductCategories.Where(pc => pc.ProductId == Id).ToListAsync();
+            db.ProductCategories.RemoveRange(existing.Where(pc => !validCategoryIds.Contains(pc.CategoryId)));
+            foreach (var catId in validCategoryIds)
+                if (!existing.Any(pc => pc.CategoryId == catId))
+                    db.ProductCategories.Add(new ProductCategory { ProductId = Id, CategoryId = catId });
+        }
         if (_product.HomeHeroSlot is not (null or 1 or 2)) return;
         await using var transaction = await db.Database.BeginTransactionAsync();
         await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(7423901)");
         var heroSlot = _product.IsActive ? _product.HomeHeroSlot : null;
         if (heroSlot is not null)
-            await db.Products.Where(p => p.Id != Id && p.HomeHeroSlot == heroSlot)
+            await db.Products.Where(p => p.Id != t.Id && p.HomeHeroSlot == heroSlot)
                 .ExecuteUpdateAsync(s => s.SetProperty(p => p.HomeHeroSlot, (int?)null));
         t.HomeHeroSlot = heroSlot;
         await db.SaveChangesAsync();
         await transaction.CommitAsync();
-        Nav.NavigateTo("/admin/products");
+        Nav.NavigateTo(creating ? $"/admin/products/{t.Id}" : "/admin/products");
     }
 
     private void ToggleCategory(int catId, bool selected)
@@ -330,6 +365,7 @@ else
 
     private async Task UploadMedia(InputFileChangeEventArgs e)
     {
+        if (IsNew) return;
         _uploading = true; _uploadError = null;
         try
         {
@@ -362,6 +398,7 @@ else
 
     private async Task UploadDesigns(InputFileChangeEventArgs e)
     {
+        if (IsNew) return;
         _designUploading = true;
         _designUploadError = null;
         var errors = new List<string>();
@@ -461,7 +498,7 @@ else
 
     private async Task SetUnlimitedStock(ChangeEventArgs e)
     {
-        if (_product is null || e.Value is not bool enabled) return;
+        if (IsNew || _product is null || e.Value is not bool enabled) return;
         await using var db = await DbFactory.CreateDbContextAsync();
         var product = await db.Products.FindAsync(Id);
         if (product is null) return;
@@ -473,6 +510,7 @@ else
 
     private async Task ToggleVariant(Color c, Size s, bool enabled)
     {
+        if (IsNew) return;
         _variantMsg = null;
         await using var db = await DbFactory.CreateDbContextAsync();
         var existing = await db.ProductVariants.FirstOrDefaultAsync(v => v.ProductId == Id && v.ColorId == c.Id && v.SizeId == s.Id);
@@ -496,7 +534,7 @@ else
 
     private async Task SetStock(Color c, Size s, string? val)
     {
-        if (_product?.HasUnlimitedStock != false || !int.TryParse(val, out var stock) || stock < 0) return;
+        if (IsNew || _product?.HasUnlimitedStock != false || !int.TryParse(val, out var stock) || stock < 0) return;
         _variantMsg = null;
         await using var db = await DbFactory.CreateDbContextAsync();
         var t = await db.ProductVariants.FirstOrDefaultAsync(v => v.ProductId == Id && v.ColorId == c.Id && v.SizeId == s.Id);

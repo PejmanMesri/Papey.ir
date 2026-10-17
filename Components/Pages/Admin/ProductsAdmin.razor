@@ -13,7 +13,6 @@
     <h1 style="margin:0">👕 محصولات</h1>
     <button class="btn-papey" @onclick="AddProduct">➕ افزودن محصول جدید</button>
 </div>
-@if (_msg is not null) { <div class="alert-papey alert-info">@_msg</div> }
 
 <div class="card-box" style="margin-bottom:20px">
     <button type="button" class="catalog-filter-toggle" aria-expanded="@_filtersOpen" @onclick="() => _filtersOpen = !_filtersOpen">☷ جستجو و فیلتر محصولات <span>@(_filtersOpen ? "بستن −" : "باز کردن +")</span></button>
@@ -146,7 +145,6 @@
     private List<Product> _products = new();
     private List<Category> _categories = new();
     private List<ProductTypeEntity> _types = new();
-    private string? _msg;
     private string _search = "", _activeFilter = "", _stockFilter = "", _designFilter = "";
     private string _sort = "created-desc";
     private int? _categoryId, _typeId;
@@ -204,24 +202,7 @@
             .OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.Id).ToListAsync();
     }
 
-    private async Task AddProduct()
-    {
-        _msg = null;
-        await using var db = await DbFactory.CreateDbContextAsync();
-        var defaultCategory = _categories.FirstOrDefault();
-        var defaultCatId = defaultCategory?.Id ?? 0;
-        var p = new Product
-        {
-            Name = "محصول جدید",
-            Slug = "p-" + Guid.NewGuid().ToString("N")[..8],
-            Price = 1000000,
-            CategoryId = defaultCatId,
-            ProductTypeId = defaultCategory?.ProductTypeId
-        };
-        db.Products.Add(p);
-        await db.SaveChangesAsync();
-        Nav.NavigateTo($"/admin/products/{p.Id}");
-    }
+    private void AddProduct() => Nav.NavigateTo("/admin/products/new");
 
     private async Task ToggleActive(Product p)
     {

@@ -152,3 +152,11 @@ of at most 100; any rejected or uncertain batch stops the remaining batches.
 Results distinguish provider acceptance, rejection, unknown results and unsent
 recipients. No automatic resend occurs. Advertising-number blocking still
 applies to this ordinary bulk SMS route.
+
+### Product creation
+
+`Add product` opens `/admin/products/new` without inserting a row. A valid first
+**ذخیره و ادامه** commits the product and category associations together, then
+opens the saved product editor. Uploads and stock changes become available after
+that first save. Leaving the form or failing validation does not create a product.
+Existing placeholder products are not automatically removed.
