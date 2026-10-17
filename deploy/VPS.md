@@ -1,10 +1,10 @@
 # Papey VPS operations
 
 Deployed on 2026-10-17 to `89.44.240.75` (Ubuntu 26.04, 2 vCPU, 2 GB RAM).
-This runs the current workspace source, including the SMS queue and unlimited
-inventory changes. The Render deployment remains untouched. The VPS uses a fresh
-database and the application's seeded catalog; Render customer/order data was
-not imported.
+The live domain is **https://papey.ir/** (and https://www.papey.ir/). This release
+includes phone-first signup, explicit homepage product slots, SMS, and unlimited
+inventory. Render remains untouched; its customer/order data was not imported.
+Demo products have now been removed from the VPS catalog.
 
 ## Layout
 
@@ -25,12 +25,11 @@ IRNIC has `ns1.papey.ir` and `ns2.papey.ir`, both with glue `89.44.240.75`.
 Both nameservers currently run on this single VPS: this does not provide DNS
 redundancy. An independent secondary DNS service is a future improvement.
 
-`papey.ir` and `www.papey.ir` have A records pointing to the VPS. The domain
-delegation must appear in the public `.ir` zone before ordinary resolvers and
-Let's Encrypt can use it.
+`papey.ir` and `www.papey.ir` have A records pointing to the VPS. Public DNS is
+active, and the domain certificate was issued successfully on 2026-10-17.
 
-`papey-https.timer` checks public DNS every five minutes, issues the domain
-certificate, enables HTTPS redirection, and disables itself after success.
+`papey-https.timer` issued the domain certificate, enabled HTTPS redirection,
+and disabled itself after success.
 Check its results with `journalctl -u papey-https.service`.
 
 The IP preview `https://89.44.240.75` has a publicly trusted, short-lived
@@ -63,12 +62,12 @@ dig @127.0.0.1 papey.ir A
 /opt/papey-certbot/bin/certbot certificates
 ```
 
-Verified: Release Linux publish; 8 deployment, 21 inventory, and 34 SMS checks;
+Verified: Release Linux publish; 8 deployment, 21 inventory, 7 catalog/migration,
+and 37 SMS/authentication checks;
 database migrations; public health/homepage; HTTPS product selection and cart;
 HTTPS admin login. Production SMS and real payment transactions were not tested.
-The certificate renewal dry run also passed. At deployment completion, the
-domain's nameservers were saved in IRNIC, but its public `.ir` delegation was
-still pending. The HTTPS IP address is usable during that wait.
+The certificate renewal dry run also passed. Both the domain and IP preview use
+trusted HTTPS certificates with automatic renewal.
 Production SMS.ir credentials and the assigned sender line are configured. API
 credit and sender-line checks passed. With no approved Verify template configured,
 OTP uses the assigned sender line; delivery to blocked advertising numbers may
