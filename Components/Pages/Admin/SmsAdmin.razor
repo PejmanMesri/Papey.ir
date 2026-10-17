@@ -3,6 +3,7 @@
 @layout AdminLayout
 @rendermode InteractiveServer
 @inject SmsService Sms
+@inject SmsAudienceService Audiences
 @inject ShippingSmsQueue Queue
 @inject IDbContextFactory<AppDbContext> DbFactory
 
@@ -14,21 +15,38 @@
 @if (!Sms.CanSendBulk) { <div class="alert-papey alert-danger">کلید API یا شماره خط ارسال تنظیم نشده است.</div> }
 <div class="card-box" style="margin-bottom:24px">
     <h2>ارسال گروهی</h2>
-    <p>حداکثر ۱۰۰ شماره در هر ارسال. شماره‌های تکراری حذف می‌شوند.</p>
+    <p>مخاطبان و متن را انتخاب کنید؛ پیش از ارسال، تعداد گیرندگان و متن نهایی را بررسی خواهید کرد.</p>
     @if (_preview is null)
     {
+        <fieldset class="sms-audience-picker">
+            <legend>گیرندگان پیامک</legend>
+            <label class="sms-audience-option @(!_allUsers ? "selected" : "")"><input type="radio" name="sms-audience" checked="@(!_allUsers)" @onchange="() => _allUsers = false" /><span><strong>شماره‌های انتخابی</strong><small>شماره‌ها را خودتان وارد کنید</small></span></label>
+            <label class="sms-audience-option @(_allUsers ? "selected" : "")"><input type="radio" name="sms-audience" checked="@_allUsers" @onchange="() => _allUsers = true" /><span><strong>همه کاربران</strong><small>@PersianHelpers.ToPersianDigits((_audience?.Phones.Length ?? 0).ToString()) شماره معتبر و یکتا</small></span></label>
+        </fieldset>
+        @if (_allUsers)
+        {
+            <div class="sms-audience-summary">
+                <p>همه حساب‌های دارای شماره موبایل معتبر انتخاب می‌شوند. شماره‌های تکراری فقط یک پیام دریافت می‌کنند.</p>
+                <p>@PersianHelpers.ToPersianDigits((_audience?.WithoutValidPhone ?? 0).ToString()) حساب بدون شماره معتبر از ارسال کنار گذاشته می‌شود.</p>
+                <button class="btn-papey btn-sm btn-outline" disabled="@_busy" @onclick="RefreshAudience">به‌روزرسانی مخاطبان</button>
+            </div>
+        }
+        else
+        {
         <div class="form-group"><label class="form-label" for="sms-recipients">شماره‌های گیرندگان (هر شماره در یک خط یا با ویرگول)</label><textarea id="sms-recipients" class="form-input" rows="5" @bind="_recipients" @bind:event="oninput" placeholder="09123456789" dir="ltr" maxlength="5000"></textarea></div>
+        }
         <div class="form-group"><label class="form-label" for="sms-message">متن پیامک</label><textarea id="sms-message" class="form-input" rows="4" maxlength="1000" @bind="_message" @bind:event="oninput"></textarea></div>
         <button type="button" class="btn-papey" disabled="@(!Sms.CanSendBulk || _busy)" @onclick="Preview">پیش‌نمایش ارسال</button>
     }
     else
     {
         <h3>بررسی ارسال</h3>
-        <p>@PersianHelpers.ToPersianDigits(_preview.Phones.Length.ToString()) گیرنده • خط @Sms.LineNumber</p>
+        <p><strong>@(_preview.AllUsers ? "همه کاربران" : "شماره‌های انتخابی")</strong> • @PersianHelpers.ToPersianDigits(_preview.Phones.Length.ToString()) گیرنده • خط @Sms.LineNumber</p>
+        <p>شماره‌ها در زمان پیش‌نمایش ثبت شده‌اند. پذیرش توسط سرویس به معنی دریافت روی گوشی نیست.</p>
         <p style="white-space:pre-wrap; overflow-wrap:anywhere">@_preview.Message</p>
         <details><summary>مشاهده شماره‌ها</summary><p dir="ltr" style="overflow-wrap:anywhere">@string.Join("، ", _preview.Phones)</p></details>
         <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:20px">
-            <button type="button" class="btn-papey" disabled="@_busy" @onclick="Send">@(_busy ? "در حال ارسال..." : Sms.IsSandbox ? "تأیید و ارسال آزمایشی" : "تأیید و ارسال پیامک")</button>
+            <button type="button" class="btn-papey" disabled="@_busy" @onclick="Send">@(_busy ? "در حال ارسال…" : Sms.IsSandbox ? "تأیید و ارسال آزمایشی" : $"تأیید و ارسال به {PersianHelpers.ToPersianDigits(_preview.Phones.Length.ToString())} شماره")</button>
             <button type="button" class="btn-papey btn-outline" disabled="@_busy" @onclick="() => _preview = null">ویرایش</button>
         </div>
     }
@@ -86,28 +104,40 @@
 @code {
     private string _recipients = "", _message = "";
     private string? _notice;
-    private bool _busy, _error;
+    private bool _busy, _error, _allUsers;
+    private SmsAudience? _audience;
     private BulkPreview? _preview;
     private List<ShippingSmsJob> _jobs = [];
     private List<OrderAdminSmsJob> _adminJobs = [];
-    private sealed record BulkPreview(string[] Phones, string Message);
-    protected override Task OnInitializedAsync() => LoadJobs();
+    private sealed record BulkPreview(string[] Phones, string Message, bool AllUsers);
+    protected override async Task OnInitializedAsync() { await RefreshAudience(); await LoadJobs(); }
+    private async Task RefreshAudience() => _audience = await Audiences.GetAllUsersAsync();
     private async Task LoadJobs()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
         _adminJobs = await db.OrderAdminSmsJobs.AsNoTracking().Include(j => j.Order).OrderByDescending(j => j.CreatedAt).Take(100).ToListAsync();
         _jobs = await db.ShippingSmsJobs.AsNoTracking().Include(j => j.Order).OrderByDescending(j => j.CreatedAt).Take(100).ToListAsync();
     }
-    private void Preview()
+    private async Task Preview()
     {
         _notice = null;
-        var parts = System.Text.RegularExpressions.Regex.Split(_recipients, @"[\s,،;؛]+", System.Text.RegularExpressions.RegexOptions.None).Where(p => p.Length > 0).ToArray();
-        var phones = parts.Select(SmsService.NormalizePhone).ToArray();
-        if (phones.Any(p => p is null)) { _error = true; _notice = "شماره نامعتبر وجود دارد. همه شماره‌ها را بررسی کنید."; return; }
-        var unique = phones.Cast<string>().Distinct().ToArray();
-        if (unique.Length is 0 or > 100 || string.IsNullOrWhiteSpace(_message) || _message.Length > 1000)
-        { _error = true; _notice = "متن و ۱ تا ۱۰۰ شماره معتبر وارد کنید (حداکثر ۱۰۰۰ کاراکتر)."; return; }
-        _preview = new(unique, _message.Trim());
+        _error = false;
+        string[] unique;
+        if (_allUsers)
+        {
+            await RefreshAudience();
+            unique = _audience!.Phones;
+        }
+        else
+        {
+            var parts = System.Text.RegularExpressions.Regex.Split(_recipients, @"[\s,،;؛]+").Where(p => p.Length > 0).ToArray();
+            var phones = parts.Select(SmsService.NormalizePhone).ToArray();
+            if (phones.Any(p => p is null)) { _error = true; _notice = "شماره نامعتبر وجود دارد. همه شماره‌ها را بررسی کنید."; return; }
+            unique = phones.Cast<string>().Distinct().ToArray();
+        }
+        if (unique.Length == 0 || string.IsNullOrWhiteSpace(_message) || _message.Length > 1000)
+        { _error = true; _notice = "متن و حداقل یک شماره معتبر لازم است (حداکثر ۱۰۰۰ کاراکتر)."; return; }
+        _preview = new(unique, _message.Trim(), _allUsers);
     }
     private async Task Send()
     {
@@ -116,15 +146,25 @@
         _busy = true;
         try
         {
-            var result = await Sms.SendBulkAsync(preview.Phones, preview.Message);
+            var result = await Audiences.SendAsync(preview.Phones, preview.Message);
             _error = !result.Success;
-            _notice = result.Uncertain ? result.Error : $"پذیرفته‌شده توسط سرویس: {PersianHelpers.ToPersianDigits(result.Accepted.ToString())}؛ پذیرفته‌نشده: {PersianHelpers.ToPersianDigits(result.Rejected.ToString())}. {result.Error}";
-            if (result.PackId is not null) _notice += $" شناسه ارسال: {result.PackId}";
-            _preview = null;
-            // Clear attempted recipients so a second click cannot resubmit the same batch.
-            _recipients = "";
+            _notice = $"پذیرفته‌شده توسط سرویس: {PersianHelpers.ToPersianDigits(result.Accepted.ToString())}؛ ردشده: {PersianHelpers.ToPersianDigits(result.Rejected.ToString())}؛ نتیجه نامشخص: {PersianHelpers.ToPersianDigits(result.Unknown.ToString())}؛ ارسال‌نشده: {PersianHelpers.ToPersianDigits(result.Unsent.ToString())}. {result.Error}";
+            if (result.PackIds.Length > 0) _notice += $" شناسه‌های ارسال: {string.Join("، ", result.PackIds)}";
+            if (result.Unknown > 0) _notice += " پیش از ارسال دوباره، گزارش SMS.ir را بررسی کنید.";
         }
-        finally { _busy = false; }
+        catch
+        {
+            _error = true;
+            _notice = "ارسال کامل نشد؛ پیش از هر تلاش مجدد، گزارش SMS.ir را بررسی کنید.";
+        }
+        finally
+        {
+            _preview = null;
+            _recipients = "";
+            _message = "";
+            _allUsers = false;
+            _busy = false;
+        }
     }
     private async Task Retry(Guid id)
     {

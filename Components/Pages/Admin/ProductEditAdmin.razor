@@ -15,72 +15,95 @@
 }
 else
 {
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap">
-        <h1 style="margin:0">✏️ ویرایش: @_product.Name</h1>
-        <div style="display:flex; align-items:center; flex-wrap:wrap; gap:8px">
-            <a class="btn-papey btn-outline" href="/admin/products">→ بازگشت به لیست</a>
-            <button class="btn-papey" @onclick="SaveInfo">💾 ذخیره اطلاعات</button>
+    <div class="product-editor">
+    <header class="editor-header">
+        <div>
+            <a class="editor-back" href="/admin/products">→ محصولات</a>
+            <h1>ویرایش محصول</h1>
+            <p>@_product.Name</p>
         </div>
-    </div>
+        <button type="button" class="btn-papey editor-save" disabled="@_saving" @onclick="SaveInfo">@(_saving ? "در حال ذخیره…" : "ذخیره تغییرات")</button>
+    </header>
+    @if (_infoError is not null) { <div class="alert-papey alert-danger" role="alert">@_infoError</div> }
 
-    <div class="card-box" style="margin-bottom:24px">
-        <h4 style="margin-top:0">اطلاعات اصلی</h4>
-        <div class="admin-form-grid">
-            <div><input class="form-input" placeholder="نام محصول *" @bind="_product.Name" /></div>
-            <div><input class="form-input" type="number" placeholder="قیمت (تومان)" @bind="_product.Price" /></div>
-            <div><input class="form-input" type="number" placeholder="قیمت قبل از تخفیف" @bind="_product.OldPrice" /></div>
-            <div>
-                <label class="form-label">نوع محصول</label>
-                <select class="form-input" value="@_product.ProductTypeId" @onchange="OnProductTypeChanged">
-                    <option value="">— بدون نوع —</option>
-                    @foreach (var t in _types) { <option value="@t.Id">@t.Name</option> }
-                </select>
+    <div class="editor-overview">
+        <section class="editor-card editor-details" aria-labelledby="details-title">
+            <div class="editor-section-title"><span>۰۱</span><div><h2 id="details-title">مشخصات محصول</h2><p>نام، قیمت و دسته‌بندی محصول را تکمیل کنید.</p></div></div>
+            <div class="editor-fields">
+                <div class="editor-field editor-full">
+                    <label for="edit-product-name">نام محصول <span class="required-mark">*</span></label>
+                    <input id="edit-product-name" class="form-input" maxlength="200" placeholder="مثلاً تیشرت طرح تهران" @bind="_product.Name" @bind:event="oninput" />
+                </div>
+                <div class="editor-field">
+                    <label for="edit-product-price">قیمت فروش <span class="editor-unit">تومان</span></label>
+                    <input id="edit-product-price" class="form-input editor-number" type="number" min="0" step="1000" @bind="_product.Price" @bind:event="oninput" />
+                </div>
+                <div class="editor-field">
+                    <label for="edit-product-old-price">قیمت قبل از تخفیف <span class="editor-unit">تومان</span></label>
+                    <input id="edit-product-old-price" class="form-input editor-number" type="number" min="0" step="1000" placeholder="اختیاری" @bind="_product.OldPrice" @bind:event="oninput" />
+                </div>
+                <div class="editor-field editor-full">
+                    <label for="edit-product-type">نوع محصول <span class="required-mark">*</span></label>
+                    <select id="edit-product-type" class="form-input" value="@_product.ProductTypeId" @onchange="OnProductTypeChanged">
+                        <option value="">نوع محصول را انتخاب کنید</option>
+                        @foreach (var t in _types) { <option value="@t.Id">@t.Name</option> }
+                    </select>
+                </div>
+                <fieldset class="editor-categories editor-full">
+                    <legend>دسته‌بندی‌ها <span class="required-mark">*</span></legend>
+                    @if (_product.ProductTypeId is not { } selectedTypeId)
+                    {
+                        <p class="editor-hint">برای دیدن دسته‌بندی‌ها، ابتدا نوع محصول را انتخاب کنید.</p>
+                    }
+                    else
+                    {
+                        <div class="editor-category-options">
+                            @foreach (var category in _categories.Where(c => c.ProductTypeId == selectedTypeId).OrderBy(c => c.DisplayOrder))
+                            {
+                                <label class="editor-category @(_selectedCatIds.Contains(category.Id) ? "is-selected" : "")">
+                                    <input type="checkbox" checked="@_selectedCatIds.Contains(category.Id)" @onchange="e => ToggleCategory(category.Id, (bool)e.Value!)" />
+                                    <span>@category.Name</span>
+                                </label>
+                            }
+                        </div>
+                        <p class="editor-hint">حداقل یک دسته‌بندی انتخاب کنید.</p>
+                    }
+                </fieldset>
+                <div class="editor-field editor-full">
+                    <label for="edit-product-description">توضیحات محصول</label>
+                    <textarea id="edit-product-description" class="form-input" rows="5" maxlength="2000" placeholder="درباره جنس، طرح و ویژگی‌های محصول بنویسید…" @bind="_product.Description" @bind:event="oninput"></textarea>
+                </div>
             </div>
-            <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:end">
-                <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem"><input type="checkbox" @bind="_product.IsNew" /> جدید</label>
-                <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem"><input type="checkbox" @bind="_product.IsFeatured" /> محبوب</label>
-                <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem"><input type="checkbox" @bind="_product.IsActive" /> فعال</label>
-            </div>
-            <div>
-                <label class="form-label" for="home-hero-slot">تصویر بالای صفحه اصلی</label>
+        </section>
+        <aside class="editor-settings">
+            <section class="editor-card" aria-labelledby="visibility-title">
+                <div class="editor-section-title"><span>۰۲</span><div><h2 id="visibility-title">نمایش در فروشگاه</h2><p>وضعیت و نشان‌های محصول</p></div></div>
+                <label class="editor-option"><span><strong>فعال در فروشگاه</strong><small>مشتریان می‌توانند محصول را ببینند.</small></span><input type="checkbox" @bind="_product.IsActive" /></label>
+                <label class="editor-option"><span><strong>محصول جدید</strong><small>نمایش نشان «جدید» روی محصول</small></span><input type="checkbox" @bind="_product.IsNew" /></label>
+                <label class="editor-option"><span><strong>محصول محبوب</strong><small>نمایش در مجموعه محصولات محبوب</small></span><input type="checkbox" @bind="_product.IsFeatured" /></label>
+            </section>
+            <section class="editor-card editor-hero" aria-labelledby="hero-title">
+                <h2 id="hero-title">بالای صفحه اصلی</h2>
+                <p class="editor-hint">تصویر اصلی محصول را در یکی از دو جایگاه صفحه اصلی نمایش دهید.</p>
+                <label class="editor-field" for="home-hero-slot">جایگاه نمایش</label>
                 <select id="home-hero-slot" class="form-input" @bind="_product.HomeHeroSlot">
                     <option value="">نمایش داده نشود</option>
                     <option value="1">جایگاه اول</option>
                     <option value="2">جایگاه دوم</option>
                 </select>
-                <p style="font-size:.8rem; color:var(--papey-muted)">تصویر اصلی این محصول نمایش داده می‌شود. انتخاب یک جایگاه، محصول قبلی همان جایگاه را جایگزین می‌کند. محصول باید فعال باشد.</p>
-            </div>
-        </div>
-        <div class="form-group" style="margin-top:12px">
-            <label class="form-label">دسته‌بندی‌ها (متناسب با نوع محصول)</label>
-            @if (_product.ProductTypeId is not { } selectedTypeId)
-            {
-                <p style="font-size:0.82rem; color:var(--papey-muted); margin:0">ابتدا نوع محصول را انتخاب کنید.</p>
-            }
-            else
-            {
-                <div class="admin-category-picker">
-                    @foreach (var category in _categories.Where(c => c.ProductTypeId == selectedTypeId).OrderBy(c => c.DisplayOrder))
-                    {
-                        <label class="admin-category-root">
-                            <input type="checkbox" checked="@_selectedCatIds.Contains(category.Id)" @onchange="e => ToggleCategory(category.Id, (bool)e.Value!)" /> @category.Name
-                        </label>
-                    }
-                </div>
-            }
-        </div>
-        <div class="form-group" style="margin-top:12px">
-            <textarea class="form-input" rows="3" placeholder="توضیحات محصول..." @bind="_product.Description"></textarea>
-        </div>
+                <p class="editor-hint">انتخاب هر جایگاه، محصول قبلی آن را جایگزین می‌کند. محصول باید فعال باشد.</p>
+            </section>
+            <p class="editor-save-note">پس از تکمیل این بخش‌ها، «ذخیره تغییرات» را بزنید.</p>
+        </aside>
     </div>
 
-    <div class="card-box" style="margin-bottom:24px">
-        <h4 style="margin-top:0">🖼 تصاویر و ویدیو</h4>
+    <section class="editor-card editor-assets">
+        <div class="editor-section-title"><span>۰۳</span><div><h2>تصاویر و ویدیو</h2><p>اولین تصویر، تصویر اصلی محصول است.</p></div></div>
         <p style="font-size:0.8rem; color:var(--papey-muted)">
             📐 نسبت پیشنهادی تصویر: <strong>۱:۱ (مربعی)</strong> — حداقل ۸۰۰×۸۰۰ پیکسل.
             ویدیو: MP4/WebM حداکثر ۵۰ مگابایت.
         </p>
-        <InputFile OnChange="UploadMedia" accept="image/*,video/mp4,video/webm" class="form-input" />
+        <label class="editor-upload"><strong>افزودن تصویر یا ویدیو</strong><span>فایل را از دستگاه خود انتخاب کنید</span><InputFile OnChange="UploadMedia" accept="image/*,video/mp4,video/webm" disabled="@_uploading" /></label>
         @if (_uploading) { <p>در حال آپلود...</p> }
         @if (_uploadError is not null) { <div class="alert-papey alert-danger">@_uploadError</div> }
 
@@ -94,7 +117,7 @@ else
                     }
                     else
                     {
-                        <img src="@m.Url" style="width:100%; height:110px; object-fit:cover; border-radius:8px" />
+                        <img src="@m.Url" alt="@_product.Name" style="width:100%; height:110px; object-fit:cover; border-radius:8px" />
                     }
                     <div style="margin-top:6px; display:flex; justify-content:center; gap:4px">
                         <button class="btn-papey btn-sm btn-outline" @onclick="() => MoveMedia(m, -1)">→</button>
@@ -104,14 +127,14 @@ else
                 </div>
             }
         </div>
-    </div>
+    </section>
 
-    <div class="card-box" style="margin-bottom:24px">
-        <h4 style="margin-top:0">🎨 فایل‌های طرح (فقط مدیریت)</h4>
+    <section class="editor-card editor-assets">
+        <div class="editor-section-title"><span>۰۴</span><div><h2>فایل‌های طرح</h2><p>فایل‌های خصوصی برای چاپ و آماده‌سازی سفارش</p></div></div>
         <p style="font-size:0.8rem; color:var(--papey-muted)">
             تصاویر اصلی طرح این محصول هستند و در فروشگاه عمومی نمایش داده نمی‌شوند. فرمت‌های JPG، PNG و WebP تا ۱۵ مگابایت قابل بارگذاری‌اند.
         </p>
-        <InputFile OnChange="UploadDesigns" multiple accept=".jpg,.jpeg,.png,.webp" class="form-input" />
+        <label class="editor-upload"><strong>افزودن فایل طرح</strong><span>فقط در پنل مدیریت قابل مشاهده است</span><InputFile OnChange="UploadDesigns" multiple accept=".jpg,.jpeg,.png,.webp" disabled="@_designUploading" /></label>
         @if (_designUploading) { <p>در حال آپلود فایل‌های طرح...</p> }
         @if (_designUploadError is not null) { <div class="alert-papey alert-danger">@_designUploadError</div> }
 
@@ -134,10 +157,10 @@ else
                 }
             </div>
         }
-    </div>
+    </section>
 
-    <div class="card-box">
-        <h4 style="margin-top:0">🎨 رنگ‌ها، سایزها و موجودی</h4>
+    <section class="editor-card editor-stock">
+        <div class="editor-section-title"><span>۰۵</span><div><h2>رنگ، سایز و موجودی</h2><p>ترکیب‌های قابل سفارش را فعال کنید.</p></div></div>
         <label class="unlimited-stock-toggle">
             <input id="unlimited-stock" type="checkbox" checked="@_product.HasUnlimitedStock" @onchange="SetUnlimitedStock" />
             موجودی نامحدود (بدون محدودیت تعداد)
@@ -179,6 +202,8 @@ else
             </table>
         </div>
         @if (_variantMsg is not null) { <div class="alert-papey alert-success" style="margin-top:8px">@_variantMsg</div> }
+    </section>
+    <p class="editor-save-note">تغییرات فایل‌ها و موجودی هنگام انجام ذخیره می‌شوند.</p>
     </div>
 }
 
@@ -194,7 +219,8 @@ else
     private List<ProductDesignMedia> _designMedia = new();
     private HashSet<int> _selectedCatIds = new();
     private string? _variantMsg, _uploadError, _designUploadError;
-    private bool _uploading, _designUploading;
+    private bool _uploading, _designUploading, _saving;
+    private string? _infoError;
     private static readonly Dictionary<string, string> DesignContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         [".jpg"] = "image/jpeg",
@@ -205,11 +231,16 @@ else
 
     protected override async Task OnInitializedAsync() => await Reload();
 
-    private async Task Reload()
+    private async Task Reload(bool preserveDraft = false)
     {
         await using var db = await DbFactory.CreateDbContextAsync();
-        _product = await db.Products.Include(p => p.Variants).Include(p => p.ProductCategories).FirstOrDefaultAsync(p => p.Id == Id);
-        _selectedCatIds = _product?.ProductCategories.Select(pc => pc.CategoryId).ToHashSet() ?? new();
+        var fresh = await db.Products.Include(p => p.Variants).Include(p => p.ProductCategories).FirstOrDefaultAsync(p => p.Id == Id);
+        if (preserveDraft && _product is not null && fresh is not null) _product.Variants = fresh.Variants;
+        else
+        {
+            _product = fresh;
+            _selectedCatIds = _product?.ProductCategories.Select(pc => pc.CategoryId).ToHashSet() ?? new();
+        }
         _categories = await db.Categories
             .Include(c => c.ProductType)
             .OrderBy(c => c.ProductType!.DisplayOrder)
@@ -224,10 +255,24 @@ else
 
     private async Task SaveInfo()
     {
+        if (_saving || _product is null) return;
+        _infoError = null;
+        if (string.IsNullOrWhiteSpace(_product.Name) || _product.Name.Length > 200)
+        { _infoError = "نام محصول را وارد کنید (حداکثر ۲۰۰ کاراکتر)."; return; }
+        if (_product.Price < 0 || _product.OldPrice < 0)
+        { _infoError = "قیمت محصول نمی‌تواند منفی باشد."; return; }
+        _saving = true;
+        try { await SaveInfoCore(); }
+        catch { _infoError = "ذخیره انجام نشد. دوباره تلاش کنید."; }
+        finally { _saving = false; }
+    }
+
+    private async Task SaveInfoCore()
+    {
         await using var db = await DbFactory.CreateDbContextAsync();
         var t = await db.Products.FindAsync(Id);
         if (t is null) return;
-        t.Name = _product!.Name; t.Price = _product.Price; t.OldPrice = _product.OldPrice;
+        t.Name = _product!.Name.Trim(); t.Price = _product.Price; t.OldPrice = _product.OldPrice;
         t.ProductTypeId = _product.ProductTypeId;
         t.Description = _product.Description; t.IsNew = _product.IsNew;
         t.IsFeatured = _product.IsFeatured; t.IsActive = _product.IsActive;
@@ -240,7 +285,7 @@ else
             .ToHashSet();
         if (t.ProductTypeId is null || validCategoryIds.Count == 0)
         {
-            _variantMsg = "نوع محصول و حداقل یک دسته‌بندی مرتبط را انتخاب کنید.";
+            _infoError = "نوع محصول و حداقل یک دسته‌بندی مرتبط را انتخاب کنید.";
             return;
         }
 
@@ -309,7 +354,7 @@ else
                 DisplayOrder = _media.Count
             });
             await db.SaveChangesAsync();
-            await Reload();
+            await Reload(true);
         }
         catch (Exception ex) { _uploadError = "خطا در آپلود: " + ex.Message; }
         _uploading = false;
@@ -361,7 +406,7 @@ else
                     DisplayOrder = _designMedia.Count + index
                 }));
                 await db.SaveChangesAsync();
-                await Reload();
+                await Reload(true);
             }
 
             if (errors.Count > 0) _designUploadError = string.Join(" ", errors);
@@ -385,7 +430,7 @@ else
         if (i < 0 || j < 0 || j >= list.Count) return;
         (list[i].DisplayOrder, list[j].DisplayOrder) = (list[j].DisplayOrder, list[i].DisplayOrder);
         await db.SaveChangesAsync();
-        await Reload();
+        await Reload(true);
     }
 
     private async Task DeleteMedia(ProductMedia m)
@@ -394,7 +439,7 @@ else
         var t = await db.ProductMedia.FindAsync(m.Id);
         if (t is not null) { db.ProductMedia.Remove(t); await db.SaveChangesAsync(); }
         try { System.IO.File.Delete(Path.Combine("wwwroot", m.Url.TrimStart('/'))); } catch { }
-        await Reload();
+        await Reload(true);
     }
 
     private async Task DeleteDesign(ProductDesignMedia design)
@@ -411,7 +456,7 @@ else
             File.Delete(filePath);
         }
         catch { }
-        await Reload();
+        await Reload(true);
     }
 
     private async Task SetUnlimitedStock(ChangeEventArgs e)
@@ -446,7 +491,7 @@ else
         }
         await db.SaveChangesAsync();
         _variantMsg = enabled ? "✓ ترکیب رنگ و سایز فعال شد." : "✓ ترکیب رنگ و سایز غیرفعال شد.";
-        await Reload();
+        await Reload(true);
     }
 
     private async Task SetStock(Color c, Size s, string? val)
@@ -459,6 +504,6 @@ else
         t.Stock = stock;
         _variantMsg = "✓ موجودی به‌روزرسانی شد.";
         await db.SaveChangesAsync();
-        await Reload();
+        await Reload(true);
     }
 }

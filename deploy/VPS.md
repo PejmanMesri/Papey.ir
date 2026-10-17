@@ -136,3 +136,19 @@ parameter in `SMSIR_OTP_TEMPLATE_ID`. Optional `SMSIR_ORDER_TEMPLATE_ID` uses
 line messages are held by SMS.ir or blocked by recipients' advertising settings,
 resolve that with the provider or use approved service templates. Do not invent
 an approved template ID or enable sandbox login on the live site.
+
+## Product editor and all-user SMS
+
+The product editor groups details, visibility and homepage placement separately
+and keeps unsaved details while uploading files or changing variants. Stock and
+file operations save immediately; the main save button saves product details.
+
+In `/admin/sms`, choose **همه کاربران**, enter the message and select
+**پیش‌نمایش ارسال**. The preview freezes the audience for final confirmation.
+Only valid registered account phones are included; missing/invalid phones are
+excluded and duplicate national/international forms are combined. Admin login
+aliases are not added as extra customer accounts. Messages are sent in batches
+of at most 100; any rejected or uncertain batch stops the remaining batches.
+Results distinguish provider acceptance, rejection, unknown results and unsent
+recipients. No automatic resend occurs. Advertising-number blocking still
+applies to this ordinary bulk SMS route.

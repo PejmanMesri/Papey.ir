@@ -82,6 +82,7 @@ builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<OtpSignInTickets>();
 builder.Services.AddScoped<FavoriteService>();
 builder.Services.AddHttpClient<SmsService>(http => http.Timeout = TimeSpan.FromSeconds(15));
+builder.Services.AddScoped<SmsAudienceService>();
 builder.Services.AddScoped<OrderAdminSmsQueue>();
 builder.Services.AddHostedService<OrderAdminSmsWorker>();
 builder.Services.AddScoped<ShippingSmsQueue>();

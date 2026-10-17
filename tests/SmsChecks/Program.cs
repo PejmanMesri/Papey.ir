@@ -201,6 +201,40 @@ try
     await adminQueue.ProcessOneAsync();
     Check(handler.Calls == 0 && await db.OrderAdminSmsJobs.AnyAsync(j => j.OrderId == uncertainOrder.Id && j.State == ShippingSmsState.Cancelled),
         "Removing a recipient suppresses already queued alerts");
+    var broadcast = new SmsAudienceService(factory, production);
+    db.Users.AddRange(new AppUser { Username = "audience-local", Phone = "09135555555", PasswordHash = "unused" },
+        new AppUser { Username = "audience-international", Phone = "+989135555555", PasswordHash = "unused" },
+        new AppUser { Username = "audience-invalid", Phone = "invalid", PasswordHash = "unused" },
+        new AppUser { Username = "audience-missing", PasswordHash = "unused" });
+    await db.SaveChangesAsync();
+    var audience = await broadcast.GetAllUsersAsync();
+    Check(audience.Phones.Count(p => p == "09135555555") == 1 && audience.WithoutValidPhone >= 3,
+        "All-users audience combines international duplicates and omits missing or invalid account phones");
+    Check(audience.Phones.Contains(existingAliasUser.Phone!) && !audience.Phones.Contains("09120000002"),
+        "Audience includes registered phones without treating configured admin aliases as extra users");
+    var many = Enumerable.Range(0, 201).Select(i => $"0913{i:0000000}").ToArray();
+    handler.Reset(); handler.AutoBulkSuccess = true;
+    var broadcastResult = await broadcast.SendAsync(many.Append(many[0]), "Broadcast test");
+    Check(broadcastResult.Success && broadcastResult.Accepted == 201 && handler.BatchSizes.SequenceEqual(new[] { 100, 100, 1 }),
+        "More than 100 recipients are deduplicated and sent in provider-sized batches");
+    handler.Reset(); handler.AutoBulkSuccess = true;
+    Check(!(await broadcast.SendAsync(["invalid"], "Test")).Success && handler.Calls == 0,
+        "Invalid audience never contacts the provider");
+    Check(!(await broadcast.SendAsync([], "Test")).Success && handler.Calls == 0,
+        "Empty audiences never contact the provider");
+    handler.Reset(); handler.Throw = true;
+    broadcastResult = await broadcast.SendAsync(many, "Broadcast test");
+    Check(handler.Calls == 1 && broadcastResult.Unknown == 100 && broadcastResult.Unsent == 101 && !broadcastResult.Success,
+        "Uncertain batches stop the broadcast and preserve remaining unsent counts");
+    handler.Reset(); handler.Json = "{\"status\":0}";
+    broadcastResult = await broadcast.SendAsync(many, "Broadcast test");
+    Check(handler.Calls == 1 && broadcastResult.Rejected == 100 && broadcastResult.Unsent == 101,
+        "Definite provider rejection stops further batches without retrying recipients");
+    handler.Reset(); handler.Json = "{\"status\":1,\"data\":{\"messageIds\":[123,0]}}";
+    broadcastResult = await broadcast.SendAsync(many.Take(2), "Broadcast test");
+    Check(broadcastResult.Accepted == 1 && broadcastResult.Rejected == 1 && !broadcastResult.Success,
+        "Partial broadcast rejection is reported accurately");
+    handler.Reset();
     Check(!db.Database.HasPendingModelChanges(), "Migration snapshot matches the model");
 }
 finally
@@ -221,15 +255,25 @@ sealed class FakeSmsHandler : HttpMessageHandler
     public string Json = "{\"status\":1,\"data\":{\"messageId\":123,\"messageIds\":[123],\"packId\":\"test-pack\"}}";
     public string Body = "", Key = "", Path = "";
     public int Calls;
+    public bool AutoBulkSuccess;
+    public List<int> BatchSizes = [];
     public bool Throw;
     public HttpStatusCode Status = HttpStatusCode.OK;
-    public void Reset() { Calls=0; Throw=false; Json="{\"status\":1,\"data\":{\"messageId\":123,\"messageIds\":[123],\"packId\":\"test-pack\"}}"; }
+    public void Reset() { Calls=0; AutoBulkSuccess=false; BatchSizes.Clear(); Throw=false; Json="{\"status\":1,\"data\":{\"messageId\":123,\"messageIds\":[123],\"packId\":\"test-pack\"}}"; }
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         Interlocked.Increment(ref Calls);
         if (Throw) throw new HttpRequestException("Simulated transport failure");
         Key=request.Headers.GetValues("x-api-key").Single(); Path=request.RequestUri!.AbsolutePath;
         Body=await request.Content!.ReadAsStringAsync(cancellationToken);
+        if (AutoBulkSuccess && Path == "/v1/send/bulk")
+        {
+            using var payload = JsonDocument.Parse(Body);
+            var count = payload.RootElement.GetProperty("mobiles").GetArrayLength();
+            BatchSizes.Add(count);
+            return new(Status) { Content = new StringContent(JsonSerializer.Serialize(new { status = 1,
+                data = new { messageIds = Enumerable.Repeat(123, count).ToArray(), packId = "test-pack" } })) };
+        }
         return new(Status) { Content=new StringContent(Json) };
     }
 }
