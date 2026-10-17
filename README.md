@@ -11,7 +11,7 @@ Desktop printing integration: [PRINTING_API.md](PRINTING_API.md) — paid-order 
 - 🛒 سبد خرید کامل (افزودن، تغییر تعداد، حذف) با ذخیره‌سازی پایدار در کش توزیع‌شده
 - 📦 تسویه حساب با آدرس گیرنده (استان/شهر/آدرس/کدپستی) + **ذخیره آدرس** در حساب کاربری
 - 💳 درگاه پرداخت **زرین‌پال** (سندباکس) با callback و verify + idempotency
-- 📱 ارسال **SMS به ادمین‌ها** (چند شماره) پس از خرید موفق با **KaveNegar**
+- 📱 ارسال **SMS به ادمین‌ها** (چند شماره) پس از خرید موفق با **SMS.ir**
 - 🔐 احراز هویت کوکی (ثبت‌نام/ورود/خروج) + نقش Admin
 - ⚙️ **پنل مدیریت**: داشبورد، مدیریت محصولات (افزودن/فعال/غیرفعال/حذف)، مدیریت سفارش‌ها (تغییر وضعیت)، دسته‌بندی‌ها
 - 🐘 دیتابیس **PostgreSQL** + EF Core (auto-migrate & seed)
@@ -43,8 +43,12 @@ dotnet run --urls http://localhost:5032
 | `ZARINPAL_MERCHANT_ID` | مرچنت‌کد زرین‌پال (سندباکس: همه صفر) |
 | `ZARINPAL_SANDBOX` | `true` برای سندباکس |
 | `ZARINPAL_CALLBACK_URL` | آدرس callback — Docker: `http://localhost:8080/payment/callback` (لوکال بدون Docker: `http://localhost:5032/payment/callback`) |
-| `KAVENEGAR_API_KEY` | توکن KaveNegar |
-| `KAVENEGAR_SENDER` | شماره خط ارسال (اختیاری) |
+| `SMSIR_API_KEY` | کلید SMS.ir محیط اصلی |
+| `SMSIR_SANDBOX_API_KEY` | کلید محیط آزمایشی |
+| `SMSIR_SANDBOX` | حالت آزمایشی (در توسعه همیشه فعال) |
+| `SMSIR_LINE_NUMBER` | شماره خط ارسال گروهی |
+| `SMSIR_OTP_TEMPLATE_ID` | شناسه قالب تأییدشده ورود با پارامتر CODE |
+| `SMSIR_SHIPPING_TEMPLATE_ID` | شناسه قالب تأییدشده ارسال سفارش با پارامتر ORDERNUMBER |
 | `ADMIN_PHONES` | شماره‌های ادمین، با ویرگول جدا شوند |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `ADMIN_EMAIL` | حساب ادمین اولیه |
 
@@ -65,7 +69,7 @@ Papey/
 │   └── ProductGrid.razor
 ├── Data/                # AppDbContext + DbSeeder
 ├── Models/              # Category, Product, ProductVariant, AppUser, Address, Order, OrderItem, CartItem
-├── Services/            # ZarinpalService, SmsService (KaveNegar), CartService, AuthService, PersianHelpers
+├── Services/            # ZarinpalService, SmsService (SMS.ir), CartService, AuthService, PersianHelpers
 ├── Migrations/          # EF Core migrations
 ├── wwwroot/img/products # تصاویر SVG محصولات
 ├── Dockerfile
@@ -77,3 +81,16 @@ Papey/
 
 تمام جریان خرید به‌صورت end-to-end تست شده است:
 خانه ← محصول (انتخاب رنگ/سایز/تعداد) ← سبد خرید ← تسویه ← زرین‌پال سندباکس ← پرداخت موفق ← ثبت سفارش (پرداخت‌شده) ← نمایش در پنل مدیریت.
+
+### موجودی نامحدود محصولات
+
+در ویرایش محصول، گزینه «موجودی نامحدود (بدون محدودیت تعداد)» به‌صورت پیش‌فرض
+فعال است. در این حالت فقط ترکیب‌های رنگ و سایز قابل سفارش را تیک بزنید؛ تعداد
+موجودی وارد نمی‌شود و خرید از موجودی کم نمی‌کند. با برداشتن تیک، تعداد هر ترکیب
+نمایش داده می‌شود و محدودیت موجودی در سبد و تسویه اعمال می‌شود. تغییر حالت،
+تعدادهای ذخیره‌شده را پاک نمی‌کند. غیرفعال کردن یک ترکیب، خرید آن را متوقف می‌کند
+و سابقه سفارش‌های قبلی را نگه می‌دارد.
+
+مایگریشن `AddUnlimitedProductStock` موجودی نامحدود را برای محصولات موجود هم فعال
+می‌کند. برای محصولاتی که باید محدود بمانند، گزینه را غیرفعال و تعدادها را بررسی کنید.
+آزمون موجودی: `dotnet run --project tests/InventoryChecks/InventoryChecks.csproj`

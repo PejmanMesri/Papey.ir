@@ -1,14 +1,15 @@
 @page "/login"
+@page "/register"
 @rendermode InteractiveServer
 @inject AuthService Auth
 @inject NavigationManager Nav
 @inject OtpSignInTickets SignInTickets
 
-<PageTitle>ورود | پاپی</PageTitle>
+<PageTitle>ورود / ثبت‌نام | پاپی</PageTitle>
 
 <div style="max-width:440px; margin:64px auto">
     <div class="card-box">
-        <h2 style="text-align:center; margin-top:0">👤 ورود به حساب</h2>
+        <h2 style="text-align:center; margin-top:0">ورود / ثبت‌نام</h2>
 
         @if (!string.IsNullOrEmpty(ReturnUrl))
         {
@@ -20,8 +21,8 @@
         }
 
         <div style="display:flex; gap:8px; margin-bottom:20px">
-            <button class="btn-papey @(_tab == "password" ? "" : "btn-outline")" style="flex:1; font-size:0.85rem" @onclick='() => _tab = "password"'>ورود با رمز</button>
-            <button class="btn-papey @(_tab == "otp" ? "" : "btn-outline")" style="flex:1; font-size:0.85rem" @onclick='() => _tab = "otp"'>ورود با پیامک</button>
+            <button class="btn-papey @(_tab == "otp" ? "" : "btn-outline")" style="flex:1; font-size:0.85rem" @onclick='() => _tab = "otp"'>شماره موبایل</button>
+            <button class="btn-papey @(_tab == "password" ? "" : "btn-outline")" style="flex:1; font-size:0.85rem" @onclick='() => _tab = "password"'>نام کاربری و رمز</button>
         </div>
 
         @if (_tab == "password")
@@ -94,9 +95,10 @@
         {
             @if (!_otpSent)
             {
+                <p style="font-size:0.85rem; color:var(--papey-muted); line-height:1.9">شماره موبایل خود را وارد کنید. پس از تایید کد، وارد می‌شوید؛ اگر حسابی نداشته باشید، حساب شما خودکار ساخته می‌شود.</p>
                 <div class="form-group">
-                    <label class="form-label">شماره موبایل</label>
-                    <input class="form-input" @bind="_phone" placeholder="09xxxxxxxxx" maxlength="11" />
+                    <label class="form-label" for="login-phone">شماره موبایل</label>
+                    <input id="login-phone" class="form-input" type="tel" inputmode="tel" autocomplete="tel-national" dir="ltr" @bind="_phone" placeholder="09xxxxxxxxx" maxlength="16" />
                 </div>
                 @if (_otpError is not null)
                 {
@@ -115,20 +117,23 @@
                 }
                 <div class="form-group">
                     <label class="form-label">کد تایید</label>
-                    <input class="form-input" @bind="_code" maxlength="5" style="text-align:center; letter-spacing:8px; font-size:1.3rem" />
+                    <input class="form-input" aria-label="کد تایید" inputmode="numeric" autocomplete="one-time-code" dir="ltr" @bind="_code" maxlength="5" style="text-align:center; letter-spacing:8px; font-size:1.3rem" />
                 </div>
                 @if (_otpError is not null)
                 {
                     <div class="alert-papey alert-danger">@_otpError</div>
                 }
-                <button class="btn-papey" style="width:100%" @onclick="VerifyOtp" disabled="@_sending">تایید و ورود</button>
+                <button class="btn-papey" style="width:100%" @onclick="VerifyOtp" disabled="@_sending">تایید و ادامه</button>
                 <button class="btn-papey btn-outline" style="width:100%; margin-top:8px" @onclick="ResetOtp">ویرایش شماره</button>
             }
         }
 
-        <p style="text-align:center; margin-top:16px; font-size:0.85rem">
-            حساب ندارید؟ <a href="/register@(ReturnUrlQuery)" style="color:var(--papey-accent-dark); font-weight:700">ثبت‌نام کنید</a>
-        </p>
+        @if (_tab == "password")
+        {
+            <p style="text-align:center; margin-top:16px; font-size:0.85rem">
+                <a href="/register/password@(ReturnUrlQuery)" style="color:var(--papey-accent-dark); font-weight:700">ساخت حساب با نام کاربری و رمز عبور</a>
+            </p>
+        }
     </div>
 </div>
 
@@ -136,7 +141,12 @@
     [SupplyParameterFromQuery] public string? Error { get; set; }
     [SupplyParameterFromQuery(Name = "returnUrl")] public string? ReturnUrl { get; set; }
 
-    private string _tab = "password";
+    [SupplyParameterFromQuery(Name = "method")] public string? Method { get; set; }
+    private string _tab = "otp";
+    protected override void OnParametersSet()
+    {
+        if (Error == "1" || Method == "password") _tab = "password";
+    }
     private string _phone = "";
     private string _code = "";
     private bool _otpSent;

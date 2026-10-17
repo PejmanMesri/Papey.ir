@@ -1,10 +1,11 @@
-@page "/register"
+@page "/register/password"
 
 <PageTitle>ثبت‌نام | پاپی</PageTitle>
 
 <div style="max-width:440px; margin:64px auto">
     <div class="card-box">
-        <h2 style="text-align:center; margin-top:0">📝 ثبت‌نام</h2>
+        <h2 style="text-align:center; margin-top:0">ثبت‌نام با نام کاربری</h2>
+        <p style="text-align:center"><a href="/register@(ReturnUrlQuery)">ورود / ثبت‌نام سریع با شماره موبایل</a></p>
         @if (!string.IsNullOrEmpty(Error))
         {
             <div class="alert-papey alert-danger">@ErrorMessage</div>

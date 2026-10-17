@@ -83,7 +83,7 @@ else
         </div>
         <div class="card-box" style="height:fit-content">
             <h3 style="margin-top:0">سفارش شما</h3>
-            @foreach (var item in Cart.Items)
+            @foreach (var item in Cart.Items.OrderBy(i => i.ProductId).ThenBy(i => i.ProductVariantId))
             {
                 <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin:8px 0">
                     <span>@item.ProductName (@item.Size / @item.Color) × @PersianHelpers.ToPersianDigits(item.Quantity.ToString())</span>
@@ -173,7 +173,9 @@ else
         {
             await using var db = await DbFactory.CreateDbContextAsync();
 
-            // Validate stock & build order
+            await using var transaction = await db.Database.BeginTransactionAsync();
+
+            // Validate availability and reserve only limited stock in the order transaction.
             var order = new Order
             {
                 OrderNumber = $"PY-{DateTime.UtcNow:yyyyMMdd}-{Random.Shared.Next(10000, 99999)}",
@@ -189,16 +191,15 @@ else
                 GrandTotal = _grand,
                 Status = OrderStatus.Pending
             };
-            foreach (var item in Cart.Items)
+            foreach (var item in Cart.Items.OrderBy(i => i.ProductId).ThenBy(i => i.ProductVariantId))
             {
-                var variant = await db.ProductVariants.FindAsync(item.ProductVariantId);
-                if (variant is null || variant.Stock < item.Quantity)
+                var variant = await ProductInventory.ReserveAsync(db, item.ProductVariantId, item.Quantity);
+                if (variant is null)
                 {
                     _error = $"موجودی «{item.ProductName}» کافی نیست.";
                     _processing = false;
                     return;
                 }
-                variant.Stock -= item.Quantity;
                 order.Items.Add(new OrderItem
                 {
                     ProductId = item.ProductId,
@@ -235,6 +236,8 @@ else
                 }
             }
             await db.SaveChangesAsync();
+
+            await transaction.CommitAsync();
 
             // Request payment from Zarinpal sandbox (amount in Rials = Toman × 10)
             var pay = await Zarinpal.RequestPaymentAsync(

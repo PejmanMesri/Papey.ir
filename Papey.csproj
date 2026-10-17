@@ -11,6 +11,8 @@
     <Compile Remove="tests/**" />
     <Content Remove="tests/**" />
     <None Remove="tests/**" />
+    <Content Remove="deploy-artifacts/**;.env;.env.*;App_Data/**" />
+    <None Remove="deploy-artifacts/**;.env;.env.*;App_Data/**" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageReference Include="DotNetEnv" Version="3.2.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">

@@ -1,0 +1,122 @@
+@page "/admin/sms"
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+@rendermode InteractiveServer
+@inject SmsService Sms
+@inject ShippingSmsQueue Queue
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>پیامک‌ها | پنل مدیریت پاپی</PageTitle>
+<h1>✉ پیامک‌ها</h1>
+<div class="alert-papey alert-info">
+    @(Sms.IsSandbox ? "محیط آزمایشی: پیامک واقعی ارسال نمی‌شود و اعتباری کسر نمی‌شود." : "محیط اصلی: ارسال پیامک از اعتبار حساب SMS.ir کسر می‌شود.")
+</div>
+@if (!Sms.CanSendBulk) { <div class="alert-papey alert-danger">کلید API یا شماره خط ارسال تنظیم نشده است.</div> }
+<div class="card-box" style="margin-bottom:24px">
+    <h2>ارسال گروهی</h2>
+    <p>حداکثر ۱۰۰ شماره در هر ارسال. شماره‌های تکراری حذف می‌شوند.</p>
+    @if (_preview is null)
+    {
+        <div class="form-group"><label class="form-label" for="sms-recipients">شماره‌های گیرندگان (هر شماره در یک خط یا با ویرگول)</label><textarea id="sms-recipients" class="form-input" rows="5" @bind="_recipients" @bind:event="oninput" placeholder="09123456789" dir="ltr" maxlength="5000"></textarea></div>
+        <div class="form-group"><label class="form-label" for="sms-message">متن پیامک</label><textarea id="sms-message" class="form-input" rows="4" maxlength="1000" @bind="_message" @bind:event="oninput"></textarea></div>
+        <button type="button" class="btn-papey" disabled="@(!Sms.CanSendBulk || _busy)" @onclick="Preview">پیش‌نمایش ارسال</button>
+    }
+    else
+    {
+        <h3>بررسی ارسال</h3>
+        <p>@PersianHelpers.ToPersianDigits(_preview.Phones.Length.ToString()) گیرنده • خط @Sms.LineNumber</p>
+        <p style="white-space:pre-wrap; overflow-wrap:anywhere">@_preview.Message</p>
+        <details><summary>مشاهده شماره‌ها</summary><p dir="ltr" style="overflow-wrap:anywhere">@string.Join("، ", _preview.Phones)</p></details>
+        <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:20px">
+            <button type="button" class="btn-papey" disabled="@_busy" @onclick="Send">@(_busy ? "در حال ارسال..." : Sms.IsSandbox ? "تأیید و ارسال آزمایشی" : "تأیید و ارسال پیامک")</button>
+            <button type="button" class="btn-papey btn-outline" disabled="@_busy" @onclick="() => _preview = null">ویرایش</button>
+        </div>
+    }
+    @if (_notice is not null) { <div class="alert-papey @(_error ? "alert-danger" : "alert-info")" role="status" style="margin-top:16px">@_notice</div> }
+</div>
+<div class="card-box">
+    <div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px"><h2>پیامک ارسال سفارش</h2><button class="btn-papey btn-outline" disabled="@_busy" @onclick="LoadJobs">به‌روزرسانی</button></div>
+    <p>با تغییر وضعیت سفارش به «ارسال شده»، پیامک به شماره گیرنده سفارش ارسال می‌شود.</p>
+    @if (!Sms.CanSendShipping) { <p class="alert-papey alert-danger">پیامک‌های سفارش تا تکمیل تنظیمات در صف باقی می‌مانند.</p> }
+    <table class="table-papey mobile-card-table">
+        <thead><tr><th>سفارش</th><th>محیط</th><th>وضعیت پیامک</th><th>تلاش‌ها</th><th>جزئیات</th></tr></thead>
+        <tbody>
+            @foreach (var job in _jobs)
+            {
+                <tr>
+                    <td data-label="سفارش">@job.Order.OrderNumber</td>
+                    <td data-label="محیط">@(job.IsSandbox ? "آزمایشی" : "اصلی")</td>
+                    <td data-label="وضعیت پیامک">@StateLabel(job.State)</td>
+                    <td data-label="تلاش‌ها">@PersianHelpers.ToPersianDigits(job.Attempts.ToString())</td>
+                    <td data-label="جزئیات">
+                        @job.Error
+                        @if (job.MessageId is not null) { <span>شناسه پیامک: @job.MessageId</span> }
+                        @if (job.State == ShippingSmsState.Failed && job.IsSandbox == Sms.IsSandbox)
+                        { <button class="btn-papey btn-sm btn-outline" disabled="@_busy" @onclick="() => Retry(job.Id)">تلاش مجدد</button> }
+                        @if (job.State == ShippingSmsState.Unknown) { <span>پیش از ارسال مجدد گزارش SMS.ir را بررسی کنید.</span> }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (_jobs.Count == 0) { <p>هنوز پیامک ارسال سفارش ثبت نشده است.</p> }
+</div>
+
+@code {
+    private string _recipients = "", _message = "";
+    private string? _notice;
+    private bool _busy, _error;
+    private BulkPreview? _preview;
+    private List<ShippingSmsJob> _jobs = [];
+    private sealed record BulkPreview(string[] Phones, string Message);
+    protected override Task OnInitializedAsync() => LoadJobs();
+    private async Task LoadJobs()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _jobs = await db.ShippingSmsJobs.AsNoTracking().Include(j => j.Order).OrderByDescending(j => j.CreatedAt).Take(100).ToListAsync();
+    }
+    private void Preview()
+    {
+        _notice = null;
+        var parts = System.Text.RegularExpressions.Regex.Split(_recipients, @"[\s,،;؛]+", System.Text.RegularExpressions.RegexOptions.None).Where(p => p.Length > 0).ToArray();
+        var phones = parts.Select(SmsService.NormalizePhone).ToArray();
+        if (phones.Any(p => p is null)) { _error = true; _notice = "شماره نامعتبر وجود دارد. همه شماره‌ها را بررسی کنید."; return; }
+        var unique = phones.Cast<string>().Distinct().ToArray();
+        if (unique.Length is 0 or > 100 || string.IsNullOrWhiteSpace(_message) || _message.Length > 1000)
+        { _error = true; _notice = "متن و ۱ تا ۱۰۰ شماره معتبر وارد کنید (حداکثر ۱۰۰۰ کاراکتر)."; return; }
+        _preview = new(unique, _message.Trim());
+    }
+    private async Task Send()
+    {
+        if (_busy || _preview is null) return;
+        var preview = _preview;
+        _busy = true;
+        try
+        {
+            var result = await Sms.SendBulkAsync(preview.Phones, preview.Message);
+            _error = !result.Success;
+            _notice = result.Uncertain ? result.Error : $"پذیرفته‌شده توسط سرویس: {PersianHelpers.ToPersianDigits(result.Accepted.ToString())}؛ پذیرفته‌نشده: {PersianHelpers.ToPersianDigits(result.Rejected.ToString())}. {result.Error}";
+            if (result.PackId is not null) _notice += $" شناسه ارسال: {result.PackId}";
+            _preview = null;
+            // Clear attempted recipients so a second click cannot resubmit the same batch.
+            _recipients = "";
+        }
+        finally { _busy = false; }
+    }
+    private async Task Retry(Guid id)
+    {
+        if (_busy) return;
+        _busy = true;
+        try { await Queue.RetryAsync(id); await LoadJobs(); }
+        finally { _busy = false; }
+    }
+    private static string StateLabel(ShippingSmsState state) => state switch
+    {
+        ShippingSmsState.Pending => "در صف",
+        ShippingSmsState.Sending => "در حال ارسال",
+        ShippingSmsState.Accepted => "پذیرفته‌شده توسط سرویس",
+        ShippingSmsState.Failed => "ناموفق",
+        ShippingSmsState.Unknown => "نتیجه نامشخص",
+        _ => "لغو شده"
+    };
+}

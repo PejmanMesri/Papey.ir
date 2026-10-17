@@ -110,7 +110,7 @@
                     }
                 </td>
                 <td data-label="قیمت">@p.Price.ToToman()</td>
-                <td data-label="موجودی">@PersianHelpers.ToPersianDigits(p.Variants.Sum(v => v.Stock).ToString())</td>
+                <td data-label="موجودی">@(p.HasUnlimitedStock ? "نامحدود" : PersianHelpers.ToPersianDigits(p.Variants.Where(v => v.IsEnabled).Sum(v => (long)v.Stock).ToString()))</td>
                 <td data-label="فایل طرح">
                     @if (p.DesignMedia.Count > 0)
                     {
@@ -167,7 +167,7 @@
             }
             if (_typeId is { } typeId) products = products.Where(p => p.ProductTypeId == typeId);
             if (_activeFilter != "") products = products.Where(p => p.IsActive == (_activeFilter == "active"));
-            if (_stockFilter != "") products = products.Where(p => p.Variants.Any(v => v.Stock > 0) == (_stockFilter == "in-stock"));
+            if (_stockFilter != "") products = products.Where(p => p.Variants.Any(v => v.IsEnabled && (p.HasUnlimitedStock || v.Stock > 0)) == (_stockFilter == "in-stock"));
             if (_designFilter != "") products = products.Where(p => p.DesignMedia.Count > 0 == (_designFilter == "with-design"));
             if (_from is { } from) products = products.Where(p => p.CreatedAt.ToLocalTime().Date >= from.Date);
             if (_to is { } to) products = products.Where(p => p.CreatedAt.ToLocalTime().Date <= to.Date);
@@ -178,8 +178,8 @@
                 "name" => products.OrderBy(p => p.Name),
                 "price-asc" => products.OrderBy(p => p.Price),
                 "price-desc" => products.OrderByDescending(p => p.Price),
-                "stock-asc" => products.OrderBy(p => p.Variants.Sum(v => v.Stock)),
-                "stock-desc" => products.OrderByDescending(p => p.Variants.Sum(v => v.Stock)),
+                "stock-asc" => products.OrderBy(p => p.HasUnlimitedStock ? long.MaxValue : p.Variants.Where(v => v.IsEnabled).Sum(v => (long)v.Stock)),
+                "stock-desc" => products.OrderByDescending(p => p.HasUnlimitedStock ? long.MaxValue : p.Variants.Where(v => v.IsEnabled).Sum(v => (long)v.Stock)),
                 _ => products.OrderByDescending(p => p.CreatedAt)
             };
             return sorted.ThenByDescending(p => p.Id).ToList();

@@ -41,6 +41,15 @@ else
                 <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem"><input type="checkbox" @bind="_product.IsFeatured" /> محبوب</label>
                 <label style="display:flex; gap:6px; align-items:center; font-size:0.85rem"><input type="checkbox" @bind="_product.IsActive" /> فعال</label>
             </div>
+            <div>
+                <label class="form-label" for="home-hero-slot">تصویر بالای صفحه اصلی</label>
+                <select id="home-hero-slot" class="form-input" @bind="_product.HomeHeroSlot">
+                    <option value="">نمایش داده نشود</option>
+                    <option value="1">جایگاه اول</option>
+                    <option value="2">جایگاه دوم</option>
+                </select>
+                <p style="font-size:.8rem; color:var(--papey-muted)">تصویر اصلی این محصول نمایش داده می‌شود. انتخاب یک جایگاه، محصول قبلی همان جایگاه را جایگزین می‌کند. محصول باید فعال باشد.</p>
+            </div>
         </div>
         <div class="form-group" style="margin-top:12px">
             <label class="form-label">دسته‌بندی‌ها (متناسب با نوع محصول)</label>
@@ -128,8 +137,14 @@ else
     </div>
 
     <div class="card-box">
-        <h4 style="margin-top:0">🎨 رنگ‌ها و سایزها و موجودی</h4>
-        <p style="font-size:0.8rem; color:var(--papey-muted)">تیک = این ترکیب برای محصول فعال است. با وارد کردن عدد هم ترکیب فعال می‌شود. عدد = موجودی انبار.</p>
+        <h4 style="margin-top:0">🎨 رنگ‌ها، سایزها و موجودی</h4>
+        <label class="unlimited-stock-toggle">
+            <input id="unlimited-stock" type="checkbox" checked="@_product.HasUnlimitedStock" @onchange="SetUnlimitedStock" />
+            موجودی نامحدود (بدون محدودیت تعداد)
+        </label>
+        <p style="font-size:0.85rem; color:var(--papey-muted)">
+            @(_product.HasUnlimitedStock ? "فقط ترکیب‌های رنگ و سایز قابل سفارش را تیک بزنید؛ نیازی به وارد کردن تعداد نیست." : "ترکیب‌های رنگ و سایز را فعال کنید و تعداد موجودی هر ترکیب را وارد کنید. موجودی صفر یعنی ناموجود.")
+        </p>
         <div style="overflow-x:auto">
             <table class="table-papey">
                 <thead>
@@ -149,10 +164,13 @@ else
                             {
                                 var v = _product.Variants.FirstOrDefault(x => x.ColorId == c.Id && x.SizeId == s.Id);
                                 <td style="white-space:nowrap">
-                                    <input type="checkbox" checked="@(v is not null)" @onchange="e => ToggleVariant(c, s, (bool)e.Value!)" />
-                                    <input type="number" min="0" class="form-input" value="@(v?.Stock ?? 0)"
-                                           style="width:64px; opacity:@(v is null ? "0.45" : "1")"
-                                           @onchange="e => SetStock(c, s, e.Value?.ToString())" />
+                                    <input type="checkbox" checked="@(v?.IsEnabled == true)" aria-label="فعال بودن @c.Name / @s.Name" @onchange="e => ToggleVariant(c, s, (bool)e.Value!)" />
+                                    @if (!_product.HasUnlimitedStock)
+                                    {
+                                        <input type="number" min="0" class="form-input" value="@(v?.Stock ?? 0)"
+                                               aria-label="موجودی @c.Name / @s.Name" disabled="@(v?.IsEnabled != true)" style="width:80px"
+                                               @onchange="e => SetStock(c, s, e.Value?.ToString())" />
+                                    }
                                 </td>
                             }
                         </tr>
@@ -213,6 +231,7 @@ else
         t.ProductTypeId = _product.ProductTypeId;
         t.Description = _product.Description; t.IsNew = _product.IsNew;
         t.IsFeatured = _product.IsFeatured; t.IsActive = _product.IsActive;
+        t.HasUnlimitedStock = _product.HasUnlimitedStock;
         t.ImageUrl = _media.OrderBy(m => m.DisplayOrder).FirstOrDefault(m => m.Type == MediaType.Image)?.Url ?? t.ImageUrl;
 
         var validCategoryIds = _categories
@@ -239,7 +258,16 @@ else
         foreach (var catId in validCategoryIds)
             if (!existing.Any(pc => pc.CategoryId == catId))
                 db.ProductCategories.Add(new ProductCategory { ProductId = Id, CategoryId = catId });
+        if (_product.HomeHeroSlot is not (null or 1 or 2)) return;
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(7423901)");
+        var heroSlot = _product.IsActive ? _product.HomeHeroSlot : null;
+        if (heroSlot is not null)
+            await db.Products.Where(p => p.Id != Id && p.HomeHeroSlot == heroSlot)
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.HomeHeroSlot, (int?)null));
+        t.HomeHeroSlot = heroSlot;
         await db.SaveChangesAsync();
+        await transaction.CommitAsync();
         Nav.NavigateTo("/admin/products");
     }
 
@@ -386,6 +414,18 @@ else
         await Reload();
     }
 
+    private async Task SetUnlimitedStock(ChangeEventArgs e)
+    {
+        if (_product is null || e.Value is not bool enabled) return;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var product = await db.Products.FindAsync(Id);
+        if (product is null) return;
+        product.HasUnlimitedStock = enabled;
+        await db.SaveChangesAsync();
+        _product.HasUnlimitedStock = enabled;
+        _variantMsg = enabled ? "✓ موجودی نامحدود فعال شد." : "✓ موجودی محدود فعال شد؛ تعداد هر ترکیب را بررسی کنید.";
+    }
+
     private async Task ToggleVariant(Color c, Size s, bool enabled)
     {
         _variantMsg = null;
@@ -396,42 +436,28 @@ else
             db.ProductVariants.Add(new ProductVariant
             {
                 ProductId = Id, ColorId = c.Id, Color = c.Name, ColorHex = c.Hex,
-                SizeId = s.Id, Size = s.Name, Stock = 5
+                SizeId = s.Id, Size = s.Name, Stock = 0, IsEnabled = true
             });
-            await db.SaveChangesAsync();
-            _variantMsg = "✓ تنوع اضافه شد.";
         }
-        else if (!enabled && existing is not null)
+        else if (existing is not null)
         {
-            var usedInOrders = await db.OrderItems.AnyAsync(o => o.ProductVariantId == existing.Id);
-            if (usedInOrders) { existing.Stock = 0; _variantMsg = "این تنوع در سفارش‌ها استفاده شده؛ موجودی صفر شد."; }
-            else { db.ProductVariants.Remove(existing); _variantMsg = "✓ تنوع حذف شد."; }
-            await db.SaveChangesAsync();
+            // Retain IDs and previous quantities, including variants used by historical orders.
+            existing.IsEnabled = enabled;
         }
+        await db.SaveChangesAsync();
+        _variantMsg = enabled ? "✓ ترکیب رنگ و سایز فعال شد." : "✓ ترکیب رنگ و سایز غیرفعال شد.";
         await Reload();
     }
 
     private async Task SetStock(Color c, Size s, string? val)
     {
-        if (!int.TryParse(val, out var stock) || stock < 0) return;
+        if (_product?.HasUnlimitedStock != false || !int.TryParse(val, out var stock) || stock < 0) return;
         _variantMsg = null;
         await using var db = await DbFactory.CreateDbContextAsync();
         var t = await db.ProductVariants.FirstOrDefaultAsync(v => v.ProductId == Id && v.ColorId == c.Id && v.SizeId == s.Id);
-        if (t is null)
-        {
-            // Typing a quantity enables the combination (creates the variant)
-            db.ProductVariants.Add(new ProductVariant
-            {
-                ProductId = Id, ColorId = c.Id, Color = c.Name, ColorHex = c.Hex,
-                SizeId = s.Id, Size = s.Name, Stock = stock
-            });
-            _variantMsg = "✓ تنوع اضافه شد.";
-        }
-        else
-        {
-            t.Stock = stock;
-            _variantMsg = "✓ موجودی به‌روزرسانی شد.";
-        }
+        if (t is null || !t.IsEnabled) return;
+        t.Stock = stock;
+        _variantMsg = "✓ موجودی به‌روزرسانی شد.";
         await db.SaveChangesAsync();
         await Reload();
     }

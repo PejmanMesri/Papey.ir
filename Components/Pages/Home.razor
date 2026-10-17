@@ -9,11 +9,11 @@
         <div class="home-hero-actions"><a class="btn-papey" href="/products">پیدا کردن طرح من ←</a><a class="home-guide-link" href="/size-guide">راهنمای انتخاب سایز</a></div>
     </div>
     <div class="home-hero-gallery">
-        @foreach (var product in _newProducts.Take(2))
+        @foreach (var product in _heroProducts)
         {
             <a class="home-hero-product" href="/product/@product.Slug"><img src="@product.ImageUrl" alt="@product.Name" fetchpriority="high" /><span>@product.Name <span aria-hidden="true">↗</span></span></a>
         }
-        @if (_newProducts.Count == 0) { <div class="home-hero-empty">پاپی<span>طرح‌های خاص برای روزهای تو</span></div> }
+        @if (_heroProducts.Count == 0) { <div class="home-hero-empty">پاپی<span>طرح‌های خاص برای روزهای تو</span></div> }
     </div>
 </section>
 <section class="home-category-section" aria-label="انتخاب مدل لباس">
@@ -45,12 +45,15 @@
     private List<ProductTypeEntity> _types = new();
     private List<Product> _newProducts = new();
     private List<Product> _featured = new();
+    private List<Product> _heroProducts = new();
     protected override async Task OnInitializedAsync()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
         _types = await db.ProductTypes.Where(t => t.IsActive).OrderBy(t => t.DisplayOrder).ToListAsync();
         _newProducts = await db.Products.Where(p => p.IsActive).OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.Id).Take(8).ToListAsync();
         _featured = await db.Products.Where(p => p.IsActive && p.IsFeatured).OrderByDescending(p => p.CreatedAt).Take(4).ToListAsync();
+        _heroProducts = await db.Products.Where(p => p.IsActive && p.HomeHeroSlot != null)
+            .OrderBy(p => p.HomeHeroSlot).Take(2).ToListAsync();
     }
     private static string ProductTypeIcon(ProductTypeEntity type)
         => string.IsNullOrWhiteSpace(type.FilterIcon) ? type.Name == "هودی" ? "🧥" : "👕" : type.FilterIcon;

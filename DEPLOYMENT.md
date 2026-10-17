@@ -57,11 +57,40 @@ host-generated `RENDER_EXTERNAL_URL` plus `/payment/callback`. Set
 Real payments require your own merchant credentials and gateway eligibility;
 the test merchant ID in the Blueprint does not establish a real payment account.
 
-SMS login and password reset require `KAVENEGAR_API_KEY`. Without a configured
-provider, production fails closed and password login remains available. Set
-`KAVENEGAR_SENDER` and `ADMIN_PHONES` only if needed. Development can still show
-an OTP locally. Password registration cannot assign an administrator role merely
-by supplying an administrator's phone number.
+SMS login, password reset, shipping notifications, and admin bulk sends use SMS.ir.
+Set `SMSIR_API_KEY` as a secret and `SMSIR_SANDBOX=false` for real production
+sends. Set `SMSIR_LINE_NUMBER` to your assigned dedicated sender line. Set
+`SMSIR_OTP_TEMPLATE_ID` and `SMSIR_SHIPPING_TEMPLATE_ID` after SMS.ir approves
+the templates; until then production OTP/shipping use the dedicated line.
+Template parameters are `CODE` and `ORDERNUMBER`, respectively. Dedicated-line
+messages may be rejected for recipients who block advertising messages; Verify
+templates are recommended for transactional messages.
+
+Development always selects `SMSIR_SANDBOX_API_KEY` and the sandbox Verify
+template `123456`. Sandbox sends never deliver real messages or consume credit.
+Only Development can display the sandbox OTP; Production with sandbox enabled
+refuses OTP login, keeping password login available. Never commit either API key.
+The ignored local `.env` contains local secrets; hosted services must receive
+secrets through their environment settings. `ADMIN_PHONES` is optional for
+existing paid-order notifications.
+
+The mobile-friendly `/admin/sms` page previews bulk recipients/text before
+sending, removes duplicate numbers, and reports provider acceptance/rejection
+counts. Limit: 100 recipients / 1000 characters per batch. Provider acceptance
+is not a delivery confirmation. No automatic bulk retry occurs.
+
+Shipping messages are queued in PostgreSQL atomically when admin changes an
+order to Shipped. A unique OrderId prevents duplicate messages on repeated
+updates. Definitively rejected sends retry up to three times; administrators
+can retry failures from `/admin/sms`. Timeouts, malformed responses, and interrupted
+sends are marked Unknown instead of automatically risking a duplicate SMS.
+Check SMS.ir reports before manually resending those. Jobs retain their sandbox
+mode and cannot accidentally send using production credentials after an environment
+switch. Historical shipped orders are not backfilled by the migration.
+
+Suggested production templates (submit in SMS.ir's fast-send template panel):
+- OTP: `پاپی؛ کد ورود شما: #CODE#`
+- Shipping: `پاپی؛ سفارش #ORDERNUMBER# شما ارسال شد.`
 
 Render's HTTPS-only ingress proxies HTTP to the container. The Blueprint enables
 ASP.NET forwarded headers for that environment and secure-only authentication
@@ -78,6 +107,7 @@ the explicit connection string. Separate `DB_HOST`, `DB_PORT`, `POSTGRES_DB`,
 
 ```powershell
 dotnet run --project tests/DeploymentChecks/DeploymentChecks.csproj -c Release
+dotnet run --project tests/SmsChecks/SmsChecks.csproj -c Release
 dotnet publish Papey.csproj -c Release -o "$env:TEMP/papey-deployment-check"
 ```
 
@@ -94,3 +124,12 @@ Provider references:
 - [Render Blueprint reference](https://render.com/docs/blueprint-spec)
 - [Render Docker hosting](https://render.com/docs/docker)
 - [Liara Docker deployment](https://docs.liara.ir/paas/docker/how-tos/deploy-app/)
+
+SMS checks use a disposable PostgreSQL database and a simulated SMS provider.
+Set `PAPEY_SMS_SANDBOX_CHECK=true` to additionally exercise real SMS.ir sandbox
+Verify/bulk requests; never use this switch to test production sends.
+On 2026-10-12, 34 automated SMS checks passed, along with the existing deployment
+and printing checks. A live sandbox Verify request was accepted. Later live
+requests, including the admin bulk UI check inside Docker, encountered intermittent
+DNS/transport failures reaching api.sms.ir. The UI reported an unknown result
+without automatically retrying. Real production messages were not sent during testing.

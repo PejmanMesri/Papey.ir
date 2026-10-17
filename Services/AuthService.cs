@@ -45,18 +45,24 @@ public class AuthService
     /// When requireExistingUser is set, only registered phones get a code (forgot-password flow).</summary>
     public async Task<(bool Success, string? DevCode, string? Error)> RequestOtpAsync(string phone, bool requireExistingUser = false)
     {
-        phone = phone.Trim();
-        if (!System.Text.RegularExpressions.Regex.IsMatch(phone, @"^09\d{9}$"))
+        phone = SmsService.NormalizePhone(phone) ?? "";
+        if (phone.Length == 0)
             return (false, null, "شماره موبایل معتبر وارد کنید (09xxxxxxxxx)");
 
-        var apiKey = _config["KAVENEGAR_API_KEY"] ?? "";
-        var smsConfigured = !string.IsNullOrWhiteSpace(apiKey) && !apiKey.StartsWith("YOUR_");
-        if (!smsConfigured && !_environment.IsDevelopment())
+        if (!_sms.CanSendOtp)
             return (false, null, "ورود پیامکی در حال حاضر فعال نیست. از رمز عبور استفاده کنید.");
 
         await using var db = await _dbFactory.CreateDbContextAsync();
         if (requireExistingUser && !await db.Users.AnyAsync(u => u.Phone == phone))
             return (false, null, "کاربری با این شماره موبایل یافت نشد.");
+
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({long.Parse(phone)})");
+        var now = DateTime.UtcNow;
+        if (await db.OtpCodes.AnyAsync(o => o.Phone == phone && o.ExpiresAt > now.AddMinutes(1)))
+            return (false, null, "برای درخواست کد جدید، یک دقیقه صبر کنید.");
+        if (await db.OtpCodes.CountAsync(o => o.Phone == phone && o.ExpiresAt > now.AddMinutes(-58)) >= 5)
+            return (false, null, "تعداد درخواست‌ها بیش از حد مجاز است. بعداً دوباره تلاش کنید.");
 
         // Invalidate previous codes
         var old = await db.OtpCodes.Where(o => o.Phone == phone && !o.IsUsed).ToListAsync();
@@ -71,21 +77,26 @@ public class AuthService
         });
         await db.SaveChangesAsync();
 
-        if (!smsConfigured)
+        await transaction.CommitAsync();
+        var sent = await _sms.SendOtpAsync(phone, code);
+        if (!sent.Success)
         {
-            // No SMS provider configured — return code for local development/testing
-            return (true, code, null);
+            var failedCode = await db.OtpCodes.FirstOrDefaultAsync(o => o.Phone == phone && o.Code == code && !o.IsUsed);
+            if (failedCode is not null) failedCode.IsUsed = true;
+            await db.SaveChangesAsync();
+            return (false, null, sent.Error);
         }
-
-        await _sms.SendSmsAsync(phone, $"پاپی - کد ورود شما: {code}");
-        return (true, null, null);
+        return (true, _environment.IsDevelopment() && _sms.IsSandbox ? code : null, null);
     }
 
     /// <summary>Verify OTP. Returns the matching user (created if needed). Sign-in is done separately via an HTTP endpoint.</summary>
     public async Task<AppUser?> VerifyOtpAndSignInAsync(string phone, string code)
     {
-        phone = phone.Trim(); code = code.Trim();
+        phone = SmsService.NormalizePhone(phone) ?? ""; code = PersianHelpers.ToEnglishDigits(code.Trim());
+        if (phone.Length == 0) return null;
         await using var db = await _dbFactory.CreateDbContextAsync();
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({long.Parse(phone)})");
         var otp = await db.OtpCodes
             .Where(o => o.Phone == phone && !o.IsUsed)
             .OrderByDescending(o => o.Id)
@@ -96,6 +107,7 @@ public class AuthService
         if (otp.Code != code)
         {
             await db.SaveChangesAsync();
+            await transaction.CommitAsync();
             return null;
         }
         otp.IsUsed = true;
@@ -118,6 +130,7 @@ public class AuthService
             user.IsAdmin = true;
         }
         await db.SaveChangesAsync();
+        await transaction.CommitAsync();
         return user;
     }
 
@@ -199,8 +212,11 @@ public class AuthService
     public async Task<(bool Success, string? Error)> ResetPasswordByOtpAsync(string phone, string code, string newPassword)
     {
         if (newPassword.Length < 6) return (false, "رمز عبور جدید باید حداقل ۶ کاراکتر باشد.");
-        phone = phone.Trim(); code = code.Trim();
+        phone = SmsService.NormalizePhone(phone) ?? ""; code = PersianHelpers.ToEnglishDigits(code.Trim());
+        if (phone.Length == 0) return (false, "شماره موبایل معتبر نیست.");
         await using var db = await _dbFactory.CreateDbContextAsync();
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({long.Parse(phone)})");
         var otp = await db.OtpCodes
             .Where(o => o.Phone == phone && !o.IsUsed)
             .OrderByDescending(o => o.Id)
@@ -208,14 +224,15 @@ public class AuthService
         if (otp is null || !otp.IsValid) return (false, "کد وارد شده صحیح نیست یا منقضی شده است.");
 
         otp.Attempts++;
-        if (otp.Code != code) { await db.SaveChangesAsync(); return (false, "کد وارد شده صحیح نیست یا منقضی شده است."); }
+        if (otp.Code != code) { await db.SaveChangesAsync(); await transaction.CommitAsync(); return (false, "کد وارد شده صحیح نیست یا منقضی شده است."); }
         otp.IsUsed = true;
 
         var user = await db.Users.FirstOrDefaultAsync(u => u.Phone == phone);
-        if (user is null) { await db.SaveChangesAsync(); return (false, "کاربری با این شماره موبایل یافت نشد."); }
+        if (user is null) { await db.SaveChangesAsync(); await transaction.CommitAsync(); return (false, "کاربری با این شماره موبایل یافت نشد."); }
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
         await db.SaveChangesAsync();
+        await transaction.CommitAsync();
         return (true, null);
     }
 }

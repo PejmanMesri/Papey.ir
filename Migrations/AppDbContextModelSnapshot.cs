@@ -458,6 +458,14 @@ namespace Papey.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<bool>("HasUnlimitedStock")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<int?>("HomeHeroSlot")
+                        .HasColumnType("integer");
+
                     b.Property<string>("ImageUrl")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
@@ -494,12 +502,19 @@ namespace Papey.Migrations
 
                     b.HasIndex("CategoryId");
 
+                    b.HasIndex("HomeHeroSlot")
+                        .IsUnique()
+                        .HasFilter("\"HomeHeroSlot\" IS NOT NULL");
+
                     b.HasIndex("ProductTypeId");
 
                     b.HasIndex("Slug")
                         .IsUnique();
 
-                    b.ToTable("Products");
+                    b.ToTable("Products", t =>
+                        {
+                            t.HasCheckConstraint("CK_Products_HomeHeroSlot", "\"HomeHeroSlot\" IS NULL OR \"HomeHeroSlot\" BETWEEN 1 AND 2");
+                        });
                 });
 
             modelBuilder.Entity("Papey.Models.ProductCategory", b =>
@@ -668,6 +683,11 @@ namespace Papey.Migrations
                     b.Property<int?>("ColorId")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("IsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
                     b.Property<decimal?>("PriceOverride")
                         .HasColumnType("numeric(18,0)");
 
@@ -694,6 +714,53 @@ namespace Papey.Migrations
                     b.HasIndex("SizeId");
 
                     b.ToTable("ProductVariants");
+                });
+
+            modelBuilder.Entity("Papey.Models.ShippingSmsJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("AvailableAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsSandbox")
+                        .HasColumnType("boolean");
+
+                    b.Property<long?>("MessageId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique();
+
+                    b.HasIndex("State", "AvailableAt");
+
+                    b.ToTable("ShippingSmsJobs");
                 });
 
             modelBuilder.Entity("Papey.Models.Size", b =>
@@ -886,6 +953,17 @@ namespace Papey.Migrations
                     b.Navigation("Product");
 
                     b.Navigation("SizeRef");
+                });
+
+            modelBuilder.Entity("Papey.Models.ShippingSmsJob", b =>
+                {
+                    b.HasOne("Papey.Models.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
                 });
 
             modelBuilder.Entity("Papey.Models.AppUser", b =>

@@ -1,52 +1,102 @@
-using System.Text;
+using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Papey.Services;
 
-public class SmsService
-{
-    private readonly HttpClient _http;
-    private readonly IConfiguration _config;
-    private readonly ILogger<SmsService> _logger;
+public sealed record SmsSendResult(bool Success, string? Error = null, long? MessageId = null,
+    int Accepted = 0, int Rejected = 0, bool Uncertain = false, string? PackId = null);
 
-    public SmsService(IConfiguration config, ILogger<SmsService> logger)
+public sealed class SmsService(HttpClient http, IConfiguration config, IHostEnvironment environment,
+    ILogger<SmsService> logger)
+{
+    public bool IsSandbox => environment.IsDevelopment() || config.GetValue<bool>("SMSIR_SANDBOX");
+    private string ApiKey => config[IsSandbox ? "SMSIR_SANDBOX_API_KEY" : "SMSIR_API_KEY"] ?? "";
+    public int OtpTemplateId => IsSandbox ? config.GetValue<int?>("SMSIR_SANDBOX_TEMPLATE_ID") ?? 123456 : config.GetValue<int?>("SMSIR_OTP_TEMPLATE_ID") ?? 0;
+    public int ShippingTemplateId => config.GetValue<int?>("SMSIR_SHIPPING_TEMPLATE_ID") ?? 0;
+    public long LineNumber => config.GetValue<long?>("SMSIR_LINE_NUMBER") ?? 0;
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(ApiKey) && !ApiKey.StartsWith("YOUR_");
+    public bool CanSendOtp => IsConfigured && (OtpTemplateId > 0 || (!IsSandbox && LineNumber > 0)) && (environment.IsDevelopment() || !IsSandbox);
+    public bool CanSendBulk => IsConfigured && LineNumber > 0;
+    public bool CanSendShipping => IsConfigured && (LineNumber > 0 || (!IsSandbox && ShippingTemplateId > 0));
+    public string[] AdminPhones => (config["ADMIN_PHONES"] ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    public static string? NormalizePhone(string? phone)
     {
-        _config = config;
-        _logger = logger;
-        _http = new HttpClient { BaseAddress = new Uri("https://api.kavenegar.com/") };
+        var digits = PersianHelpers.ToEnglishDigits(phone ?? "").Trim().Replace(" ", "").Replace("-", "").Replace("(", "").Replace(")", "");
+        if (digits.StartsWith("+98")) digits = "0" + digits[3..];
+        else if (digits.StartsWith("0098")) digits = "0" + digits[4..];
+        else if (digits.StartsWith("98") && digits.Length == 12) digits = "0" + digits[2..];
+        else if (digits.StartsWith('9') && digits.Length == 10) digits = "0" + digits;
+        return Regex.IsMatch(digits, @"^09[0-9]{9}$") ? digits : null;
     }
 
-    public string[] AdminPhones =>
-        (_config["ADMIN_PHONES"] ?? "")
-        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    public Task<SmsSendResult> SendOtpAsync(string phone, string code, CancellationToken ct = default) =>
+        OtpTemplateId > 0 ? SendVerifyAsync(phone, OtpTemplateId, "CODE", code, ct)
+        : SendBulkAsync([phone], $"پاپی؛ کد ورود شما: {code}", ct);
+
+    public Task<SmsSendResult> SendShippingAsync(string phone, string orderNumber, CancellationToken ct = default) =>
+        IsSandbox || ShippingTemplateId <= 0 ? SendBulkAsync([phone], $"پاپی؛ سفارش {orderNumber} شما ارسال شد.", ct)
+        : SendVerifyAsync(phone, ShippingTemplateId, "ORDERNUMBER", orderNumber, ct);
 
     public async Task SendToAdminsAsync(string message)
     {
-        foreach (var phone in AdminPhones)
-            await SendSmsAsync(phone, message);
+        if (AdminPhones.Length > 0) await SendBulkAsync(AdminPhones, message);
     }
 
-    public async Task SendSmsAsync(string receptor, string message)
+    public Task<SmsSendResult> SendVerifyAsync(string phone, int templateId, string name, string value, CancellationToken ct = default)
     {
-        var apiKey = _config["KAVENEGAR_API_KEY"] ?? "";
-        if (string.IsNullOrWhiteSpace(apiKey) || apiKey.StartsWith("YOUR_"))
-        {
-            _logger.LogWarning("KaveNegar API key not configured. SMS to {Receptor} skipped: {Message}", receptor, message);
-            return;
-        }
+        var mobile = NormalizePhone(phone);
+        if (mobile is null || templateId <= 0 || string.IsNullOrWhiteSpace(name) || value.Length is 0 or > 25)
+            return Task.FromResult(new SmsSendResult(false, "شماره یا قالب پیامک معتبر نیست."));
+        return SendAsync("send/verify", new { mobile, templateId, parameters = new[] { new { name, value } } }, 1, false, ct);
+    }
+
+    public Task<SmsSendResult> SendBulkAsync(IEnumerable<string> phones, string message, CancellationToken ct = default)
+    {
+        var normalized = phones.Select(NormalizePhone).ToArray();
+        if (normalized.Any(p => p is null)) return Task.FromResult(new SmsSendResult(false, "شماره موبایل نامعتبر است."));
+        var mobiles = normalized.Cast<string>().Distinct().ToArray();
+        if (mobiles.Length is 0 or > 100 || string.IsNullOrWhiteSpace(message) || message.Length > 1000 || !CanSendBulk)
+            return Task.FromResult(new SmsSendResult(false, "خط ارسال، متن یا تعداد گیرندگان معتبر نیست (حداکثر ۱۰۰ شماره و ۱۰۰۰ کاراکتر)."));
+        return SendAsync("send/bulk", new { lineNumber = LineNumber, messageText = message, mobiles, sendDateTime = (long?)null }, mobiles.Length, true, ct);
+    }
+
+    private async Task<SmsSendResult> SendAsync(string path, object payload, int count, bool bulk, CancellationToken ct)
+    {
+        if (!IsConfigured) return new(false, "سرویس پیامک تنظیم نشده است.");
         try
         {
-            var sender = _config["KAVENEGAR_SENDER"] ?? "";
-            var url = $"v1/{apiKey}/sms/send.json?receptor={Uri.EscapeDataString(receptor)}&message={Uri.EscapeDataString(message)}";
-            if (!string.IsNullOrWhiteSpace(sender))
-                url += $"&sender={Uri.EscapeDataString(sender)}";
-            var res = await _http.GetAsync(url);
-            var body = await res.Content.ReadAsStringAsync();
-            _logger.LogInformation("KaveNegar SMS to {Receptor}: {Status} {Body}", receptor, res.StatusCode, body);
+            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.sms.ir/v1/" + path);
+            request.Headers.Add("x-api-key", ApiKey);
+            request.Headers.Accept.ParseAdd("application/json");
+            request.Content = JsonContent.Create(payload);
+            using var response = await http.SendAsync(request, ct);
+            if ((int)response.StatusCode >= 500 || response.StatusCode == System.Net.HttpStatusCode.RequestTimeout)
+                return new(false, "نتیجه ارسال مشخص نیست؛ پیش از ارسال مجدد گزارش سرویس را بررسی کنید.", Uncertain: true);
+            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            if (!response.IsSuccessStatusCode || !body.RootElement.TryGetProperty("status", out var status) || status.GetInt32() != 1)
+            {
+                // Never log keys, OTPs, phone numbers, or provider response bodies.
+                logger.LogWarning("SMS.ir rejected {Operation}: HTTP {Status}", path, (int)response.StatusCode);
+                return new(false, "سرویس پیامک درخواست را نپذیرفت. تنظیمات قالب و اعتبار را بررسی کنید.", Rejected: count);
+            }
+            var data = body.RootElement.GetProperty("data");
+            if (!bulk)
+            {
+                var id = data.GetProperty("messageId").GetInt64();
+                return id > 0 ? new(true, MessageId: id, Accepted: 1) : new(false, "شناسه پیامک معتبر دریافت نشد.", Uncertain: true);
+            }
+            var ids = data.GetProperty("messageIds").EnumerateArray().ToArray();
+            if (ids.Length != count) return new(false, "پاسخ ارسال ناقص است؛ پیش از ارسال مجدد گزارش سرویس را بررسی کنید.", Uncertain: true);
+            var accepted = ids.Count(id => id.ValueKind == JsonValueKind.Number && id.TryGetInt64(out var number) && number > 0);
+            var pack = data.TryGetProperty("packId", out var packId) ? packId.GetString() : null;
+            return new(accepted == count, accepted == count ? null : "بعضی شماره‌ها توسط سرویس پذیرفته نشدند (از جمله لیست سیاه).", MessageId: count == 1 && accepted == 1 ? ids[0].GetInt64() : null, Accepted: accepted, Rejected: count - accepted, PackId: pack);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or InvalidOperationException or KeyNotFoundException or FormatException)
         {
-            _logger.LogError(ex, "Failed to send SMS to {Receptor}", receptor);
+            logger.LogWarning("SMS.ir {Operation} returned no conclusive response ({Failure})", path, ex.GetType().Name);
+            return new(false, "نتیجه ارسال مشخص نیست؛ پیش از ارسال مجدد گزارش سرویس را بررسی کنید.", Uncertain: true);
         }
     }
 }

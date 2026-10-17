@@ -3,6 +3,7 @@
 @layout AdminLayout
 @rendermode InteractiveServer
 @inject IDbContextFactory<AppDbContext> DbFactory
+@inject ShippingSmsQueue ShippingSms
 
 <PageTitle>فروش و تراکنش‌ها | پنل مدیریت پاپی</PageTitle>
 
@@ -235,12 +236,7 @@
         // (or the 20-min expiry job) and must not be overridden manually.
         if (o.Status is OrderStatus.Pending or OrderStatus.PaymentFailed) return;
         if (s is OrderStatus.Pending or OrderStatus.PaymentFailed) return;
-        await using var db = await DbFactory.CreateDbContextAsync();
-        var tracked = await db.Orders.FindAsync(o.Id);
-        if (tracked is null) return;
-        tracked.Status = s;
-        if (s == OrderStatus.Paid && tracked.PaidAt is null) tracked.PaidAt = DateTime.UtcNow;
-        await db.SaveChangesAsync();
+        if (!await ShippingSms.SetOrderStatusAsync(o.Id, s)) return;
         o.Status = s;
         if (s == OrderStatus.Paid && o.PaidAt is null) o.PaidAt = DateTime.UtcNow;
         RecountStats();

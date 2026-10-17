@@ -142,8 +142,8 @@ else
     private bool _added;
     private bool _isFavorite;
 
-    private int MaxQty => _product?.Variants
-        .FirstOrDefault(v => v.Color == _selectedColor && v.Size == _selectedSize)?.Stock ?? 0;
+    private int MaxQty => _product?.Variants.FirstOrDefault(v => v.Color == _selectedColor && v.Size == _selectedSize) is { } variant
+        ? ProductInventory.MaximumQuantity(variant) : 0;
     private bool CanAdd => _selectedColor is not null && _selectedSize is not null && MaxQty > 0;
 
     protected override async Task OnParametersSetAsync()
@@ -164,9 +164,9 @@ else
             var activeColors = await db.Colors.Where(c => c.IsActive).OrderBy(c => c.DisplayOrder).ToListAsync();
             var activeSizes = await db.Sizes.Where(s => s.IsActive).OrderBy(s => s.DisplayOrder).ToListAsync();
 
-            // Only show colors that have at least one variant with stock > 0
+            // Only show colors with an enabled, available combination.
             var variantColors = _product.Variants
-                .Where(v => v.Stock > 0)
+                .Where(v => ProductInventory.CanOrder(v, 1))
                 .Select(v => v.Color).Distinct().ToHashSet();
             _colors = activeColors
                 .Where(c => variantColors.Contains(c.Name))
@@ -178,7 +178,7 @@ else
             // Build sizes list filtered by selected color, ordered by DB order
             _activeSizeOrder = activeSizes.Select(s => s.Name).ToList();
             _sizes = _product.Variants
-                .Where(v => v.Color == _selectedColor)
+                .Where(v => v.IsEnabled && v.Color == _selectedColor && _activeSizeOrder.Contains(v.Size))
                 .Select(v => v.Size).Distinct()
                 .OrderBy(s => _activeSizeOrder.IndexOf(s) is var idx && idx >= 0 ? idx : 999)
                 .ToList();
@@ -191,14 +191,14 @@ else
     private List<string> _activeSizeOrder = new();
 
     private bool HasStock(string? color, string size)
-        => _product?.Variants.Any(v => v.Color == color && v.Size == size && v.Stock > 0) ?? false;
+        => _product?.Variants.Any(v => v.Color == color && v.Size == size && ProductInventory.CanOrder(v, 1)) ?? false;
 
     private void SelectColor(string color)
     {
         _selectedColor = color;
         // Rebuild the size list for the newly-selected color, ordered by DB
         _sizes = _product!.Variants
-            .Where(v => v.Color == color)
+            .Where(v => v.IsEnabled && v.Color == color && _activeSizeOrder.Contains(v.Size))
             .Select(v => v.Size).Distinct()
             .OrderBy(s => _activeSizeOrder.IndexOf(s) is var idx && idx >= 0 ? idx : 999)
             .ToList();

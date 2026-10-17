@@ -28,6 +28,8 @@ public class Product
     public bool IsFeatured { get; set; }
     public bool IsNew { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool HasUnlimitedStock { get; set; } = true;
+    public int? HomeHeroSlot { get; set; }
 
     /// <summary>Product type (lookup table, editable in admin) — تیشرت، هودی، شلوار...</summary>
     public int? ProductTypeId { get; set; }
@@ -79,6 +81,7 @@ public class ProductVariant
     public int? SizeId { get; set; }
     public Size? SizeRef { get; set; }
 
+    public bool IsEnabled { get; set; } = true;
     public int Stock { get; set; }
 
     [Column(TypeName = "numeric(18,0)")]

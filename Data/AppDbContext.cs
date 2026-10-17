@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<Address> Addresses => Set<Address>();
     public DbSet<Order> Orders => Set<Order>();
+    public DbSet<ShippingSmsJob> ShippingSmsJobs => Set<ShippingSmsJob>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<OrderPrintJob> OrderPrintJobs => Set<OrderPrintJob>();
     public DbSet<ProductFavorite> ProductFavorites => Set<ProductFavorite>();
@@ -34,7 +35,12 @@ public class AppDbContext : DbContext
             .HasForeignKey(c => c.ProductTypeId)
             .OnDelete(DeleteBehavior.Restrict);
         mb.Entity<Category>().HasIndex(c => new { c.ProductTypeId, c.DisplayOrder });
+        mb.Entity<Product>().Property(p => p.HasUnlimitedStock).HasDefaultValue(true);
+        mb.Entity<ProductVariant>().Property(v => v.IsEnabled).HasDefaultValue(true);
         mb.Entity<Product>().HasIndex(p => p.Slug).IsUnique();
+        mb.Entity<Product>().HasIndex(p => p.HomeHeroSlot).IsUnique()
+            .HasFilter("\"HomeHeroSlot\" IS NOT NULL");
+        mb.Entity<Product>().ToTable(t => t.HasCheckConstraint("CK_Products_HomeHeroSlot", "\"HomeHeroSlot\" IS NULL OR \"HomeHeroSlot\" BETWEEN 1 AND 2"));
         mb.Entity<ProductCategory>().HasKey(pc => new { pc.ProductId, pc.CategoryId });
         mb.Entity<ProductCategory>()
             .HasOne(pc => pc.Product).WithMany(p => p.ProductCategories)
@@ -43,6 +49,9 @@ public class AppDbContext : DbContext
             .HasOne(pc => pc.Category).WithMany()
             .HasForeignKey(pc => pc.CategoryId).OnDelete(DeleteBehavior.Cascade);
         mb.Entity<AppUser>().HasIndex(u => u.Username).IsUnique();
+        mb.Entity<ShippingSmsJob>().HasIndex(j => j.OrderId).IsUnique();
+        mb.Entity<ShippingSmsJob>().HasIndex(j => new { j.State, j.AvailableAt });
+        mb.Entity<ShippingSmsJob>().HasOne(j => j.Order).WithMany().HasForeignKey(j => j.OrderId).OnDelete(DeleteBehavior.Cascade);
         mb.Entity<Order>().HasIndex(o => o.OrderNumber).IsUnique();
         mb.Entity<OrderPrintJob>().Property(j => j.Id).HasDefaultValueSql("gen_random_uuid()");
         mb.Entity<OrderPrintJob>().Property(j => j.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");

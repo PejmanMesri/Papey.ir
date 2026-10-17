@@ -81,7 +81,9 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<OtpSignInTickets>();
 builder.Services.AddScoped<FavoriteService>();
-builder.Services.AddSingleton<SmsService>();
+builder.Services.AddHttpClient<SmsService>(http => http.Timeout = TimeSpan.FromSeconds(15));
+builder.Services.AddScoped<ShippingSmsQueue>();
+builder.Services.AddHostedService<ShippingSmsWorker>();
 builder.Services.AddSingleton<ZarinpalService>();
 builder.Services.AddHostedService<PendingOrderExpiryService>();
 
@@ -141,9 +143,9 @@ app.MapPost("/account/register", async ([FromForm] string username, [FromForm] s
     [FromQuery] string? returnUrl, AuthService auth) =>
 {
     if (string.IsNullOrWhiteSpace(fullName) || !System.Text.RegularExpressions.Regex.IsMatch(phone, @"^09\d{9}$"))
-        return Results.Redirect("/register?error=invalid");
+        return Results.Redirect("/register/password?error=invalid");
     var (user, error) = await auth.RegisterAsync(username, password, email, phone, fullName);
-    if (user is null) return Results.Redirect($"/register?error={error}");
+    if (user is null) return Results.Redirect($"/register/password?error={error}");
     await auth.SignInAsync(user);
     var target = !string.IsNullOrEmpty(returnUrl) && returnUrl.StartsWith('/') ? returnUrl : "/";
     return Results.Redirect(target);

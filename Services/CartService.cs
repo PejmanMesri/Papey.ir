@@ -56,12 +56,13 @@ public class CartService
         await using var db = await _dbFactory.CreateDbContextAsync();
         var variant = await db.ProductVariants.Include(v => v.Product)
             .FirstOrDefaultAsync(v => v.ProductId == productId && v.Color == color && v.Size == size);
-        if (variant is null || variant.Stock <= 0) return false;
+        if (variant is null || quantity <= 0 || !ProductInventory.CanOrder(variant, quantity)) return false;
 
         var existing = Items.FirstOrDefault(i => i.ProductVariantId == variant.Id);
         if (existing is not null)
         {
-            if (existing.Quantity + quantity > variant.Stock) return false;
+            if ((long)existing.Quantity + quantity > ProductInventory.MaximumQuantity(variant)) return false;
+            existing.MaxStock = ProductInventory.MaximumQuantity(variant);
             existing.Quantity += quantity;
         }
         else
@@ -77,7 +78,7 @@ public class CartService
                 Size = variant.Size,
                 UnitPrice = variant.EffectivePrice,
                 Quantity = quantity,
-                MaxStock = variant.Stock
+                MaxStock = ProductInventory.MaximumQuantity(variant)
             });
         }
         await PersistAsync();
@@ -96,7 +97,17 @@ public class CartService
         await LoadAsync();
         var item = Items.FirstOrDefault(i => i.ProductVariantId == variantId);
         if (item is null) return;
-        item.Quantity = Math.Clamp(qty, 1, item.MaxStock);
+        await using var db = await _dbFactory.CreateDbContextAsync();
+        var variant = await db.ProductVariants.Include(v => v.Product).FirstOrDefaultAsync(v => v.Id == variantId);
+        if (variant is null || !ProductInventory.CanOrder(variant, 1))
+        {
+            Items.Remove(item);
+        }
+        else
+        {
+            item.MaxStock = ProductInventory.MaximumQuantity(variant);
+            item.Quantity = Math.Clamp(qty, 1, item.MaxStock);
+        }
         await PersistAsync();
     }
 
