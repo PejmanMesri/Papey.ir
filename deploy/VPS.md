@@ -116,3 +116,23 @@ the persistent-data symlinks, take a database backup, update `/opt/papey/current
 and restart `papey.service`. Check health and login before considering the
 release successful. Keep the previous release for rollback; database migrations
 may require restoring the pre-update backup as well.
+
+## Shared administrator phone aliases and order alerts
+
+`ADMIN_PHONES` contains verified OTP aliases for the existing `ADMIN_USERNAME`
+account. They all resolve to the same administrator ID after OTP verification;
+username/password login remains available. An alias never grants access merely
+because someone enters it during password registration.
+
+`ORDER_NOTIFICATION_PHONES` is a separate list, with no fallback to login aliases.
+Paid payment callbacks atomically save one durable SMS job per order/recipient.
+Workers avoid duplicate automatic sends on uncertain provider responses and skip
+cancelled orders or removed recipients. `/admin/sms` displays the queue and
+provider message IDs. Provider acceptance is not proof of handset delivery.
+
+For production login, configure an approved SMS.ir Verify template with a `CODE`
+parameter in `SMSIR_OTP_TEMPLATE_ID`. Optional `SMSIR_ORDER_TEMPLATE_ID` uses
+`ORDERNUMBER`; otherwise order alerts use the assigned sender line. If ordinary
+line messages are held by SMS.ir or blocked by recipients' advertising settings,
+resolve that with the provider or use approved service templates. Do not invent
+an approved template ID or enable sandbox login on the live site.

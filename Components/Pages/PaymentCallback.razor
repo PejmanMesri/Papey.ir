@@ -1,7 +1,7 @@
 @page "/payment/callback"
 @inject IDbContextFactory<AppDbContext> DbFactory
 @inject ZarinpalService Zarinpal
-@inject SmsService Sms
+@inject OrderAdminSmsQueue AdminSms
 @inject CartService Cart
 @inject IJSRuntime JS
 
@@ -90,10 +90,14 @@
 
         if (_order is null) { _message = "سفارش یافت نشد."; _loading = false; return; }
 
+        // A repeated or cancelled callback must not downgrade a paid/shipped order.
+        if (_order.PaidAt is not null) { _loading = false; return; }
+
         if (Status != "OK")
         {
-            _order.Status = OrderStatus.PaymentFailed;
-            await db.SaveChangesAsync();
+            await db.Orders.Where(o => o.Id == _order.Id && o.PaidAt == null)
+                .ExecuteUpdateAsync(set => set.SetProperty(o => o.Status, OrderStatus.PaymentFailed));
+            await db.Entry(_order).ReloadAsync();
             _message = "پرداخت توسط کاربر لغو شد یا ناموفق بود.";
             _loading = false;
             return;
@@ -105,20 +109,23 @@
         var verify = await Zarinpal.VerifyPaymentAsync(Authority!, (long)(_order.GrandTotal * 10));
         if (verify.Success)
         {
+            await using var tx = await db.Database.BeginTransactionAsync();
+            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM \"Orders\" WHERE \"Id\" = {_order.Id} FOR UPDATE");
+            await db.Entry(_order).ReloadAsync();
+            if (_order.PaidAt is not null) { _loading = false; return; }
             _order.Status = OrderStatus.Paid;
             _order.PaymentRefId = verify.RefId.ToString();
             _order.PaidAt = DateTime.UtcNow;
+            await AdminSms.EnqueueAsync(db, _order);
             await db.SaveChangesAsync();
+            await tx.CommitAsync();
             await Cart.ClearAsync();
-
-            // SMS to admin phone numbers
-            var msg = $"پاپی: سفارش جدید {_order.OrderNumber} به مبلغ {_order.GrandTotal:N0} تومان ثبت شد. گیرنده: {_order.CustomerName} - {_order.CustomerPhone}";
-            _ = Sms.SendToAdminsAsync(msg);
         }
         else
         {
-            _order.Status = OrderStatus.PaymentFailed;
-            await db.SaveChangesAsync();
+            await db.Orders.Where(o => o.Id == _order.Id && o.PaidAt == null)
+                .ExecuteUpdateAsync(set => set.SetProperty(o => o.Status, OrderStatus.PaymentFailed));
+            await db.Entry(_order).ReloadAsync();
             _message = $"تأیید پرداخت ناموفق بود. {verify.Error}";
         }
         _loading = false;

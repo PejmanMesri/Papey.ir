@@ -19,7 +19,11 @@ public sealed class SmsService(HttpClient http, IConfiguration config, IHostEnvi
     public bool CanSendOtp => IsConfigured && (OtpTemplateId > 0 || (!IsSandbox && LineNumber > 0)) && (environment.IsDevelopment() || !IsSandbox);
     public bool CanSendBulk => IsConfigured && LineNumber > 0;
     public bool CanSendShipping => IsConfigured && (LineNumber > 0 || (!IsSandbox && ShippingTemplateId > 0));
-    public string[] AdminPhones => (config["ADMIN_PHONES"] ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    public string[] OrderNotificationPhones => (config["ORDER_NOTIFICATION_PHONES"] ?? "")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(NormalizePhone).OfType<string>().Distinct().ToArray();
+    public int OrderTemplateId => config.GetValue<int?>("SMSIR_ORDER_TEMPLATE_ID") ?? 0;
+    public bool CanSendOrderNotification => IsConfigured && (LineNumber > 0 || (!IsSandbox && OrderTemplateId > 0));
 
     public static string? NormalizePhone(string? phone)
     {
@@ -39,10 +43,10 @@ public sealed class SmsService(HttpClient http, IConfiguration config, IHostEnvi
         IsSandbox || ShippingTemplateId <= 0 ? SendBulkAsync([phone], $"پاپی؛ سفارش {orderNumber} شما ارسال شد.", ct)
         : SendVerifyAsync(phone, ShippingTemplateId, "ORDERNUMBER", orderNumber, ct);
 
-    public async Task SendToAdminsAsync(string message)
-    {
-        if (AdminPhones.Length > 0) await SendBulkAsync(AdminPhones, message);
-    }
+    public Task<SmsSendResult> SendOrderNotificationAsync(string phone, string orderNumber, CancellationToken ct = default) =>
+        !IsSandbox && OrderTemplateId > 0
+            ? SendVerifyAsync(phone, OrderTemplateId, "ORDERNUMBER", orderNumber, ct)
+            : SendBulkAsync([phone], $"پاپی؛ سفارش پرداخت‌شده جدید به شماره {orderNumber} ثبت شد. برای مشاهده جزئیات به papey.ir/admin مراجعه کنید.", ct);
 
     public Task<SmsSendResult> SendVerifyAsync(string phone, int templateId, string name, string value, CancellationToken ct = default)
     {

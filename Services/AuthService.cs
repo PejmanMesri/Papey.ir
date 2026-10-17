@@ -25,18 +25,32 @@ public class AuthService
         _environment = environment;
     }
 
-    /// <summary>Admin phone numbers from .env — users with these phones get Admin role.</summary>
-    public string[] AdminPhones =>
-        (_config["ADMIN_PHONES"] ?? "")
-        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    /// <summary>Verified phone aliases for the existing seeded admin account.</summary>
+    public string[] AdminPhones => (_config["ADMIN_PHONES"] ?? "")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(SmsService.NormalizePhone).OfType<string>().Distinct().ToArray();
+
+    private async Task<AppUser?> FindPhoneUserAsync(AppDbContext db, string phone)
+    {
+        if (AdminPhones.Contains(phone))
+        {
+            var username = (_config["ADMIN_USERNAME"] ?? "Admin").ToLowerInvariant();
+            // A configured alias may only resolve to an existing administrator.
+            return await db.Users.SingleOrDefaultAsync(u => u.IsAdmin && u.Username.ToLower() == username);
+        }
+        return await db.Users.FirstOrDefaultAsync(u => u.Phone == phone);
+    }
 
     /// <summary>Login by username OR phone number (username is case-insensitive).</summary>
     public async Task<AppUser?> ValidateLoginAsync(string identifier, string password)
     {
         identifier = identifier.Trim();
         await using var db = await _dbFactory.CreateDbContextAsync();
-        var user = await db.Users.FirstOrDefaultAsync(u =>
-            u.Username.ToLower() == identifier.ToLower() || u.Phone == identifier);
+        var phone = SmsService.NormalizePhone(identifier);
+        var user = phone is not null && AdminPhones.Contains(phone)
+            ? await FindPhoneUserAsync(db, phone)
+            : await db.Users.FirstOrDefaultAsync(u =>
+                u.Username.ToLower() == identifier.ToLower() || u.Phone == identifier);
         if (user is null) return null;
         return BCrypt.Net.BCrypt.Verify(password, user.PasswordHash) ? user : null;
     }
@@ -53,7 +67,7 @@ public class AuthService
             return (false, null, "ورود پیامکی در حال حاضر فعال نیست. از رمز عبور استفاده کنید.");
 
         await using var db = await _dbFactory.CreateDbContextAsync();
-        if (requireExistingUser && !await db.Users.AnyAsync(u => u.Phone == phone))
+        if (requireExistingUser && await FindPhoneUserAsync(db, phone) is null)
             return (false, null, "کاربری با این شماره موبایل یافت نشد.");
 
         await using var transaction = await db.Database.BeginTransactionAsync();
@@ -112,7 +126,13 @@ public class AuthService
         }
         otp.IsUsed = true;
 
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Phone == phone);
+        var user = await FindPhoneUserAsync(db, phone);
+        if (user is null && AdminPhones.Contains(phone))
+        {
+            await db.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return null;
+        }
         if (user is null)
         {
             user = new AppUser
@@ -121,13 +141,9 @@ public class AuthService
                 Phone = phone,
                 FullName = "کاربر پاپی",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")),
-                IsAdmin = AdminPhones.Contains(phone)
+                IsAdmin = false
             };
             db.Users.Add(user);
-        }
-        else if (AdminPhones.Contains(phone) && !user.IsAdmin)
-        {
-            user.IsAdmin = true;
         }
         await db.SaveChangesAsync();
         await transaction.CommitAsync();
@@ -227,7 +243,7 @@ public class AuthService
         if (otp.Code != code) { await db.SaveChangesAsync(); await transaction.CommitAsync(); return (false, "کد وارد شده صحیح نیست یا منقضی شده است."); }
         otp.IsUsed = true;
 
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Phone == phone);
+        var user = await FindPhoneUserAsync(db, phone);
         if (user is null) { await db.SaveChangesAsync(); await transaction.CommitAsync(); return (false, "کاربری با این شماره موبایل یافت نشد."); }
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);

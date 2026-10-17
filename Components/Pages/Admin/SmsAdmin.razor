@@ -34,6 +34,27 @@
     }
     @if (_notice is not null) { <div class="alert-papey @(_error ? "alert-danger" : "alert-info")" role="status" style="margin-top:16px">@_notice</div> }
 </div>
+<div class="card-box" style="margin-bottom:24px">
+    <div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px"><h2>اعلان سفارش جدید به مدیران</h2><button class="btn-papey btn-outline" disabled="@_busy" @onclick="LoadJobs">به‌روزرسانی</button></div>
+    <p>پس از تأیید پرداخت، برای هر گیرنده یک پیامک در صف ثبت می‌شود. شماره‌های ورود مدیر مستقل از این فهرست هستند.</p>
+    <p dir="ltr">@string.Join(" • ", Sms.OrderNotificationPhones)</p>
+    <p>«پذیرفته شده» به معنی پذیرش درخواست توسط SMS.ir است؛ دریافت روی گوشی را در گزارش SMS.ir بررسی کنید.</p>
+    <table class="table-papey mobile-card-table">
+        <thead><tr><th>سفارش</th><th>گیرنده</th><th>وضعیت پیامک</th><th>جزئیات</th></tr></thead>
+        <tbody>
+            @foreach (var job in _adminJobs)
+            {
+                <tr>
+                    <td data-label="سفارش">@job.Order.OrderNumber</td>
+                    <td data-label="گیرنده" dir="ltr">@job.Phone</td>
+                    <td data-label="وضعیت پیامک">@StateLabel(job.State)</td>
+                    <td data-label="جزئیات">@job.Error @if (job.MessageId is not null) { <span>شناسه پیامک: @job.MessageId</span> }</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (_adminJobs.Count == 0) { <p>هنوز اعلان سفارش جدید ثبت نشده است.</p> }
+</div>
 <div class="card-box">
     <div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px"><h2>پیامک ارسال سفارش</h2><button class="btn-papey btn-outline" disabled="@_busy" @onclick="LoadJobs">به‌روزرسانی</button></div>
     <p>با تغییر وضعیت سفارش به «ارسال شده»، پیامک به شماره گیرنده سفارش ارسال می‌شود.</p>
@@ -68,11 +89,13 @@
     private bool _busy, _error;
     private BulkPreview? _preview;
     private List<ShippingSmsJob> _jobs = [];
+    private List<OrderAdminSmsJob> _adminJobs = [];
     private sealed record BulkPreview(string[] Phones, string Message);
     protected override Task OnInitializedAsync() => LoadJobs();
     private async Task LoadJobs()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
+        _adminJobs = await db.OrderAdminSmsJobs.AsNoTracking().Include(j => j.Order).OrderByDescending(j => j.CreatedAt).Take(100).ToListAsync();
         _jobs = await db.ShippingSmsJobs.AsNoTracking().Include(j => j.Order).OrderByDescending(j => j.CreatedAt).Take(100).ToListAsync();
     }
     private void Preview()

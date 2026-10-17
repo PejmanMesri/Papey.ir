@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<Address> Addresses => Set<Address>();
     public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderAdminSmsJob> OrderAdminSmsJobs => Set<OrderAdminSmsJob>();
     public DbSet<ShippingSmsJob> ShippingSmsJobs => Set<ShippingSmsJob>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<OrderPrintJob> OrderPrintJobs => Set<OrderPrintJob>();
@@ -49,6 +50,9 @@ public class AppDbContext : DbContext
             .HasOne(pc => pc.Category).WithMany()
             .HasForeignKey(pc => pc.CategoryId).OnDelete(DeleteBehavior.Cascade);
         mb.Entity<AppUser>().HasIndex(u => u.Username).IsUnique();
+        mb.Entity<OrderAdminSmsJob>().HasIndex(j => new { j.OrderId, j.Phone }).IsUnique();
+        mb.Entity<OrderAdminSmsJob>().HasIndex(j => new { j.State, j.AvailableAt });
+        mb.Entity<OrderAdminSmsJob>().HasOne(j => j.Order).WithMany().HasForeignKey(j => j.OrderId).OnDelete(DeleteBehavior.Cascade);
         mb.Entity<ShippingSmsJob>().HasIndex(j => j.OrderId).IsUnique();
         mb.Entity<ShippingSmsJob>().HasIndex(j => new { j.State, j.AvailableAt });
         mb.Entity<ShippingSmsJob>().HasOne(j => j.Order).WithMany().HasForeignKey(j => j.OrderId).OnDelete(DeleteBehavior.Cascade);

@@ -144,6 +144,63 @@ try
     Check((await auth.ResetPasswordByOtpAsync("09123456789", resetOtp.DevCode!, "test-password")).Success &&
         await auth.ValidateLoginAsync("09123456789", "test-password") is not null, "OTP password reset persists the new password");
     Check(!(await auth.ResetPasswordByOtpAsync("09123456789", resetOtp.DevCode!, "another-password")).Success, "Password-reset OTP cannot be replayed");
+    // Synthetic numbers only: these checks never contact the real provider.
+    config["ADMIN_PHONES"] = "09120000001,+989120000002,۰۹۱۲۰۰۰۰۰۰۳";
+    config["ORDER_NOTIFICATION_PHONES"] = "09120000001,09120000002,09120000001";
+    config["ADMIN_USERNAME"] = "Admin";
+    var canonicalAdmin = new AppUser { Username = "Admin", IsAdmin = true,
+        PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin-test-password") };
+    var existingAliasUser = new AppUser { Username = "old-phone-user", Phone = "09120000003",
+        PasswordHash = BCrypt.Net.BCrypt.HashPassword("ordinary-password") };
+    db.Users.AddRange(canonicalAdmin, existingAliasUser); await db.SaveChangesAsync();
+    foreach (var alias in auth.AdminPhones)
+    {
+        db.OtpCodes.Add(new() { Phone = alias, Code = "54321", ExpiresAt = DateTime.UtcNow.AddMinutes(2) });
+        await db.SaveChangesAsync();
+        Check(await auth.VerifyOtpAndSignInAsync(alias, "wrong") is null, "Admin alias requires a correct OTP");
+        Check((await auth.VerifyOtpAndSignInAsync(alias, "54321"))?.Id == canonicalAdmin.Id,
+            "Every verified admin alias resolves to the same administrator");
+        Check((await auth.ValidateLoginAsync(alias, "admin-test-password"))?.Id == canonicalAdmin.Id,
+            "Admin alias password login resolves to the same administrator");
+    }
+    Check(await db.Users.CountAsync(u => u.IsAdmin) == 1 &&
+        await db.Users.AnyAsync(u => u.Id == existingAliasUser.Id && !u.IsAdmin),
+        "Aliases create no duplicate administrators and preserve existing records");
+    Check(!(await auth.RegisterAsync("alias-claim", "test-password", null, "09120000001", null)).User!.IsAdmin,
+        "Password registration cannot grant admin access by claiming an alias");
+    Check(production.OrderNotificationPhones.SequenceEqual(new[] { "09120000001", "09120000002" }),
+        "Order recipient list is deduplicated and excludes third login alias");
+    Check(MakeSms("Production", fallbackConfig).OrderNotificationPhones.Length == 0,
+        "Missing order recipient configuration cannot fall back to login aliases");
+    var adminQueue = new OrderAdminSmsQueue(factory, production);
+    var alertOrder = Order(OrderStatus.Paid); db.Orders.Add(alertOrder); await db.SaveChangesAsync();
+    await adminQueue.EnqueueAsync(db, unpaid); await db.SaveChangesAsync();
+    Check(!await db.OrderAdminSmsJobs.AnyAsync(j => j.OrderId == unpaid.Id), "Unpaid orders never queue admin alerts");
+    async Task QueueOrder()
+    {
+        await using var context = factory.CreateDbContext();
+        await using var tx = await context.Database.BeginTransactionAsync();
+        var rows = await context.Orders.FromSqlInterpolated($"SELECT * FROM \"Orders\" WHERE \"Id\" = {alertOrder.Id} FOR UPDATE").ToListAsync();
+        await adminQueue.EnqueueAsync(context, rows.Single()); await context.SaveChangesAsync(); await tx.CommitAsync();
+    }
+    await Task.WhenAll(QueueOrder(), QueueOrder(), QueueOrder());
+    Check(await db.OrderAdminSmsJobs.CountAsync(j => j.OrderId == alertOrder.Id) == 2,
+        "Repeated concurrent payment callbacks create one job per allowed recipient");
+    handler.Reset();
+    await Task.WhenAll(adminQueue.ProcessOneAsync(), adminQueue.ProcessOneAsync());
+    Check(handler.Calls == 2 && await db.OrderAdminSmsJobs.CountAsync(j => j.State == ShippingSmsState.Accepted) == 2,
+        "Concurrent workers send both recipients once and persist provider acceptance");
+    Check(!await adminQueue.ProcessOneAsync(), "Accepted order alerts cannot send twice");
+    var uncertainOrder = Order(OrderStatus.Paid); db.Orders.Add(uncertainOrder); await db.SaveChangesAsync();
+    await adminQueue.EnqueueAsync(db, uncertainOrder); await db.SaveChangesAsync();
+    handler.Throw = true; await adminQueue.ProcessOneAsync();
+    Check(await db.OrderAdminSmsJobs.AnyAsync(j => j.OrderId == uncertainOrder.Id && j.State == ShippingSmsState.Unknown),
+        "Ambiguous order alert requests are held for inspection instead of automatic resends");
+    handler.Reset();
+    config["ORDER_NOTIFICATION_PHONES"] = "";
+    await adminQueue.ProcessOneAsync();
+    Check(handler.Calls == 0 && await db.OrderAdminSmsJobs.AnyAsync(j => j.OrderId == uncertainOrder.Id && j.State == ShippingSmsState.Cancelled),
+        "Removing a recipient suppresses already queued alerts");
     Check(!db.Database.HasPendingModelChanges(), "Migration snapshot matches the model");
 }
 finally
