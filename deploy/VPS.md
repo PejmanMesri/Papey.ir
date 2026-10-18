@@ -160,3 +160,18 @@ applies to this ordinary bulk SMS route.
 opens the saved product editor. Uploads and stock changes become available after
 that first save. Leaving the form or failing validation does not create a product.
 Existing placeholder products are not automatically removed.
+# Product upload drafts
+
+The new-product editor stages photos, videos, and private design images in
+`App_Data/product-drafts` without inserting a product. Admin-only, noncached
+preview URLs allow reviewing and ordering photos before the first Save.
+Saving copies files into permanent storage and commits their records with the
+product in one database transaction. Failed saves retain the drafts for retry.
+
+`ProductDraftCleanupWorker` runs at application startup and every 24 hours,
+deleting only staging files older than 24 hours. Saved media and private designs
+are outside this folder and are never touched by this job. Keep `App_Data`
+persistent and writable by the application user across releases.
+
+Run storage lifecycle checks with `dotnet run --project tests/DraftUploadChecks`.
+

@@ -79,6 +79,8 @@ builder.Services.Configure<StoreProfile>(builder.Configuration.GetSection("Store
 builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+builder.Services.AddSingleton<ProductDraftUploads>();
+builder.Services.AddHostedService<ProductDraftCleanupWorker>();
 builder.Services.AddSingleton<OtpSignInTickets>();
 builder.Services.AddScoped<FavoriteService>();
 builder.Services.AddHttpClient<SmsService>(http => http.Timeout = TimeSpan.FromSeconds(15));
@@ -118,6 +120,17 @@ if (app.Environment.IsDevelopment())
 
 // Serve user-uploaded files (uploads, favicon, images) via classic static files.
 app.UseStaticFiles();
+
+app.MapGet("/admin/product-drafts/{name}", (string name, HttpContext http, ProductDraftUploads uploads) =>
+{
+    http.Response.Headers.CacheControl = "no-store";
+    try
+    {
+        var stream = uploads.OpenPreview(name);
+        return stream is null ? Results.NotFound() : Results.Stream(stream, uploads.ContentType(name));
+    }
+    catch (ArgumentException) { return Results.NotFound(); }
+}).RequireAuthorization(policy => policy.RequireRole("Admin"));
 
 app.UseMiddleware<PageViewMiddleware>();
 

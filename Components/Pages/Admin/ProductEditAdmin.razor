@@ -7,6 +7,7 @@
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @inject IWebHostEnvironment Env
+@inject ProductDraftUploads DraftUploads
 
 <PageTitle>@(IsNew ? "افزودن محصول" : "ویرایش محصول") | پنل مدیریت پاپی</PageTitle>
 
@@ -23,11 +24,11 @@ else
             <h1>@(IsNew ? "افزودن محصول جدید" : "ویرایش محصول")</h1>
             <p>@(IsNew ? "مشخصات محصول را تکمیل کنید." : _product.Name)</p>
         </div>
-        <button type="button" class="btn-papey editor-save" disabled="@_saving" @onclick="SaveInfo">@(_saving ? "در حال ذخیره…" : IsNew ? "ذخیره و ادامه" : "ذخیره تغییرات")</button>
+        <button type="button" class="btn-papey editor-save" disabled="@(_saving || _uploading || _designUploading)" @onclick="SaveInfo">@(_saving ? "در حال ذخیره…" : IsNew ? "ذخیره و ادامه" : "ذخیره تغییرات")</button>
     </header>
     @if (IsNew)
     {
-        <div class="alert-papey alert-info" role="status">محصول فقط با زدن «ذخیره و ادامه» ایجاد می‌شود. پس از ذخیره، تصاویر، فایل‌های طرح و موجودی را تکمیل کنید.</div>
+        <div class="alert-papey alert-info" role="status">محصول فقط با زدن «ذخیره و ادامه» ایجاد می‌شود. تصاویر و فایل‌های طرح را می‌توانید همین حالا آپلود کنید؛ با ذخیره محصول ثبت می‌شوند. فایل‌های موقت ذخیره‌نشده پس از ۲۴ ساعت پاک می‌شوند.</div>
     }
     @if (_infoError is not null) { <div class="alert-papey alert-danger" role="alert">@_infoError</div> }
 
@@ -108,7 +109,7 @@ else
             📐 نسبت پیشنهادی تصویر: <strong>۱:۱ (مربعی)</strong> — حداقل ۸۰۰×۸۰۰ پیکسل.
             ویدیو: MP4/WebM حداکثر ۵۰ مگابایت.
         </p>
-        <label class="editor-upload"><strong>افزودن تصویر یا ویدیو</strong><span>فایل را از دستگاه خود انتخاب کنید</span><InputFile OnChange="UploadMedia" accept="image/*,video/mp4,video/webm" disabled="@(IsNew || _uploading)" /></label>
+        <label class="editor-upload"><strong>افزودن تصویر یا ویدیو</strong><span>فایل را از دستگاه خود انتخاب کنید</span><InputFile OnChange="UploadMedia" accept="image/*,video/mp4,video/webm" disabled="@(_saving || _uploading)" /></label>
         @if (_uploading) { <p>در حال آپلود...</p> }
         @if (_uploadError is not null) { <div class="alert-papey alert-danger">@_uploadError</div> }
 
@@ -139,23 +140,26 @@ else
         <p style="font-size:0.8rem; color:var(--papey-muted)">
             تصاویر اصلی طرح این محصول هستند و در فروشگاه عمومی نمایش داده نمی‌شوند. فرمت‌های JPG، PNG و WebP تا ۱۵ مگابایت قابل بارگذاری‌اند.
         </p>
-        <label class="editor-upload"><strong>افزودن فایل طرح</strong><span>فقط در پنل مدیریت قابل مشاهده است</span><InputFile OnChange="UploadDesigns" multiple accept=".jpg,.jpeg,.png,.webp" disabled="@(IsNew || _designUploading)" /></label>
+        <label class="editor-upload"><strong>افزودن فایل طرح</strong><span>فقط در پنل مدیریت قابل مشاهده است</span><InputFile OnChange="UploadDesigns" multiple accept=".jpg,.jpeg,.png,.webp" disabled="@(_saving || _designUploading)" /></label>
         @if (_designUploading) { <p>در حال آپلود فایل‌های طرح...</p> }
         @if (_designUploadError is not null) { <div class="alert-papey alert-danger">@_designUploadError</div> }
 
         @if (_designMedia.Count > 0)
         {
+            @if (!IsNew)
+            {
             <div style="margin-top:12px">
                 <a class="btn-papey btn-sm" href="/admin/products/@Id/designs.zip">⬇ دانلود همه طرح‌ها (ZIP)</a>
             </div>
+            }
             <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:16px">
                 @foreach (var design in _designMedia)
                 {
                     <div style="width:150px; text-align:center; border:1px solid var(--papey-border); border-radius:10px; padding:8px">
-                        <img src="/admin/products/@Id/designs/@design.Id" alt="@design.OriginalFileName" style="width:100%; height:110px; object-fit:cover; border-radius:8px" />
+                        <img src="@(IsNew ? _draftDesigns[design].PreviewUrl : $"/admin/products/{Id}/designs/{design.Id}")" alt="@design.OriginalFileName" style="width:100%; height:110px; object-fit:cover; border-radius:8px" />
                         <p style="margin:6px 0; overflow-wrap:anywhere; font-size:0.72rem">@design.OriginalFileName</p>
                         <div style="display:flex; justify-content:center; gap:4px">
-                            <a class="btn-papey btn-sm btn-outline" href="/admin/products/@Id/designs/@design.Id/download">⬇</a>
+                            @if (!IsNew) { <a class="btn-papey btn-sm btn-outline" href="/admin/products/@Id/designs/@design.Id/download">⬇</a> }
                             <button class="btn-papey btn-sm btn-danger-papey" @onclick="() => DeleteDesign(design)">🗑</button>
                         </div>
                     </div>
@@ -226,6 +230,8 @@ else
     private List<ProductTypeEntity> _types = new();
     private List<ProductMedia> _media = new();
     private List<ProductDesignMedia> _designMedia = new();
+    private readonly Dictionary<ProductMedia, ProductDraftUploads.Upload> _draftMedia = new();
+    private readonly Dictionary<ProductDesignMedia, ProductDraftUploads.Upload> _draftDesigns = new();
     private HashSet<int> _selectedCatIds = new();
     private string? _variantMsg, _uploadError, _designUploadError;
     private bool _uploading, _designUploading, _saving;
@@ -263,8 +269,13 @@ else
                 _product = new Product { ProductTypeId = _types.FirstOrDefault()?.Id };
                 _selectedCatIds = new();
             }
-            _media = [];
-            _designMedia = [];
+            if (!preserveDraft)
+            {
+                _media = [];
+                _designMedia = [];
+                _draftMedia.Clear();
+                _draftDesigns.Clear();
+            }
             return;
         }
         var fresh = await db.Products.Include(p => p.Variants).Include(p => p.ProductCategories).FirstOrDefaultAsync(p => p.Id == Id);
@@ -280,7 +291,7 @@ else
 
     private async Task SaveInfo()
     {
-        if (_saving || _product is null) return;
+        if (_saving || _uploading || _designUploading || _product is null) return;
         _infoError = null;
         if (string.IsNullOrWhiteSpace(_product.Name) || _product.Name.Length > 200)
         { _infoError = "نام محصول را وارد کنید (حداکثر ۲۰۰ کاراکتر)."; return; }
@@ -346,8 +357,43 @@ else
             await db.Products.Where(p => p.Id != t.Id && p.HomeHeroSlot == heroSlot)
                 .ExecuteUpdateAsync(s => s.SetProperty(p => p.HomeHeroSlot, (int?)null));
         t.HomeHeroSlot = heroSlot;
-        await db.SaveChangesAsync();
-        await transaction.CommitAsync();
+        var copiedFiles = new List<string>();
+        try
+        {
+            if (creating)
+            {
+                foreach (var media in _media.OrderBy(m => m.DisplayOrder))
+                {
+                    var upload = _draftMedia[media];
+                    var path = DraftUploads.CopyToPermanent(upload, false);
+                    copiedFiles.Add(path);
+                    var url = $"/uploads/{(upload.IsVideo ? "videos" : "images")}/{Path.GetFileName(path)}";
+                    db.ProductMedia.Add(new ProductMedia { Product = t, Url = url, Type = media.Type,
+                        Alt = t.Name, DisplayOrder = media.DisplayOrder });
+                    if (media.Type == MediaType.Image && !db.ChangeTracker.Entries<ProductMedia>()
+                        .Any(e => e.Entity.Product == t && e.Entity.Type == MediaType.Image && e.Entity.DisplayOrder < media.DisplayOrder))
+                        t.ImageUrl = url;
+                }
+                foreach (var design in _designMedia)
+                {
+                    var path = DraftUploads.CopyToPermanent(_draftDesigns[design], true);
+                    copiedFiles.Add(path);
+                    db.ProductDesignMedia.Add(new ProductDesignMedia { Product = t,
+                        StoredFileName = Path.GetFileName(path), OriginalFileName = design.OriginalFileName,
+                        ContentType = design.ContentType, FileSize = design.FileSize, DisplayOrder = design.DisplayOrder });
+                }
+            }
+            await db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            foreach (var path in copiedFiles) { try { File.Delete(path); } catch { } }
+            throw;
+        }
+        foreach (var upload in _draftMedia.Values.Concat(_draftDesigns.Values))
+        { try { DraftUploads.Delete(upload); } catch { } }
+        _draftMedia.Clear(); _draftDesigns.Clear();
         Nav.NavigateTo(creating ? $"/admin/products/{t.Id}" : "/admin/products");
     }
 
@@ -365,13 +411,24 @@ else
 
     private async Task UploadMedia(InputFileChangeEventArgs e)
     {
-        if (IsNew) return;
+        if (_saving || _uploading) return;
         _uploading = true; _uploadError = null;
         try
         {
             var file = e.File;
             var ext = Path.GetExtension(file.Name).ToLowerInvariant();
-            var isVideo = ext is ".mp4" or ".webm" or ".mov";
+            var isVideo = ext is ".mp4" or ".webm";
+            if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp" or ".gif" or ".avif" or ".mp4" or ".webm"))
+                throw new InvalidOperationException("فرمت فایل مجاز نیست.");
+            if (IsNew)
+            {
+                await using var input = file.OpenReadStream(50 * 1024 * 1024);
+                var upload = await DraftUploads.StageAsync(input, file.Name);
+                var media = new ProductMedia { Url = upload.PreviewUrl,
+                    Type = isVideo ? MediaType.Video : MediaType.Image, DisplayOrder = _media.Count };
+                _media.Add(media); _draftMedia.Add(media, upload);
+                return;
+            }
             var folder = Path.Combine("wwwroot", "uploads", isVideo ? "videos" : "images");
             Directory.CreateDirectory(folder);
             var name = $"{Guid.NewGuid():N}{ext}";
@@ -393,12 +450,12 @@ else
             await Reload(true);
         }
         catch (Exception ex) { _uploadError = "خطا در آپلود: " + ex.Message; }
-        _uploading = false;
+        finally { _uploading = false; }
     }
 
     private async Task UploadDesigns(InputFileChangeEventArgs e)
     {
-        if (IsNew) return;
+        if (_saving || _designUploading) return;
         _designUploading = true;
         _designUploadError = null;
         var errors = new List<string>();
@@ -423,6 +480,16 @@ else
                     continue;
                 }
 
+                if (IsNew)
+                {
+                    await using var input = file.OpenReadStream(15 * 1024 * 1024);
+                    var upload = await DraftUploads.StageAsync(input, file.Name);
+                    var design = new ProductDesignMedia { StoredFileName = upload.Name,
+                        OriginalFileName = Path.GetFileName(file.Name), ContentType = contentType,
+                        FileSize = file.Size, DisplayOrder = _designMedia.Count };
+                    _designMedia.Add(design); _draftDesigns.Add(design, upload);
+                    continue;
+                }
                 var storedFileName = $"{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
                 var filePath = Path.Combine(folder, storedFileName);
                 await using var output = File.Create(filePath);
@@ -460,6 +527,15 @@ else
 
     private async Task MoveMedia(ProductMedia m, int dir)
     {
+        if (_saving) return;
+        if (IsNew)
+        {
+            var index = _media.IndexOf(m); var next = index + dir;
+            if (index < 0 || next < 0 || next >= _media.Count) return;
+            (_media[index], _media[next]) = (_media[next], _media[index]);
+            for (var n = 0; n < _media.Count; n++) _media[n].DisplayOrder = n;
+            return;
+        }
         await using var db = await DbFactory.CreateDbContextAsync();
         var list = await db.ProductMedia.Where(x => x.ProductId == Id).OrderBy(x => x.DisplayOrder).ToListAsync();
         var i = list.FindIndex(x => x.Id == m.Id);
@@ -472,6 +548,13 @@ else
 
     private async Task DeleteMedia(ProductMedia m)
     {
+        if (_saving) return;
+        if (IsNew)
+        {
+            DraftUploads.Delete(_draftMedia[m]); _draftMedia.Remove(m); _media.Remove(m);
+            for (var n = 0; n < _media.Count; n++) _media[n].DisplayOrder = n;
+            return;
+        }
         await using var db = await DbFactory.CreateDbContextAsync();
         var t = await db.ProductMedia.FindAsync(m.Id);
         if (t is not null) { db.ProductMedia.Remove(t); await db.SaveChangesAsync(); }
@@ -481,6 +564,12 @@ else
 
     private async Task DeleteDesign(ProductDesignMedia design)
     {
+        if (_saving) return;
+        if (IsNew)
+        {
+            DraftUploads.Delete(_draftDesigns[design]); _draftDesigns.Remove(design); _designMedia.Remove(design);
+            return;
+        }
         await using var db = await DbFactory.CreateDbContextAsync();
         var target = await db.ProductDesignMedia.FirstOrDefaultAsync(item => item.Id == design.Id && item.ProductId == Id);
         if (target is null) return;
