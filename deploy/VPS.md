@@ -140,7 +140,7 @@ an approved template ID or enable sandbox login on the live site.
 ## Product editor and all-user SMS
 
 The product editor groups details, visibility and homepage placement separately
-and keeps unsaved details while uploading files or changing variants. Stock and
+and keeps unsaved details while uploading files or changing variants. For saved products, stock and
 file operations save immediately; the main save button saves product details.
 
 In `/admin/sms`, choose **همه کاربران**, enter the message and select
@@ -157,8 +157,9 @@ applies to this ordinary bulk SMS route.
 
 `Add product` opens `/admin/products/new` without inserting a row. A valid first
 **ذخیره و ادامه** commits the product and category associations together, then
-opens the saved product editor. Uploads and stock changes become available after
-that first save. Leaving the form or failing validation does not create a product.
+opens the saved product editor. Photos and design files can be staged before
+that first save; stock changes become available afterward. Leaving the form or
+failing validation does not create a product.
 Existing placeholder products are not automatically removed.
 # Product upload drafts
 
