@@ -1,0 +1,12 @@
+@if (Value == "long-sleeve")
+{
+    <img class="product-type-symbol" src="/img/icons/long-sleeve.svg" alt="" aria-hidden="true" width="64" height="64" />
+}
+else
+{
+    @Value
+}
+
+@code {
+    [Parameter] public string? Value { get; set; }
+}

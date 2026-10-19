@@ -738,6 +738,7 @@ button, input, select, textarea { font-family: inherit; }
 .home-category { display: flex; align-items: center; gap: 24px; padding: 24px; background: #eee8dc; border: 1px solid #e4dccb; border-radius: 18px; transition: background .2s; }
 .home-category:nth-child(2n) { background: #e6e9e1; border-color: #dce0d6; }
 .home-category:hover { background: #dfd4bd; color: #20261f; }
+.product-type-symbol { display: inline-block; width: 1.25em; height: 1.25em; vertical-align: middle; object-fit: contain; }
 .home-category-icon { font-size: 3rem; }
 .home-category h3 { margin: 0 0 8px; font-size: 1.4rem; }
 .home-category div > span { font-size: .85rem; }
