@@ -12,7 +12,6 @@
     <div style="display:flex; gap:12px; align-items:end; margin-bottom:16px; flex-wrap:wrap">
         <div><label class="form-label">نام نوع</label><input class="form-input" @bind="_newName" placeholder="مثلاً شلوار" /></div>
         <div><label class="form-label">آیکن فیلتر</label><input class="form-input" @bind="_newIcon" maxlength="64" placeholder="مثلاً 👕" /></div>
-        <button type="button" class="btn-papey btn-outline" @onclick='() => _newIcon = "long-sleeve"'><ProductTypeSymbol Value="long-sleeve" /> آستین بلند</button>
         <button class="btn-papey" @onclick="Add">➕ افزودن</button>
     </div>
     <table class="table-papey mobile-card-table">
@@ -32,7 +31,6 @@
                         @if (_editId == t.Id)
                         {
                             <input class="form-input" style="width:110px" maxlength="64" @bind="_editIcon" />
-                            <button type="button" class="btn-papey btn-sm btn-outline" @onclick='() => _editIcon = "long-sleeve"'><ProductTypeSymbol Value="long-sleeve" /> آستین بلند</button>
                         }
                         else
                         {
