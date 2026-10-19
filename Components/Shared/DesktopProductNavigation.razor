@@ -3,15 +3,15 @@
     @if (Types.Count > 3)
     {
         <details class="desktop-type-menu" data-navigation-menu>
-            <summary>مدل‌های لباس <span class="type-menu-count">@PersianHelpers.ToPersianDigits(Types.Count.ToString())</span><span aria-hidden="true">⌄</span></summary>
+            <summary>نوع لباس <span class="type-menu-count">@PersianHelpers.ToPersianDigits(Types.Count.ToString())</span><svg class="type-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></summary>
             <div class="desktop-type-panel">
-                <div class="type-panel-heading"><strong>انتخاب مدل لباس</strong><a href="/products">کل محصولات ←</a></div>
+                <div class="type-panel-heading"><div><small>از اینجا شروع کن</small><strong>نوع لباس</strong></div><a href="/products">کل محصولات ←</a></div>
                 @foreach (var type in Types)
                 {
                     @if (type.Categories.Count > 0)
                     {
                         <details class="desktop-type-group">
-                            <summary><span>@type.Name</span><span aria-hidden="true">+</span></summary>
+                            <summary><span class="type-group-label"><strong>@type.Name</strong><small>@PersianHelpers.ToPersianDigits(type.Categories.Count.ToString()) دسته</small></span><svg class="type-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></summary>
                             <div class="desktop-type-categories">
                                 <a class="type-view-all" href="/products?type=@type.Id">همه @type.Name ←</a>
                                 @foreach (var category in type.Categories.OrderBy(c => c.DisplayOrder))
