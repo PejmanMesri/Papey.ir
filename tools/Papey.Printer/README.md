@@ -45,8 +45,12 @@ updating the app's configuration too.
 
 The app opens the existing authenticated 80 mm order receipt with automatic
 browser printing disabled. It validates the order ID, waits for fonts/images,
-renews the job lease, and silently prints one copy to the specifically configured
-printer. Persian shaping is handled by WebView2. It never changes the default
+renews the job lease, and captures only the receipt rectangle. It crops unused
+top/bottom space and sends native ESC/POS raster rows through the Windows RAW
+spooler, followed by a minimum-feed partial cut. Paper length follows the invoice
+content, with no 100 mm minimum, A4 page, or driver page-length padding. The
+SRP-330II uses its 512-dot / 180 dpi print head; the SRP-332II uses 576 dots / 203 dpi.
+Persian shaping is handled by WebView2. It never changes the default
 Windows printer and never falls back to a different device.
 
 The journal is flushed before calling the printer and after successful spooler
@@ -74,9 +78,10 @@ dotnet run --project tests/PrinterAgentChecks -c Release
 Installed executable switches (only while the tray app is stopped):
 
 - `--check`: authenticate and verify configuration; does not claim jobs or print.
-- `--preview`: generate `test-receipt.pdf` locally, without paper or a queue job.
+- `--preview`: generate an exact cropped `test-receipt.png`, its dimensions, and
+  a secondary PDF preview locally, without paper or a queue job.
 - `--test`: send one clearly marked synthetic receipt to the configured printer.
 
 Server API and isolated queue tests are documented in `PRINTING_API.md`.
-Microsoft documents silent printing via
-[WebView2 PrintAsync](https://learn.microsoft.com/en-us/microsoft-edge/webview2/how-to/print).
+Microsoft documents the
+[Windows RAW spooler API](https://learn.microsoft.com/en-us/windows/win32/printdocs/sending-data-directly-to-a-printer).

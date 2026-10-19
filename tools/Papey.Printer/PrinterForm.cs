@@ -159,18 +159,12 @@ internal sealed class PrinterForm : Form
             }
             await Navigate(_api.Receipt(lease).AbsoluteUri);
             await Ready(lease.OrderId);
-            var printSettings = await PrintSettings();
+            var receipt = await CaptureReceipt();
             PrinterHealth.EnsureReady(_settings.Printer);
             if (!leaseValid || !await _api.Action(lease, "renew")) throw new InvalidOperationException("Print lease lost before submission.");
             Store.Write("pending.json", new Journal(lease, "Submitting"));
             Report("Sending paid order to BIXOLON");
-            var result = await _web.CoreWebView2.PrintAsync(printSettings);
-            if (result == CoreWebView2PrintStatus.PrinterUnavailable)
-            {
-                Store.Write("pending.json", new Journal(lease, "Prepared"));
-                Report("Printer unavailable — queued for retry"); return;
-            }
-            if (result != CoreWebView2PrintStatus.Succeeded) { Review(new(lease, "NeedsReview")); return; }
+            await Task.Run(() => RawPrinter.Submit(_settings.Printer, receipt.Commands));
             Store.Write("pending.json", new Journal(lease, "Submitted"));
             PrinterHealth.EnsureReady(_settings.Printer);
             if (!await _api.Action(lease, "complete")) { Review(new(lease, "NeedsReview")); return; }
@@ -214,12 +208,29 @@ internal sealed class PrinterForm : Form
         var settings = _web.CoreWebView2.Environment.CreatePrintSettings();
         settings.PrinterName = _settings.Printer;
         settings.PageWidth = 80 / 25.4;
-        settings.PageHeight = Math.Max(100 / 25.4, height / 96 + 12 / 25.4);
-        settings.MarginTop = settings.MarginBottom = settings.MarginLeft = settings.MarginRight = 4 / 25.4;
+        settings.PageHeight = height / 96 + 2 / 25.4;
+        settings.MarginTop = settings.MarginBottom = 1 / 25.4;
+        settings.MarginLeft = settings.MarginRight = 4 / 25.4;
         settings.ShouldPrintHeaderAndFooter = false;
         settings.ShouldPrintBackgrounds = true;
         settings.ScaleFactor = 1; settings.Copies = 1;
         return settings;
+    }
+
+    private async Task<ThermalReceipt> CaptureReceipt()
+    {
+        var bounds = await _web.CoreWebView2.ExecuteScriptAsync("(() => { const r=document.querySelector('.receipt').getBoundingClientRect(); return {x:r.left+scrollX,y:r.top+scrollY,width:r.width,height:r.height}; })()");
+        using var rectangle = JsonDocument.Parse(bounds);
+        var r = rectangle.RootElement;
+        var width = r.GetProperty("width").GetDouble(); var height = r.GetProperty("height").GetDouble();
+        if (width < 1 || height < 1 || height > 18000) throw new InvalidOperationException("Unexpected receipt dimensions.");
+        var request = JsonSerializer.Serialize(new { format = "png", captureBeyondViewport = true,
+            clip = new { x = r.GetProperty("x").GetDouble(), y = r.GetProperty("y").GetDouble(), width, height, scale = 2 } });
+        var response = await _web.CoreWebView2.CallDevToolsProtocolMethodAsync("Page.captureScreenshot", request);
+        using var capture = JsonDocument.Parse(response);
+        using var input = new MemoryStream(Convert.FromBase64String(capture.RootElement.GetProperty("data").GetString()!));
+        using var image = new Bitmap(input);
+        return ThermalReceipt.Create(image, ThermalReceipt.WidthFor(_settings.Printer));
     }
 
     private async Task TestReceipt()
@@ -240,16 +251,20 @@ internal sealed class PrinterForm : Form
             await done.Task.WaitAsync(TimeSpan.FromSeconds(30));
             Report("Test receipt loaded");
             await Ready(0);
-            var settings = await PrintSettings();
+            var receipt = await CaptureReceipt();
             if (_preview)
             {
+                await File.WriteAllBytesAsync(Store.PathFor("test-receipt.png"), receipt.PreviewPng);
+                Store.Write("test-receipt-dimensions.json", new { receipt.Width, receipt.Height,
+                    contentLengthMm = Math.Round(receipt.Height * 25.4 / (_settings.Printer.Contains("SRP-332") ? 203 : 180), 1) });
+                var settings = await PrintSettings();
                 if (!await _web.CoreWebView2.PrintToPdfAsync(Store.PathFor("test-receipt.pdf"), settings)) throw new IOException("PDF preview failed.");
                 Report("Test receipt PDF generated; no paper printed");
             }
             else
             {
-                var result = await _web.CoreWebView2.PrintAsync(settings);
-                if (result != CoreWebView2PrintStatus.Succeeded) throw new IOException("Test print failed: " + result);
+                PrinterHealth.EnsureReady(_settings.Printer);
+                await Task.Run(() => RawPrinter.Submit(_settings.Printer, receipt.Commands));
                 Report("Test receipt accepted by BIXOLON printer spooler");
             }
         }
