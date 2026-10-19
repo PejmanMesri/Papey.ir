@@ -18,11 +18,15 @@ Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -eq $printerExe
 New-Item -ItemType Directory -Force -Path $installFolder,$dataFolder | Out-Null
 Copy-Item -Path (Join-Path $PublishedFolder '*') -Destination $installFolder -Recurse -Force
 $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-$acl = Get-Acl -LiteralPath $dataFolder
+$acl = [System.Security.AccessControl.DirectorySecurity]::new()
 $acl.SetAccessRuleProtection($true, $false)
 $acl.SetAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($identity,'FullControl','ContainerInherit,ObjectInherit','None','Allow'))
 $acl.SetAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new('SYSTEM','FullControl','ContainerInherit,ObjectInherit','None','Allow'))
-Set-Acl -LiteralPath $dataFolder -AclObject $acl
+if ($PSVersionTable.PSEdition -eq 'Desktop') {
+    [IO.DirectoryInfo]::new($dataFolder).SetAccessControl($acl)
+} else {
+    [IO.FileSystemAclExtensions]::SetAccessControl([IO.DirectoryInfo]::new($dataFolder), $acl)
+}
 $setup = Start-Process -FilePath $printerExe -ArgumentList @('--configure', ('"' + $PasswordFile + '"'), ('"' + $PrinterName + '"')) -WindowStyle Hidden -Wait -PassThru
 if ($setup.ExitCode -ne 0) { throw 'Printer configuration failed. See the local agent log.' }
 $check = Start-Process -FilePath $printerExe -ArgumentList '--check' -WindowStyle Hidden -Wait -PassThru
@@ -41,11 +45,11 @@ $bootstrap = @"
 `$folder = '$escapedDataFolder'
 [IO.Directory]::CreateDirectory(`$folder) | Out-Null
 [IO.File]::WriteAllBytes((Join-Path `$folder 'settings.json'), [Convert]::FromBase64String('$configBlob'))
-`$acl = Get-Acl -LiteralPath `$folder
+`$acl = [Security.AccessControl.DirectorySecurity]::new()
 `$acl.SetAccessRuleProtection(`$true, `$false)
 `$acl.SetAccessRule([Security.AccessControl.FileSystemAccessRule]::new([Security.Principal.WindowsIdentity]::GetCurrent().Name,'FullControl','ContainerInherit,ObjectInherit','None','Allow'))
 `$acl.SetAccessRule([Security.AccessControl.FileSystemAccessRule]::new('SYSTEM','FullControl','ContainerInherit,ObjectInherit','None','Allow'))
-Set-Acl -LiteralPath `$folder -AclObject `$acl
+[IO.DirectoryInfo]::new(`$folder).SetAccessControl(`$acl)
 "@
 $encodedBootstrap = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($bootstrap))
 $bootstrapAction = New-ScheduledTaskAction -Execute "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand $encodedBootstrap"
