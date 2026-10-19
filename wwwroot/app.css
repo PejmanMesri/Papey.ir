@@ -37,8 +37,11 @@ img { max-width: 100%; }
 .top-bar { background: var(--papey-darker); color: #ddd; font-size: 0.8rem; text-align: center; padding: 6px 0; }
 .site-header { background: #fff; border-bottom: 1px solid var(--papey-border); position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
 .header-inner { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; gap: 16px; flex-wrap: wrap; }
-@font-face { font-family: 'Papey Lalezar'; src: url('/fonts/Lalezar-Regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
-.logo { font-family: 'Papey Lalezar', 'Vazirmatn', Tahoma, sans-serif; font-size: 2.3rem; font-weight: 400; line-height: 1.15; letter-spacing: 0; color: var(--papey-dark); }
+@font-face { font-family: 'Papey Nastaliq'; src: url('/fonts/NotoNastaliqUrdu.ttf') format('truetype'); font-weight: 400 700; font-style: normal; font-display: swap; }
+.logo { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; min-width: 88px; min-height: 66px; color: var(--papey-dark); }
+.logo-persian { font-family: 'Papey Nastaliq', 'Vazirmatn', Tahoma, sans-serif; font-size: 2.1rem; font-weight: 600; line-height: 1.8; white-space: nowrap; margin-top: -13px; }
+.logo-latin { font-family: Arial, sans-serif; font-size: .56rem; font-weight: 700; letter-spacing: .3em; padding-left: .3em; line-height: 1; color: var(--papey-accent-dark); }
+.logo:focus-visible { outline: 2px solid var(--papey-accent-dark); outline-offset: 4px; border-radius: 4px; }
 .main-nav { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
 .main-nav a { font-size: 0.95rem; font-weight: 500; padding: 6px 2px; border-bottom: 2px solid transparent; }
 .main-nav a:hover, .main-nav a.active { border-bottom-color: var(--papey-accent); color: var(--papey-dark); }
