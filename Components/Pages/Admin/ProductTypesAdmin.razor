@@ -56,12 +56,21 @@
                         {
                             <button class="btn-papey btn-sm btn-outline" @onclick="() => { _editId = t.Id; _editName = t.Name; _editIcon = t.FilterIcon ?? string.Empty; }">✏️</button>
                         }
+                        <button type="button" class="btn-papey btn-sm btn-danger-papey" disabled="@(_deleting || _productCounts.GetValueOrDefault(t.Id, 0) > 0)" title="@(_productCounts.GetValueOrDefault(t.Id, 0) > 0 ? "نوع لباس دارای محصول قابل حذف نیست" : "حذف نوع لباس")" @onclick="() => { _deleteId = t.Id; _msg = null; }">حذف</button>
                     </td>
                 </tr>
             }
         </tbody>
     </table>
-    @if (_msg is not null) { <div class="alert-papey alert-danger">@_msg</div> }
+    @if (_deleteId is { } deleteId && _types.FirstOrDefault(t => t.Id == deleteId) is { } pending)
+    {
+        <div class="alert-papey alert-info" role="alert">
+            <p>نوع لباس «@pending.Name» حذف شود؟ دسته‌بندی‌های آن حفظ می‌شوند و می‌توانید آن‌ها را به نوع دیگری اختصاص دهید.</p>
+            <button type="button" class="btn-papey btn-sm btn-danger-papey" disabled="@_deleting" @onclick="ConfirmDelete">@(_deleting ? "در حال حذف…" : "تأیید حذف")</button>
+            <button type="button" class="btn-papey btn-sm btn-outline" disabled="@_deleting" @onclick="() => _deleteId = null">انصراف</button>
+        </div>
+    }
+    @if (_msg is not null) { <div class="alert-papey @(_msgSuccess ? "alert-success" : "alert-danger")" role="status">@_msg</div> }
 </div>
 
 @code {
@@ -71,6 +80,31 @@
     private int? _editId;
     private string _editName = "", _editIcon = "";
     private string? _msg;
+    private int? _deleteId;
+    private bool _deleting, _msgSuccess;
+
+    private async Task ConfirmDelete()
+    {
+        if (_deleting || _deleteId is not { } id) return;
+        _deleting = true; _msgSuccess = false;
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+            var result = await ProductTypeDeletion.DeleteIfEmptyAsync(db, id);
+            _msgSuccess = result == ProductTypeDeleteResult.Deleted;
+            _msg = result switch
+            {
+                ProductTypeDeleteResult.Deleted => "نوع لباس حذف شد؛ دسته‌بندی‌ها حفظ شدند.",
+                ProductTypeDeleteResult.HasProducts => "این نوع لباس دارای محصول است و قابل حذف نیست.",
+                _ => "نوع لباس قبلاً حذف شده است."
+            };
+            _deleteId = null;
+            if (_editId == id) _editId = null;
+            await Reload();
+        }
+        catch { _msg = "حذف انجام نشد؛ دوباره تلاش کنید."; }
+        finally { _deleting = false; }
+    }
 
     protected override async Task OnInitializedAsync() => await Reload();
 
@@ -84,7 +118,7 @@
 
     private async Task Add()
     {
-        _msg = null;
+        _msg = null; _msgSuccess = false;
         if (string.IsNullOrWhiteSpace(_newName)) { _msg = "نام نوع الزامی است."; return; }
         await using var db = await DbFactory.CreateDbContextAsync();
         db.ProductTypes.Add(new ProductTypeEntity

@@ -88,8 +88,8 @@ img { max-width: 100%; }
     .desktop-type-menu > summary:hover, .desktop-type-menu[open] > summary { background: #fff; color: var(--papey-accent-dark); }
     .type-menu-count { background: #e9e0ce; color: #6b542e; font-size: .7rem; border-radius: 6px; padding: 1px 5px; }
     .desktop-type-panel { position: absolute; top: calc(100% + 18px); right: 0; width: 320px; padding: 16px; background: #fff; border: 1px solid var(--papey-border); border-radius: 22px; box-shadow: 0 22px 56px #171e171f; transition: width .18s ease; }
-    .desktop-type-panel:has(.desktop-type-group[open]) { width: 640px; min-height: 310px; }
-    .desktop-type-list { width: 286px; max-height: min(480px, calc(100dvh - 220px)); overflow-y: auto; overscroll-behavior: contain; padding: 2px; }
+    .desktop-type-panel:has(.desktop-type-group[open]) { width: 680px; min-height: 420px; }
+    .desktop-type-list { width: 286px; padding: 2px; }
     .type-panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 0 4px 12px; margin-bottom: 6px; border-bottom: 1px solid var(--papey-border); font-size: .85rem; }
     .main-nav .type-panel-heading a { border: 0; font-size: .75rem; color: #806431; }
     .type-panel-heading > div, .type-group-label { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
@@ -98,11 +98,18 @@ img { max-width: 100%; }
     .type-group-label small { color: var(--papey-muted); font-size: .65rem; font-weight: 400; }
     .type-chevron { flex-shrink: 0; transition: transform .18s ease; }
     .desktop-type-menu[open] > summary > .type-chevron { transform: rotate(180deg); }
-    .desktop-type-group { border: 1px solid #eeeae3; border-radius: 15px; margin-top: 8px; }
-    .desktop-type-group > summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; min-height: 60px; border-radius: 14px; list-style: none; cursor: pointer; font-size: .9rem; font-weight: 600; }
+    .desktop-type-group { border: 1px solid #eeeae3; border-radius: 12px; margin-top: 6px; }
+    .desktop-type-group > summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; min-height: 44px; border-radius: 11px; list-style: none; cursor: pointer; font-size: .85rem; font-weight: 600; }
+    .type-group-label small { display: none; }
     .desktop-type-group > summary:hover, .desktop-type-group[open] > summary { background: var(--papey-cream); }
     .desktop-type-group[open] { border-color: #d9c7a4; }
-    .desktop-type-categories { position: absolute; left: 16px; top: 86px; bottom: 16px; width: 300px; display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid #eeeae3; background: #faf9f6; border-radius: 15px; overflow-y: auto; overscroll-behavior: contain; animation: type-flyout-in .18s ease; }
+    .desktop-type-categories { position: absolute; left: 16px; top: 86px; width: 340px; display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid #eeeae3; background: #faf9f6; border-radius: 15px; animation: type-flyout-in .18s ease; }
+    .type-category-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    [data-menu-page][hidden] { display: none !important; }
+    .type-menu-pager { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--papey-border); font-size: .7rem; color: var(--papey-muted); }
+    .type-menu-pager button { min-height: 32px; padding: 4px 10px; border: 1px solid var(--papey-border); border-radius: 9px; background: #fff; font: inherit; color: var(--papey-dark); cursor: pointer; }
+    .type-menu-pager button:hover:enabled { background: #f2ede4; border-color: var(--papey-accent); }
+    .type-menu-pager button:disabled { opacity: .35; cursor: default; }
     .main-nav .desktop-type-categories a { border: 1px solid #eeeae3; background: #faf9f6; border-radius: 10px; padding: 9px 10px; font-size: .8rem; }
     .main-nav .desktop-type-categories a:hover, .main-nav .desktop-type-categories a.active { background: #f2ede4; }
     .main-nav .desktop-type-categories .type-view-all { grid-column: 1 / -1; color: #806431; font-weight: 600; background: #f5f0e6; border-color: transparent; }
@@ -114,7 +121,8 @@ img { max-width: 100%; }
     .main-nav > a, .main-nav > .nav-category > a { display: flex; align-items: center; gap: 4px; min-height: 40px; padding: 8px 11px; border: 0; border-radius: 11px; white-space: nowrap; font-size: .86rem; font-weight: 600; }
     .main-nav > a:hover, .main-nav > a.active, .nav-category:hover > a, .nav-category:focus-within > a { background: #fff; color: var(--papey-accent-dark); box-shadow: 0 2px 7px #1a1a1a07; }
     .nav-category:has(.nav-submenu) > a::after { margin: 0; }
-    .nav-submenu { top: 100%; right: -5px; min-width: 200px; padding: 10px; border-radius: 16px; box-shadow: 0 18px 42px #171e171a; max-height: calc(100dvh - 120px); overflow-y: auto; }
+    .nav-submenu { top: 100%; right: -5px; min-width: 280px; padding: 10px; border-radius: 16px; box-shadow: 0 18px 42px #171e171a; max-height: none; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; }
+    .nav-category:hover .nav-submenu, .nav-category:focus-within .nav-submenu { display: grid; }
     .nav-submenu::before { top: -16px; height: 17px; }
     .nav-category { padding-bottom: 15px; margin-bottom: -15px; }
     .main-nav .nav-submenu a { padding: 10px 12px; font-size: .85rem; border-radius: 10px; }
@@ -132,6 +140,17 @@ img { max-width: 100%; }
     .header-actions .cart-badge { top: -5px; left: -5px; border: 2px solid #fff; min-width: 20px; height: 20px; }
 }
 @keyframes type-flyout-in { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
+@media (min-width: 1101px) and (max-height: 550px) {
+    .desktop-type-panel { padding: 12px; }
+    .desktop-type-panel:has(.desktop-type-group[open]) { min-height: 320px; }
+    .type-panel-heading { padding-bottom: 8px; }
+    .type-panel-heading small { display: none; }
+    .desktop-type-group { margin-top: 3px; }
+    .desktop-type-group > summary { min-height: 32px; padding: 5px 10px; }
+    .desktop-type-categories { top: 58px; padding: 8px; gap: 4px; }
+    .main-nav .desktop-type-categories a { padding: 5px 8px; font-size: .75rem; }
+    .type-menu-pager { margin-top: 6px; padding-top: 5px; }
+}
 @media (prefers-reduced-motion: reduce) { .type-chevron, .desktop-type-panel { transition: none; } .desktop-type-categories { animation: none; } }
 
 /* ---- Hero ---- */

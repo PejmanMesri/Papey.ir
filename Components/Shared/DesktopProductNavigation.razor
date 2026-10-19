@@ -6,8 +6,11 @@
             <summary>نوع لباس <span class="type-menu-count">@PersianHelpers.ToPersianDigits(Types.Count.ToString())</span><svg class="type-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></summary>
             <div class="desktop-type-panel">
                 <div class="type-panel-heading"><div><small>از اینجا شروع کن</small><strong>نوع لباس</strong></div><a href="/products">کل محصولات ←</a></div>
-                <div class="desktop-type-list">
-                @foreach (var type in Types)
+                <div class="desktop-type-list" data-menu-pages>
+                @for (var page = 0; page < TypePageCount; page++)
+                {
+                <div data-menu-page hidden="@(page > 0)">
+                @foreach (var type in Types.Skip(page * 6).Take(6))
                 {
                     @if (type.Categories.Count > 0)
                     {
@@ -15,15 +18,26 @@
                             <summary><span class="type-group-label"><strong>@type.Name</strong><small>@PersianHelpers.ToPersianDigits(type.Categories.Count.ToString()) دسته</small></span><svg class="type-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg></summary>
                             <div class="desktop-type-categories">
                                 <a class="type-view-all" href="/products?type=@type.Id">همه @type.Name ←</a>
-                                @foreach (var category in type.Categories.OrderBy(c => c.DisplayOrder))
+                                <div class="type-category-pages" data-menu-pages>
+                                @for (var categoryPage = 0; categoryPage < (type.Categories.Count + 7) / 8; categoryPage++)
                                 {
-                                    <NavLink href="@($"/category/{category.Slug}")">@category.Name</NavLink>
+                                    <div class="type-category-grid" data-menu-page hidden="@(categoryPage > 0)">
+                                    @foreach (var category in type.Categories.OrderBy(c => c.DisplayOrder).Skip(categoryPage * 8).Take(8))
+                                    {
+                                        <NavLink href="@($"/category/{category.Slug}")">@category.Name</NavLink>
+                                    }
+                                    </div>
                                 }
+                                @if (type.Categories.Count > 8) { <NavigationMenuPager PageCount="@((type.Categories.Count + 7) / 8)" Label="دسته‌بندی‌ها" /> }
+                                </div>
                             </div>
                         </details>
                     }
                     else { <a class="desktop-type-direct" href="/products?type=@type.Id">@type.Name <span aria-hidden="true">←</span></a> }
                 }
+                </div>
+                }
+                @if (TypePageCount > 1) { <NavigationMenuPager PageCount="TypePageCount" Label="نوع لباس" /> }
                 </div>
             </div>
         </details>
@@ -51,4 +65,5 @@
 
 @code {
     [Parameter] public IReadOnlyList<ProductTypeEntity> Types { get; set; } = [];
+    private int TypePageCount => (Types.Count + 5) / 6;
 }

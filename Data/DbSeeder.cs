@@ -75,8 +75,11 @@ public static class DbSeeder
     private static async Task EnsureProductTypesAsync(AppDbContext db)
     {
         var existing = await db.ProductTypes.ToListAsync();
+        // Defaults belong to first-time setup, not ongoing admin-managed lookups.
+        // Otherwise a deliberately deleted/renamed type reappears on restart.
+        var initializeTypes = existing.Count == 0 && !await db.Categories.AnyAsync() && !await db.Products.AnyAsync();
         var missing = ProductTypes
-            .Where(seed => existing.All(type => type.Name != seed.Name))
+            .Where(seed => initializeTypes && existing.All(type => type.Name != seed.Name))
             .Select((seed, index) => new ProductTypeEntity { Name = seed.Name, FilterIcon = seed.FilterIcon, DisplayOrder = index })
             .ToList();
         var changed = false;
