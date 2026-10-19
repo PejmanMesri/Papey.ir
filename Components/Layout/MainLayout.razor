@@ -38,26 +38,7 @@
                 </AuthorizeView>
             </nav>
         </details>
-        <nav class="main-nav">
-            <NavLink href="/" Match="NavLinkMatch.All">خانه</NavLink>
-            @foreach (var type in _navTypes)
-            {
-                <div class="nav-category">
-                    <a href="/products?type=@type.Id">@type.Name</a>
-                    @if (type.Categories.Count > 0)
-                    {
-                        <div class="nav-submenu">
-                            @foreach (var category in type.Categories.OrderBy(category => category.DisplayOrder))
-                            {
-                                <NavLink href="@($"/category/{category.Slug}")">@category.Name</NavLink>
-                            }
-                        </div>
-                    }
-                </div>
-            }
-            <NavLink href="/products">محصولات</NavLink>
-
-        </nav>
+        <DesktopProductNavigation Types="_navTypes" />
         <form class="search-box" method="get" action="/search">
             <button type="submit" aria-label="جستجو"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg></button>
             <input type="search" name="q" aria-label="جستجوی محصول" placeholder="جستجوی طرح یا محصول..." />

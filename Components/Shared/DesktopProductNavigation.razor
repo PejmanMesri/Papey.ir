@@ -1,0 +1,52 @@
+<nav class="main-nav" aria-label="ناوبری اصلی">
+    <NavLink href="/" Match="NavLinkMatch.All">خانه</NavLink>
+    @if (Types.Count > 3)
+    {
+        <details class="desktop-type-menu" data-navigation-menu>
+            <summary>مدل‌های لباس <span class="type-menu-count">@PersianHelpers.ToPersianDigits(Types.Count.ToString())</span><span aria-hidden="true">⌄</span></summary>
+            <div class="desktop-type-panel">
+                <div class="type-panel-heading"><strong>انتخاب مدل لباس</strong><a href="/products">کل محصولات ←</a></div>
+                @foreach (var type in Types)
+                {
+                    @if (type.Categories.Count > 0)
+                    {
+                        <details class="desktop-type-group">
+                            <summary><span>@type.Name</span><span aria-hidden="true">+</span></summary>
+                            <div class="desktop-type-categories">
+                                <a class="type-view-all" href="/products?type=@type.Id">همه @type.Name ←</a>
+                                @foreach (var category in type.Categories.OrderBy(c => c.DisplayOrder))
+                                {
+                                    <NavLink href="@($"/category/{category.Slug}")">@category.Name</NavLink>
+                                }
+                            </div>
+                        </details>
+                    }
+                    else { <a class="desktop-type-direct" href="/products?type=@type.Id">@type.Name <span aria-hidden="true">←</span></a> }
+                }
+            </div>
+        </details>
+    }
+    else
+    {
+        @foreach (var type in Types)
+        {
+            <div class="nav-category">
+                <a href="/products?type=@type.Id">@type.Name</a>
+                @if (type.Categories.Count > 0)
+                {
+                    <div class="nav-submenu">
+                        @foreach (var category in type.Categories.OrderBy(c => c.DisplayOrder))
+                        {
+                            <NavLink href="@($"/category/{category.Slug}")">@category.Name</NavLink>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    }
+    <NavLink class="catalog-all-link" href="/products">کل محصولات</NavLink>
+</nav>
+
+@code {
+    [Parameter] public IReadOnlyList<ProductTypeEntity> Types { get; set; } = [];
+}
