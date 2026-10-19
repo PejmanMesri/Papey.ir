@@ -77,6 +77,7 @@ builder.Services.AddHostedService<PrintJobNotifier>();
 builder.Services.AddDistributedMemoryCache();
 builder.Services.Configure<StoreProfile>(builder.Configuration.GetSection("Store"));
 builder.Services.AddScoped<CartService>();
+builder.Services.AddSingleton<TaxSettingsService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<ProductDraftUploads>();

@@ -34,7 +34,7 @@
                                 <td data-label="تاریخ">@PersianHelpers.ToPersianDigits(o.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))</td>
                                 <td data-label="وضعیت"><span class="status-chip status-@o.Status">@PersianHelpers.StatusLabel(o.Status)</span></td>
                                 <td data-label="کد پیگیری">@PersianHelpers.ToPersianDigits(o.PaymentRefId ?? "—")</td>
-                                <td data-label="مجموع"><strong>@o.GrandTotal.ToToman()</strong><br /><small>@PersianHelpers.ToPersianDigits(o.Items.Sum(i => i.Quantity).ToString()) کالا</small></td>
+                                <td data-label="مجموع"><strong>@o.GrandTotal.ToToman()</strong><br /><small>@OrderTax.Label(o): @o.TaxAmount.ToToman()</small><br /><small>@PersianHelpers.ToPersianDigits(o.Items.Sum(i => i.Quantity).ToString()) کالا</small></td>
                                 <td data-label="عملیات‌ها">
                                     <div class="order-row-actions">
                                         <a class="btn-papey btn-sm btn-outline" href="/account/orders/@o.Id">مشاهده</a>

@@ -117,6 +117,7 @@
                             {
                                 <tr><th colspan="5">هزینه ارسال</th><td>@_order.ShippingCost.ToToman()</td></tr>
                             }
+                            <tr><th colspan="5">@OrderTax.Label(_order)</th><td>@_order.TaxAmount.ToToman()</td></tr>
                             <tr class="order-grand-total"><th colspan="5">مبلغ نهایی</th><td>@_order.GrandTotal.ToToman()</td></tr>
                         </tfoot>
                     </table>

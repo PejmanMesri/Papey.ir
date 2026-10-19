@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @inject CartService Cart
 @inject NavigationManager Nav
+@inject TaxSettingsService TaxSettings
 @implements IDisposable
 
 <PageTitle>سبد خرید | پاپی</PageTitle>
@@ -60,6 +61,7 @@ else
             <div style="display:flex; justify-content:space-between; margin:12px 0">
                 <span>جمع کالاها:</span><strong>@Cart.Total.ToToman()</strong>
             </div>
+            <div class="tax-summary-row"><span>@OrderTax.Label(_taxEnabled)</span><strong>@TaxAmount.ToToman()</strong></div>
             <div class="alert-papey alert-info" style="font-size:0.8rem; font-weight:500">
                 🚚 تمام سفارش‌ها به صورت پس‌پرداخت توسط تیپاکس ارسال می‌شوند
             </div>
@@ -86,13 +88,18 @@ else
 }
 
 @code {
-    private decimal GrandTotal => Cart.Total;
+    private bool _taxEnabled;
+    private decimal TaxAmount => OrderTax.Calculate(Cart.Total, _taxEnabled);
+    private decimal GrandTotal => Cart.Total + TaxAmount;
+    private void OnTaxChanged() => _ = InvokeAsync(async () => { _taxEnabled = await TaxSettings.ReadAsync(); StateHasChanged(); });
 
     protected override async Task OnInitializedAsync()
     {
         Cart.OnChange += StateHasChanged;
+        TaxSettings.Changed += OnTaxChanged;
+        _taxEnabled = await TaxSettings.ReadAsync();
         await Cart.LoadAsync();
     }
 
-    public void Dispose() => Cart.OnChange -= StateHasChanged;
+    public void Dispose() { Cart.OnChange -= StateHasChanged; TaxSettings.Changed -= OnTaxChanged; }
 }

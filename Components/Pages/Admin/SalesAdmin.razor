@@ -61,7 +61,7 @@
                 <td data-label="شماره سفارش"><strong>@o.OrderNumber</strong></td>
                 <td data-label="مشتری">@o.CustomerName<br /><small style="color:var(--papey-muted)">@o.CustomerPhone</small></td>
                 <td data-label="اقلام"><small>@string.Join("، ", o.Items.Select(i => $"{i.ProductName} ×{PersianHelpers.ToPersianDigits(i.Quantity.ToString())}"))</small></td>
-                <td data-label="مبلغ">@o.GrandTotal.ToToman()</td>
+                <td data-label="مبلغ">@o.GrandTotal.ToToman()<br /><small>@OrderTax.Label(o): @o.TaxAmount.ToToman()</small></td>
                 <td data-label="وضعیت">
                     @if (o.Status is OrderStatus.Pending or OrderStatus.PaymentFailed)
                     {
@@ -156,6 +156,7 @@
                             </div>
                             <div style="display:flex; gap:24px; flex-wrap:wrap; justify-content:flex-end; margin-top:12px; border-top:1px solid var(--papey-border); padding-top:12px">
                                 <span>جمع اقلام: <strong>@o.TotalAmount.ToToman()</strong></span>
+                                <span>@OrderTax.Label(o): <strong>@o.TaxAmount.ToToman()</strong></span>
                                 <span>مبلغ نهایی: <strong style="color:var(--papey-accent)">@o.GrandTotal.ToToman()</strong></span>
                             </div>
                         </div>

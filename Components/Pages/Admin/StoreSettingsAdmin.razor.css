@@ -1,0 +1,12 @@
+.tax-settings-card { max-width:760px; }
+.tax-settings-card h2 { margin-top:0; font-size:1.15rem; }
+.tax-settings-card p { color:var(--papey-muted); line-height:2; font-size:.9rem; }
+.tax-setting-switch { display:flex; align-items:center; justify-content:space-between; gap:20px; border:1px solid var(--papey-border); border-radius:14px; padding:18px; margin:20px 0; cursor:pointer; }
+.tax-setting-switch strong,.tax-setting-switch small { display:block; }
+.tax-setting-switch small { margin-top:6px; color:var(--papey-muted); font-size:.78rem; }
+.tax-setting-switch input { appearance:none; width:52px; height:30px; border-radius:20px; background:#d4d0c8; position:relative; flex-shrink:0; cursor:pointer; }
+.tax-setting-switch input::after { content:''; position:absolute; top:4px; left:4px; width:22px; height:22px; border-radius:50%; background:white; transition:transform .15s; }
+.tax-setting-switch input:checked { background:#807047; }
+.tax-setting-switch input:checked::after { transform:translateX(22px); }
+.tax-setting-switch input:focus-visible { outline:3px solid #c8a96a; outline-offset:3px; }
+.tax-setting-example { background:var(--papey-light); padding:14px; border-radius:10px; font-size:.8rem; line-height:2; }

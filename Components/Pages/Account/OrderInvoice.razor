@@ -72,6 +72,7 @@ else
                 {
                     <div><dt>هزینه ارسال</dt><dd>@Money(_order.ShippingCost)</dd></div>
                 }
+                <div><dt>@OrderTax.Label(_order)</dt><dd>@Money(_order.TaxAmount)</dd></div>
                 <div class="thermal-grand"><dt>مبلغ نهایی</dt><dd>@Money(_order.GrandTotal) تومان</dd></div>
             </dl>
             <div class="thermal-payment">روش پرداخت: @PaymentMethod</div>
@@ -133,8 +134,8 @@ else
                                 <td>@Rials(item.LineTotal)</td>
                                 <td>@Fa(0)</td>
                                 <td>@Rials(item.LineTotal)</td>
-                                <td>@Fa(0)</td>
-                                <td>@Rials(item.LineTotal)</td>
+                                <td>@Rials(_lineTaxes[index])</td>
+                                <td>@Rials(item.LineTotal + _lineTaxes[index])</td>
                             </tr>
                         }
                     </tbody>
@@ -146,14 +147,15 @@ else
                             <th>@Rials(_order.TotalAmount)</th>
                             <th>@Fa(0)</th>
                             <th>@Rials(_order.TotalAmount)</th>
-                            <th>@Fa(0)</th>
-                            <th>@Rials(_order.TotalAmount)</th>
+                            <th>@Rials(_order.TaxAmount)</th>
+                            <th>@Rials(_order.TotalAmount + _order.TaxAmount)</th>
                         </tr>
                         @if (_order.ShippingCost > 0)
                         {
                             <tr><th colspan="9">هزینه حمل و نقل (ریال)</th><td>@Rials(_order.ShippingCost)</td></tr>
                         }
-                        <tr class="official-grand"><th colspan="9">جمع نهایی با احتساب مالیات و عوارض (ریال)</th><td>@Rials(_order.GrandTotal)</td></tr>
+                        <tr><th colspan="9">@OrderTax.Label(_order) (ریال)</th><td>@Rials(_order.TaxAmount)</td></tr>
+                        <tr class="official-grand"><th colspan="9">جمع نهایی (ریال)</th><td>@Rials(_order.GrandTotal)</td></tr>
                     </tfoot>
                 </table>
             </div>
@@ -219,6 +221,7 @@ else
                     {
                         <div><dt>هزینه ارسال</dt><dd>@Money(_order.ShippingCost)</dd></div>
                     }
+                    <div><dt>@OrderTax.Label(_order)</dt><dd>@Money(_order.TaxAmount)</dd></div>
                     <div class="standard-grand"><dt>مبلغ قابل پرداخت</dt><dd>@Money(_order.GrandTotal)</dd></div>
                     <div><dt>روش پرداخت</dt><dd>@PaymentMethod</dd></div>
                     @if (_order.PaymentRefId is not null)
@@ -331,6 +334,7 @@ else
     private static readonly PersianCalendar PersianCalendar = new();
     private Order? _order;
     private InvoiceFormat _format;
+    private decimal[] _lineTaxes = [];
 
     private StoreProfile Store => StoreOptions.Value;
     private string PaymentMethod => _order?.Status == OrderStatus.PaymentFailed
@@ -355,6 +359,7 @@ else
         _order = await db.Orders
             .Include(o => o.Items)
             .FirstOrDefaultAsync(o => o.Id == Id && o.UserId == userId);
+        _lineTaxes = _order is null ? [] : OrderTax.Allocate(_order);
     }
 
     private Task Print() => JS.InvokeVoidAsync("print").AsTask();

@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<Address> Addresses => Set<Address>();
     public DbSet<Order> Orders => Set<Order>();
+    public DbSet<StoreSettings> StoreSettings => Set<StoreSettings>();
     public DbSet<OrderAdminSmsJob> OrderAdminSmsJobs => Set<OrderAdminSmsJob>();
     public DbSet<ShippingSmsJob> ShippingSmsJobs => Set<ShippingSmsJob>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
@@ -29,6 +30,8 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
+        mb.Entity<StoreSettings>().ToTable(t => t.HasCheckConstraint("CK_StoreSettings_Singleton", "\"Id\" = 1"));
+        mb.Entity<StoreSettings>().HasData(new StoreSettings { Id = 1, TaxEnabled = false });
         mb.Entity<Category>().HasIndex(c => c.Slug).IsUnique();
         mb.Entity<Category>()
             .HasOne(c => c.ProductType)

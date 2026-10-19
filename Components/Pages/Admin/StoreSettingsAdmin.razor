@@ -1,0 +1,31 @@
+@page "/admin/settings"
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+@rendermode InteractiveServer
+@inject TaxSettingsService TaxSettings
+
+<PageTitle>تنظیمات فروشگاه | پاپی</PageTitle>
+<div class="section-title"><h1>تنظیمات فروشگاه</h1></div>
+<section class="card-box tax-settings-card" aria-labelledby="tax-settings-title">
+    <h2 id="tax-settings-title">مالیات سفارش‌ها</h2>
+    <p>با فعال‌کردن این گزینه، ۱۰٪ به جمع مبلغ کالاهای تمام سفارش‌های جدید اضافه می‌شود. هزینه ارسال مشمول این محاسبه نیست.</p>
+    <label class="tax-setting-switch"><span><strong>افزودن مالیات ۱۰٪</strong><small>@(_enabled ? "فعال برای سفارش‌های جدید" : "غیرفعال؛ سفارش‌های جدید بدون مالیات")</small></span><input type="checkbox" role="switch" @bind="_enabled" disabled="@(!_loaded || _saving)" /></label>
+    <div class="tax-setting-example">نمونه: جمع کالاها ۱٬۰۰۰٬۰۰۰ تومان ← مالیات ۱۰۰٬۰۰۰ تومان ← قابل پرداخت ۱٬۱۰۰٬۰۰۰ تومان</div>
+    <p class="tax-history-note">مالیات و مبلغ سفارش‌های قبلی ثابت می‌ماند؛ تغییر این تنظیم روی فاکتورهای قبلی اعمال نمی‌شود.</p>
+    @if (_message is not null) { <div class="alert-papey @(_failed ? "alert-danger" : "alert-success")" role="status">@_message</div> }
+    <button class="btn-papey" type="button" disabled="@(!_loaded || _saving)" @onclick="Save">@(_saving ? "در حال ذخیره…" : "ذخیره تنظیمات")</button>
+</section>
+
+@code {
+    private bool _enabled, _loaded, _saving, _failed;
+    private string? _message;
+    protected override async Task OnInitializedAsync() { _enabled = await TaxSettings.ReadAsync(); _loaded = true; }
+    private async Task Save()
+    {
+        if (_saving || !_loaded) return;
+        _saving = true; _message = null; _failed = false;
+        try { await TaxSettings.UpdateAsync(_enabled); _message = "تنظیمات ذخیره شد. سفارش‌های قبلی تغییر نکردند."; }
+        catch { _failed = true; _message = "ذخیره انجام نشد؛ دوباره تلاش کنید."; }
+        finally { _saving = false; }
+    }
+}

@@ -263,6 +263,15 @@ namespace Papey.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
+                    b.Property<decimal>("TaxAmount")
+                        .HasColumnType("numeric(18,0)");
+
+                    b.Property<bool>("TaxEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("TaxRatePercent")
+                        .HasColumnType("numeric(5,2)");
+
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("numeric(18,0)");
 
@@ -841,6 +850,32 @@ namespace Papey.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Sizes");
+                });
+
+            modelBuilder.Entity("Papey.Models.StoreSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("TaxEnabled")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("StoreSettings", t =>
+                        {
+                            t.HasCheckConstraint("CK_StoreSettings_Singleton", "\"Id\" = 1");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            TaxEnabled = false
+                        });
                 });
 
             modelBuilder.Entity("Papey.Models.Address", b =>

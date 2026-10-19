@@ -48,6 +48,14 @@ public class Order
     [Column(TypeName = "numeric(18,0)")]
     public decimal ShippingCost { get; set; }
 
+    public bool TaxEnabled { get; set; }
+
+    [Column(TypeName = "numeric(5,2)")]
+    public decimal TaxRatePercent { get; set; }
+
+    [Column(TypeName = "numeric(18,0)")]
+    public decimal TaxAmount { get; set; }
+
     [Column(TypeName = "numeric(18,0)")]
     public decimal GrandTotal { get; set; }
 

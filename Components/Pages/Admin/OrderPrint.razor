@@ -66,6 +66,7 @@ else
 
         <div class="rcpt-totals">
             <div><span>جمع اقلام:</span> <span>@Money(_order.TotalAmount)</span></div>
+            <div><span>@OrderTax.Label(_order):</span><span>@Money(_order.TaxAmount) تومان</span></div>
             <div class="rt-grand"><span>مبلغ نهایی:</span> <span>@Money(_order.GrandTotal) تومان</span></div>
             <div class="rt-status"><span>وضعیت:</span> @PersianHelpers.StatusLabel(_order.Status)
                 @if (_order.PaymentRefId is not null)

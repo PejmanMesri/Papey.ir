@@ -6,6 +6,7 @@
 @inject AuthService Auth
 @inject ZarinpalService Zarinpal
 @inject NavigationManager Nav
+@inject TaxSettingsService TaxSettings
 
 <PageTitle>تکمیل خرید | پاپی</PageTitle>
 
@@ -94,6 +95,7 @@ else
             <div style="display:flex; justify-content:space-between; margin:8px 0">
                 <span>جمع کالاها:</span><span>@Cart.Total.ToToman()</span>
             </div>
+            <div class="tax-summary-row"><span>@OrderTax.Label(_taxEnabled)</span><strong>@_tax.ToToman()</strong></div>
             <div class="alert-papey alert-info" style="font-size:0.85rem; font-weight:500; margin:12px 0">
                 🚚 تمام سفارش‌ها به صورت پس‌پرداخت توسط تیپاکس ارسال می‌شوند
             </div>
@@ -111,7 +113,9 @@ else
     private bool _processing;
     // Shipping is pay-on-delivery via Tipax — charged by the courier, not the shop
     private decimal _shipping => 0;
-    private decimal _grand => Cart.Total;
+    private bool _taxEnabled;
+    private decimal _tax => OrderTax.Calculate(Cart.Total, _taxEnabled);
+    private decimal _grand => Cart.Total + _tax;
 
     public class CheckoutModel
     {
@@ -132,6 +136,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         await Cart.LoadAsync();
+        _taxEnabled = await TaxSettings.ReadAsync();
         if (Auth.CurrentUserId is { } uid)
         {
             await using var db = await DbFactory.CreateDbContextAsync();
@@ -168,6 +173,8 @@ else
 
     private async Task SubmitOrder()
     {
+        if (_processing) return;
+        var acceptedTaxEnabled = _taxEnabled;
         _processing = true; _error = null;
         try
         {
@@ -175,6 +182,14 @@ else
 
             await using var transaction = await db.Database.BeginTransactionAsync();
 
+            var currentTaxEnabled = await TaxSettingsService.ReadForOrderAsync(db);
+            if (currentTaxEnabled != acceptedTaxEnabled)
+            {
+                _taxEnabled = currentTaxEnabled;
+                _error = "تنظیم مالیات تغییر کرده است؛ مبلغ جدید سفارش را بررسی کنید و دوباره پرداخت را بزنید.";
+                _processing = false;
+                return;
+            }
             // Validate availability and reserve only limited stock in the order transaction.
             var order = new Order
             {
@@ -212,6 +227,7 @@ else
                     LineTotal = item.LineTotal
                 });
             }
+            OrderTax.Apply(order, currentTaxEnabled);
             db.Orders.Add(order);
 
             // Always save the address to the user's account
