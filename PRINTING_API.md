@@ -4,7 +4,8 @@ Only successfully paid orders enter the queue. The PostgreSQL trigger installed 
 `EnqueuePaidOrderPrintJobs` inserts one job in the same transaction that first saves
 `Status = Paid`, `PaidAt`, and a nonempty payment reference. Pending and failed orders
 are excluded; historical paid orders are not backfilled. Repeated payment callbacks
-cannot create duplicate jobs. The desktop app is a separate project.
+cannot create duplicate jobs. The Windows desktop agent is in
+`tools/Papey.Printer`; its README covers installation, startup, and recovery.
 
 ## Authentication and connection
 

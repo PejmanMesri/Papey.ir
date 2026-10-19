@@ -9,6 +9,9 @@
 
   <ItemGroup>
     <Compile Remove="tests/**" />
+    <Compile Remove="tools/**" />
+    <Content Remove="tools/**" />
+    <None Remove="tools/**" />
     <Content Remove="tests/**" />
     <None Remove="tests/**" />
     <Content Remove="deploy-artifacts/**;.env;.env.*;App_Data/**" />
