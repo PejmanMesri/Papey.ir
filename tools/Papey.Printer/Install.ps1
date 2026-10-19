@@ -32,6 +32,32 @@ $trigger = New-ScheduledTaskTrigger -AtLogOn -User $identity
 $principal = New-ScheduledTaskPrincipal -UserId $identity -LogonType Interactive -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
 Register-ScheduledTask -TaskName 'Papey Order Printer' -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description 'Print paid papey.ir orders on the local BIXOLON receipt printer.' -Force | Out-Null
+# Provision the encrypted configuration in the same interactive context as startup.
+# Some managed desktops expose different profile views to installer child processes.
+$configBlob = [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $dataFolder 'settings.json')))
+$escapedDataFolder = $dataFolder.Replace("'", "''")
+$bootstrap = @"
+`$ErrorActionPreference = 'Stop'
+`$folder = '$escapedDataFolder'
+[IO.Directory]::CreateDirectory(`$folder) | Out-Null
+[IO.File]::WriteAllBytes((Join-Path `$folder 'settings.json'), [Convert]::FromBase64String('$configBlob'))
+`$acl = Get-Acl -LiteralPath `$folder
+`$acl.SetAccessRuleProtection(`$true, `$false)
+`$acl.SetAccessRule([Security.AccessControl.FileSystemAccessRule]::new([Security.Principal.WindowsIdentity]::GetCurrent().Name,'FullControl','ContainerInherit,ObjectInherit','None','Allow'))
+`$acl.SetAccessRule([Security.AccessControl.FileSystemAccessRule]::new('SYSTEM','FullControl','ContainerInherit,ObjectInherit','None','Allow'))
+Set-Acl -LiteralPath `$folder -AclObject `$acl
+"@
+$encodedBootstrap = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($bootstrap))
+$bootstrapAction = New-ScheduledTaskAction -Execute "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand $encodedBootstrap"
+try {
+    Set-ScheduledTask -TaskName 'Papey Order Printer' -Action $bootstrapAction | Out-Null
+    Start-ScheduledTask -TaskName 'Papey Order Printer'
+    Start-Sleep -Milliseconds 500
+    for ($attempt = 0; $attempt -lt 40 -and (Get-ScheduledTask -TaskName 'Papey Order Printer').State -eq 'Running'; $attempt++) { Start-Sleep -Milliseconds 250 }
+    if ((Get-ScheduledTaskInfo -TaskName 'Papey Order Printer').LastTaskResult -ne 0) { throw 'Startup profile provisioning failed.' }
+} finally {
+    Set-ScheduledTask -TaskName 'Papey Order Printer' -Action $action | Out-Null
+}
 $shell = New-Object -ComObject WScript.Shell
 $shortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Desktop')) 'Papey Order Printer.lnk'))
 $shortcut.TargetPath = $printerExe; $shortcut.WorkingDirectory = $installFolder; $shortcut.Save()

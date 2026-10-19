@@ -7,9 +7,15 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
-        Directory.CreateDirectory(Store.Folder);
         try
         {
+            Directory.CreateDirectory(Store.Folder);
+            if (args.Contains("--diagnose"))
+            {
+                File.WriteAllText(Path.Combine(Path.GetTempPath(), "papey-printer-diagnostic.txt"),
+                    $"Data={Store.Folder}; Settings={File.Exists(Store.PathFor("settings.json"))}; Printers={PrinterSettings.InstalledPrinters.Count}");
+                return;
+            }
             if (args.Length == 3 && args[0] == "--configure")
             {
                 // Provision from an existing local credential file, never a command-line password.
@@ -34,7 +40,9 @@ internal static class Program
         }
         catch (Exception ex)
         {
-            Store.Status("Startup failed: " + ex.GetType().Name);
+            try { Store.Status("Startup failed: " + ex.GetType().Name); }
+            catch { /* A profile/storage error must not expose credentials in a dialog. */ }
+            File.WriteAllText(Path.Combine(Path.GetTempPath(), "papey-printer-startup-error.txt"), ex.GetType().Name);
             Environment.ExitCode = 1;
         }
     }
