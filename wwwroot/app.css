@@ -37,8 +37,8 @@ img { max-width: 100%; }
 .top-bar { background: var(--papey-darker); color: #ddd; font-size: 0.8rem; text-align: center; padding: 6px 0; }
 .site-header { background: #fff; border-bottom: 1px solid var(--papey-border); position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
 .header-inner { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; gap: 16px; flex-wrap: wrap; }
-.logo { font-size: 1.7rem; font-weight: 900; letter-spacing: -1px; color: var(--papey-dark); }
-.logo span { color: var(--papey-accent); }
+@font-face { font-family: 'Papey Lalezar'; src: url('/fonts/Lalezar-Regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+.logo { font-family: 'Papey Lalezar', 'Vazirmatn', Tahoma, sans-serif; font-size: 2.3rem; font-weight: 400; line-height: 1.15; letter-spacing: 0; color: var(--papey-dark); }
 .main-nav { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
 .main-nav a { font-size: 0.95rem; font-weight: 500; padding: 6px 2px; border-bottom: 2px solid transparent; }
 .main-nav a:hover, .main-nav a.active { border-bottom-color: var(--papey-accent); color: var(--papey-dark); }

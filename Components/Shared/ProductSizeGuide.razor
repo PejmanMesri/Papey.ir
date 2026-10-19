@@ -8,10 +8,10 @@
 </button>
 <dialog @ref="_dialog" class="size-guide-dialog" aria-label="راهنمای سایز @ProductName">
     <header class="size-guide-header"><div><h2>راهنمای سایز</h2><p>@ProductName</p></div><button type="button" class="size-guide-close" aria-label="بستن راهنمای سایز" @onclick="Close" autofocus>×</button></header>
-    <div class="size-guide-scroll" tabindex="0" aria-label="تصویر راهنمای سایز؛ برای دیدن همه اندازه‌ها پایین بروید">
+    <div class="size-guide-image-frame">
         <img src="@GuideUrl" alt="راهنمای اندازه‌گیری و جدول سایز @ProductName" />
     </div>
-    <footer class="size-guide-footer"><span>برای دیدن همه اندازه‌ها، تصویر را به پایین بکش.</span><a href="@GuideUrl" target="_blank" rel="noopener">نمایش اندازه اصلی ↗</a></footer>
+    <footer class="size-guide-footer"><a href="@GuideUrl" target="_blank" rel="noopener">نمایش تصویر در اندازه اصلی ↗</a></footer>
 </dialog>
 
 @code {
