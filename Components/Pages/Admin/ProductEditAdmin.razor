@@ -24,11 +24,11 @@ else
             <h1>@(IsNew ? "افزودن محصول جدید" : "ویرایش محصول")</h1>
             <p>@(IsNew ? "مشخصات محصول را تکمیل کنید." : _product.Name)</p>
         </div>
-        <button type="button" class="btn-papey editor-save" disabled="@(_saving || _uploading || _designUploading)" @onclick="SaveInfo">@(_saving ? "در حال ذخیره…" : IsNew ? "ذخیره و ادامه" : "ذخیره تغییرات")</button>
+        <button type="button" class="btn-papey editor-save" disabled="@(_saving || _uploading || _designUploading || _guideUploading)" @onclick="SaveInfo">@(_saving ? "در حال ذخیره…" : IsNew ? "ذخیره و ادامه" : "ذخیره تغییرات")</button>
     </header>
     @if (IsNew)
     {
-        <div class="alert-papey alert-info" role="status">محصول فقط با زدن «ذخیره و ادامه» ایجاد می‌شود. تصاویر و فایل‌های طرح را می‌توانید همین حالا آپلود کنید؛ با ذخیره محصول ثبت می‌شوند. فایل‌های موقت ذخیره‌نشده پس از ۲۴ ساعت پاک می‌شوند.</div>
+        <div class="alert-papey alert-info" role="status">محصول فقط با زدن «ذخیره و ادامه» ایجاد می‌شود. تصاویر و فایل‌های طرح را می‌توانید همین حالا آپلود کنید؛ با ذخیره محصول ثبت می‌شوند. رنگ، سایز و موجودی را هم پیش از ذخیره تکمیل کنید. فایل‌های موقت ذخیره‌نشده پس از ۲۴ ساعت پاک می‌شوند.</div>
     }
     @if (_infoError is not null) { <div class="alert-papey alert-danger" role="alert">@_infoError</div> }
 
@@ -168,10 +168,20 @@ else
         }
     </section>
 
+    <section class="editor-card editor-assets" aria-labelledby="guide-title">
+        <div class="editor-section-title"><span>۰۵</span><div><h2 id="guide-title">تصویر راهنمای سایز</h2><p>اختیاری؛ در صورت انتخاب نکردن تصویر، راهنمای پیش‌فرض پاپی نمایش داده می‌شود.</p></div></div>
+        <label class="editor-upload"><strong>انتخاب تصویر راهنمای سایز</strong><span>JPG، PNG، WebP، GIF یا AVIF تا ۱۵ مگابایت؛ با ذخیره محصول ثبت می‌شود.</span><InputFile OnChange="UploadSizeGuide" accept=".jpg,.jpeg,.png,.webp,.gif,.avif" disabled="@(_saving || _guideUploading)" /></label>
+        @if (_guideUploading) { <p role="status">در حال آپلود راهنمای سایز…</p> }
+        @if (_guideError is not null) { <div class="alert-papey alert-danger" role="alert">@_guideError</div> }
+        <div class="editor-guide-preview"><img src="@(_guideUpload?.PreviewUrl ?? _product.SizeGuideImageUrl ?? ProductSizeGuide.DefaultImage)" alt="پیش‌نمایش راهنمای سایز" />
+        <div><p>@(_guideUpload is not null || _product.SizeGuideImageUrl is not null ? "راهنمای اختصاصی این محصول" : "راهنمای پیش‌فرض پاپی")</p>
+        @if (_guideUpload is not null || _product.SizeGuideImageUrl is not null) { <button type="button" class="btn-papey btn-sm btn-outline" disabled="@_saving" @onclick="ResetSizeGuide">استفاده از راهنمای پیش‌فرض</button> }</div></div>
+    </section>
+
     <section class="editor-card editor-stock">
-        <div class="editor-section-title"><span>۰۵</span><div><h2>رنگ، سایز و موجودی</h2><p>ترکیب‌های قابل سفارش را فعال کنید.</p></div></div>
-        @if (IsNew) { <p class="editor-hint">این بخش پس از ذخیره محصول فعال می‌شود.</p> }
-        <fieldset class="editor-stock-fields" disabled="@IsNew">
+        <div class="editor-section-title"><span>۰۶</span><div><h2>رنگ، سایز و موجودی</h2><p>ترکیب‌های قابل سفارش را فعال کنید.</p></div></div>
+        @if (IsNew) { <p class="editor-hint">ترکیب‌های رنگ و سایز را انتخاب کنید؛ همراه محصول ذخیره می‌شوند.</p> }
+        <fieldset class="editor-stock-fields" disabled="@_saving">
         <label class="unlimited-stock-toggle">
             <input id="unlimited-stock" type="checkbox" checked="@_product.HasUnlimitedStock" @onchange="SetUnlimitedStock" />
             موجودی نامحدود (بدون محدودیت تعداد)
@@ -203,6 +213,7 @@ else
                                     {
                                         <input type="number" min="0" class="form-input" value="@(v?.Stock ?? 0)"
                                                aria-label="موجودی @c.Name / @s.Name" disabled="@(v?.IsEnabled != true)" style="width:80px"
+                                               @oninput="e => UpdateDraftStock(c, s, e.Value?.ToString())"
                                                @onchange="e => SetStock(c, s, e.Value?.ToString())" />
                                     }
                                 </td>
@@ -215,7 +226,7 @@ else
         </fieldset>
         @if (_variantMsg is not null) { <div class="alert-papey alert-success" style="margin-top:8px">@_variantMsg</div> }
     </section>
-    <p class="editor-save-note">تغییرات فایل‌ها و موجودی هنگام انجام ذخیره می‌شوند.</p>
+    <p class="editor-save-note">@(IsNew ? "همه اطلاعات، تصاویر، راهنمای سایز و موجودی با ذخیره محصول ثبت می‌شوند." : "فایل‌های محصول و موجودی هنگام انجام ذخیره می‌شوند؛ تغییر راهنمای سایز با زدن ذخیره ثبت می‌شود.")</p>
     </div>
 }
 
@@ -235,7 +246,9 @@ else
     private HashSet<int> _selectedCatIds = new();
     private string? _variantMsg, _uploadError, _designUploadError;
     private bool _uploading, _designUploading, _saving;
-    private string? _infoError;
+    private string? _infoError, _guideError;
+    private bool _guideUploading;
+    private ProductDraftUploads.Upload? _guideUpload;
     private static readonly Dictionary<string, string> DesignContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         [".jpg"] = "image/jpeg",
@@ -248,6 +261,8 @@ else
     {
         _infoError = null;
         _variantMsg = null;
+        _guideUpload = null;
+        _guideError = null;
         await Reload();
     }
 
@@ -291,7 +306,7 @@ else
 
     private async Task SaveInfo()
     {
-        if (_saving || _uploading || _designUploading || _product is null) return;
+        if (_saving || _uploading || _designUploading || _guideUploading || _product is null) return;
         _infoError = null;
         if (string.IsNullOrWhiteSpace(_product.Name) || _product.Name.Length > 200)
         { _infoError = "نام محصول را وارد کنید (حداکثر ۲۰۰ کاراکتر)."; return; }
@@ -314,6 +329,7 @@ else
         t.Description = _product.Description; t.IsNew = _product.IsNew;
         t.IsFeatured = _product.IsFeatured; t.IsActive = _product.IsActive;
         t.HasUnlimitedStock = _product.HasUnlimitedStock;
+        t.SizeGuideImageUrl = _product.SizeGuideImageUrl;
         t.ImageUrl = _media.OrderBy(m => m.DisplayOrder).FirstOrDefault(m => m.Type == MediaType.Image)?.Url ?? t.ImageUrl;
 
         var validCategoryIds = _categories
@@ -339,6 +355,10 @@ else
         {
             foreach (var catId in validCategoryIds)
                 t.ProductCategories.Add(new ProductCategory { CategoryId = catId });
+            foreach (var variant in _product.Variants.Where(v => v.IsEnabled))
+                t.Variants.Add(new ProductVariant { ColorId = variant.ColorId, Color = variant.Color,
+                    ColorHex = variant.ColorHex, SizeId = variant.SizeId, Size = variant.Size,
+                    Stock = variant.Stock, IsEnabled = true });
             db.Products.Add(t);
         }
         else
@@ -360,6 +380,12 @@ else
         var copiedFiles = new List<string>();
         try
         {
+            if (_guideUpload is not null)
+            {
+                var path = DraftUploads.CopyToPermanent(_guideUpload, false);
+                copiedFiles.Add(path);
+                t.SizeGuideImageUrl = "/uploads/images/" + Path.GetFileName(path);
+            }
             if (creating)
             {
                 foreach (var media in _media.OrderBy(m => m.DisplayOrder))
@@ -394,6 +420,7 @@ else
         foreach (var upload in _draftMedia.Values.Concat(_draftDesigns.Values))
         { try { DraftUploads.Delete(upload); } catch { } }
         _draftMedia.Clear(); _draftDesigns.Clear();
+        if (_guideUpload is not null) { try { DraftUploads.Delete(_guideUpload); } catch { } _guideUpload = null; }
         Nav.NavigateTo(creating ? $"/admin/products/{t.Id}" : "/admin/products");
     }
 
@@ -585,9 +612,36 @@ else
         await Reload(true);
     }
 
+    private async Task UploadSizeGuide(InputFileChangeEventArgs e)
+    {
+        if (_saving || _guideUploading) return;
+        _guideUploading = true; _guideError = null;
+        try
+        {
+            var file = e.File;
+            var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+            if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp" or ".gif" or ".avif"))
+                throw new InvalidOperationException("فقط تصویر راهنمای سایز را انتخاب کنید.");
+            await using var input = file.OpenReadStream(15 * 1024 * 1024);
+            var upload = await DraftUploads.StageAsync(input, file.Name);
+            if (_guideUpload is not null) DraftUploads.Delete(_guideUpload);
+            _guideUpload = upload;
+        }
+        catch { _guideError = "آپلود انجام نشد؛ یک تصویر معتبر تا ۱۵ مگابایت انتخاب کنید."; }
+        finally { _guideUploading = false; }
+    }
+
+    private void ResetSizeGuide()
+    {
+        if (_saving) return;
+        if (_guideUpload is not null) DraftUploads.Delete(_guideUpload);
+        _guideUpload = null; _product!.SizeGuideImageUrl = null;
+    }
+
     private async Task SetUnlimitedStock(ChangeEventArgs e)
     {
-        if (IsNew || _product is null || e.Value is not bool enabled) return;
+        if (_saving || _product is null || e.Value is not bool enabled) return;
+        if (IsNew) { _product.HasUnlimitedStock = enabled; return; }
         await using var db = await DbFactory.CreateDbContextAsync();
         var product = await db.Products.FindAsync(Id);
         if (product is null) return;
@@ -599,7 +653,15 @@ else
 
     private async Task ToggleVariant(Color c, Size s, bool enabled)
     {
-        if (IsNew) return;
+        if (_saving) return;
+        if (IsNew)
+        {
+            var variant = _product!.Variants.FirstOrDefault(v => v.ColorId == c.Id && v.SizeId == s.Id);
+            if (variant is null && enabled) _product.Variants.Add(new ProductVariant { ColorId = c.Id,
+                Color = c.Name, ColorHex = c.Hex, SizeId = s.Id, Size = s.Name, IsEnabled = true });
+            else if (variant is not null) variant.IsEnabled = enabled;
+            return;
+        }
         _variantMsg = null;
         await using var db = await DbFactory.CreateDbContextAsync();
         var existing = await db.ProductVariants.FirstOrDefaultAsync(v => v.ProductId == Id && v.ColorId == c.Id && v.SizeId == s.Id);
@@ -623,7 +685,13 @@ else
 
     private async Task SetStock(Color c, Size s, string? val)
     {
-        if (IsNew || _product?.HasUnlimitedStock != false || !int.TryParse(val, out var stock) || stock < 0) return;
+        if (_saving || _product?.HasUnlimitedStock != false || !int.TryParse(val, out var stock) || stock < 0) return;
+        if (IsNew)
+        {
+            var variant = _product.Variants.FirstOrDefault(v => v.ColorId == c.Id && v.SizeId == s.Id);
+            if (variant?.IsEnabled == true) variant.Stock = stock;
+            return;
+        }
         _variantMsg = null;
         await using var db = await DbFactory.CreateDbContextAsync();
         var t = await db.ProductVariants.FirstOrDefaultAsync(v => v.ProductId == Id && v.ColorId == c.Id && v.SizeId == s.Id);
@@ -632,5 +700,12 @@ else
         _variantMsg = "✓ موجودی به‌روزرسانی شد.";
         await db.SaveChangesAsync();
         await Reload(true);
+    }
+
+    private void UpdateDraftStock(Color color, Size size, string? value)
+    {
+        if (!IsNew || _saving || _product is null || !int.TryParse(value, out var stock) || stock < 0) return;
+        var variant = _product.Variants.FirstOrDefault(v => v.ColorId == color.Id && v.SizeId == size.Id);
+        if (variant?.IsEnabled == true) variant.Stock = stock;
     }
 }

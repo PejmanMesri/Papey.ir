@@ -1,5 +1,13 @@
 # Papey Order Printer
 
+For a new shop PC, extract the customer Windows ZIP and run `Setup.cmd`. The
+setup screen asks for the shop administrator's username/password and local
+printer. It verifies HTTPS login before saving credentials with Windows DPAPI
+and enabling startup at Windows sign-in. The package contains no credentials,
+cookies, print history, or customer data. This desktop setup uses the current
+user's Run startup entry; the maintenance PowerShell installer below uses a
+scheduled task instead. Neither needs an inbound network port.
+
 Windows tray app for the shop's USB BIXOLON SRP-330II. No paid cloud-printing
 subscription or inbound ports are needed. It connects outbound to papey.ir over
 HTTPS and polls the authenticated durable queue every five seconds. Only orders

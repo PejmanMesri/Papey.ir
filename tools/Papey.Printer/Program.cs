@@ -10,6 +10,21 @@ internal static class Program
         try
         {
             Directory.CreateDirectory(Store.Folder);
+            if (args.Contains("--install"))
+            {
+                var target = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "PapeyPrinter");
+                Directory.CreateDirectory(target);
+                if (!Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar).Equals(Path.GetFullPath(target), StringComparison.OrdinalIgnoreCase))
+                {
+                    foreach (var source in Directory.EnumerateFiles(AppContext.BaseDirectory, "*", SearchOption.AllDirectories))
+                    {
+                        var destination = Path.Combine(target, Path.GetRelativePath(AppContext.BaseDirectory, source));
+                        Directory.CreateDirectory(Path.GetDirectoryName(destination)!); File.Copy(source, destination, true);
+                    }
+                }
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Path.Combine(target, "Papey.Printer.exe"), "--setup") { UseShellExecute = true });
+                return;
+            }
             if (args.Contains("--diagnose"))
             {
                 File.WriteAllText(Path.Combine(Path.GetTempPath(), "papey-printer-diagnostic.txt"),
@@ -24,7 +39,14 @@ internal static class Program
                     Store.Protect(File.ReadAllText(args[1]).Trim()), old?.ClientId ?? "papey-" + Guid.NewGuid().ToString("N")));
                 Store.Status("Configured for papey.ir and " + args[2]); return;
             }
-            var settings = Store.Read<Settings>("settings.json") ?? throw new InvalidOperationException("Run the printer setup first.");
+            var settings = Store.Read<Settings>("settings.json");
+            ApplicationConfiguration.Initialize();
+            if (args.Contains("--setup") || settings is null)
+            {
+                using var setup = new SetupForm();
+                if (setup.ShowDialog() != DialogResult.OK) return;
+                settings = setup.Result!;
+            }
             if (!PrinterSettings.InstalledPrinters.Cast<string>().Contains(settings.Printer))
                 throw new InvalidOperationException("Configured printer is not installed.");
             if (args.Contains("--check"))
@@ -35,7 +57,6 @@ internal static class Program
             }
             using var mutex = new Mutex(true, "Local\\Papey.OrderPrinter", out var first);
             if (!first) return;
-            ApplicationConfiguration.Initialize();
             Application.Run(new PrinterForm(settings, args.Contains("--test"), args.Contains("--preview")));
         }
         catch (Exception ex)

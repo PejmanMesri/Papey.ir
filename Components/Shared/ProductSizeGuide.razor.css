@@ -1,0 +1,18 @@
+.size-guide-trigger { display:flex; align-items:center; gap:12px; width:100%; padding:14px 16px; margin:0 0 24px; border:1px solid #ded6c8; border-radius:14px; background:#f6f2ea; color:var(--papey-dark,#24221e); text-align:right; cursor:pointer; font:inherit; transition:background .15s,border-color .15s; }
+.size-guide-trigger:hover { background:#eee7d9; border-color:#b9a67e; }
+.size-guide-trigger:focus-visible,.size-guide-close:focus-visible { outline:3px solid #9f8349; outline-offset:3px; }
+.size-guide-icon { display:grid; place-items:center; width:40px; height:40px; flex-shrink:0; border-radius:11px; background:white; color:#887041; }
+.size-guide-trigger strong { display:block; font-size:.88rem; }
+.size-guide-trigger small { display:block; margin-top:4px; font-size:.73rem; line-height:1.7; color:var(--papey-muted); }
+.size-guide-arrow { margin-inline-start:auto; font-size:1.3rem; color:#887041; }
+.size-guide-dialog { width:min(620px,calc(100vw - 24px)); max-width:none; max-height:calc(100dvh - 24px); padding:0; border:0; border-radius:20px; background:#fff; color:#25231f; box-shadow:0 24px 90px #0006; overflow:hidden; font:inherit; direction:rtl; }
+.size-guide-dialog::backdrop { background:#111b; backdrop-filter:blur(4px); }
+.size-guide-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 20px; border-bottom:1px solid #eee8de; }
+.size-guide-header h2 { margin:0; font-size:1.05rem; }
+.size-guide-header p { margin:4px 0 0; color:#777065; font-size:.78rem; }
+.size-guide-close { width:44px; height:44px; flex-shrink:0; border:1px solid #e7e0d5; border-radius:50%; background:#f8f6f2; font-size:1.7rem; cursor:pointer; color:#403b33; }
+.size-guide-scroll { max-height:calc(100dvh - 200px); overflow:auto; overscroll-behavior:contain; background:#111; }
+.size-guide-scroll img { display:block; width:100%; height:auto; }
+.size-guide-footer { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; font-size:.72rem; line-height:1.8; color:#777065; }
+.size-guide-footer a { color:#6f5729; font-weight:700; white-space:nowrap; }
+@media(max-width:480px) { .size-guide-header { padding:12px 14px; } .size-guide-footer { padding:10px 14px; flex-wrap:wrap; gap:4px; } .size-guide-dialog { border-radius:16px; } .size-guide-trigger { padding:12px; gap:10px; } }

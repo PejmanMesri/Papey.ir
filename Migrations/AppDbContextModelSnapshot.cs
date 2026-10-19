@@ -545,6 +545,10 @@ namespace Papey.Migrations
                     b.Property<int?>("ProductTypeId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("SizeGuideImageUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(220)

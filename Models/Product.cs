@@ -25,6 +25,9 @@ public class Product
     [MaxLength(300)]
     public string? ImageUrl { get; set; }
 
+    [MaxLength(300)]
+    public string? SizeGuideImageUrl { get; set; }
+
     public bool IsFeatured { get; set; }
     public bool IsNew { get; set; }
     public bool IsActive { get; set; } = true;
