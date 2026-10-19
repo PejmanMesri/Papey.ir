@@ -10,7 +10,7 @@
     <div class="container-papey header-inner">
         <a class="logo" href="/" aria-label="پاپی، صفحه اصلی"><span class="logo-persian" aria-hidden="true">پاپی</span><span class="logo-latin" aria-hidden="true">PAPEY</span></a>
         <details class="mobile-menu" data-navigation-menu>
-            <summary aria-label="باز کردن منوی فروشگاه">☰ <span>منو</span></summary>
+            <summary aria-label="منوی فروشگاه"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg><span>منو</span></summary>
             <nav class="mobile-menu-panel" aria-label="منوی فروشگاه">
                 <a href="/">خانه</a>
                 <a href="/products">همه محصولات</a>
@@ -63,8 +63,8 @@
             <input type="search" name="q" aria-label="جستجوی محصول" placeholder="جستجوی طرح یا محصول..." />
         </form>
         <div class="header-actions">
-            <a href="/cart" class="header-cart">
-                🛒 سبد خرید
+            <a href="/cart" class="header-cart" aria-label="سبد خرید">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h14l-2 9H8L5 3H2" /><circle cx="9" cy="21" r="1" /><circle cx="17" cy="21" r="1" /></svg><span class="header-cart-label">سبد خرید</span>
                 @if (Cart.TotalQuantity > 0)
                 {
                     <span class="cart-badge">@PersianHelpers.ToPersianDigits(Cart.TotalQuantity.ToString())</span>
