@@ -31,19 +31,6 @@
     });
 
     document.addEventListener('click', function (event) {
-        var pageButton = event.target.closest('[data-menu-step]');
-        if (pageButton) {
-            var pagerRoot = pageButton.closest('[data-menu-pages]');
-            var pages = Array.from(pagerRoot.children).filter(function (child) { return child.hasAttribute('data-menu-page'); });
-            var currentPage = pages.findIndex(function (page) { return !page.hidden; });
-            var nextPage = Math.max(0, Math.min(pages.length - 1, currentPage + Number(pageButton.dataset.menuStep)));
-            pagerRoot.querySelectorAll('details[open]').forEach(function (group) { group.open = false; });
-            pages.forEach(function (page, index) { page.hidden = index !== nextPage; });
-            var pager = Array.from(pagerRoot.children).find(function (child) { return child.classList.contains('type-menu-pager'); });
-            pager.querySelector('[data-menu-step="-1"]').disabled = nextPage === 0;
-            pager.querySelector('[data-menu-step="1"]').disabled = nextPage === pages.length - 1;
-            pager.querySelector('[data-menu-page-label]').textContent = fa(nextPage + 1) + ' / ' + fa(pages.length);
-        }
         var typeSummary = event.target.closest('.desktop-type-group > summary');
         if (typeSummary && event.pointerType === 'mouse') {
             event.preventDefault();

@@ -1,9 +1,0 @@
-<div class="type-menu-pager">
-    <button type="button" data-menu-step="-1" disabled aria-label="صفحه قبلی @Label">→ قبلی</button>
-    <span data-menu-page-label aria-live="polite" aria-atomic="true">۱ / @PersianHelpers.ToPersianDigits(PageCount.ToString())</span>
-    <button type="button" data-menu-step="1" aria-label="صفحه بعدی @Label">بعدی ←</button>
-</div>
-@code {
-    [Parameter] public int PageCount { get; set; }
-    [Parameter] public string Label { get; set; } = "";
-}
