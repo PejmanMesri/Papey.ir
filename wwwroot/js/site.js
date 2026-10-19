@@ -4,7 +4,38 @@
 (function () {
     'use strict';
 
+    // Desktop clothing types cascade to the left; native details still support click/touch.
+    function openDesktopType(group) {
+        group.closest('.desktop-type-list').querySelectorAll('.desktop-type-group[open]').forEach(function (other) {
+            if (other !== group) other.open = false;
+        });
+        group.open = true;
+    }
+    document.addEventListener('pointermove', function (event) {
+        if (event.pointerType !== 'mouse') return;
+        var summary = event.target.closest('.desktop-type-group > summary');
+        if (summary && !summary.parentElement.open) openDesktopType(summary.parentElement);
+    });
+    document.addEventListener('keydown', function (event) {
+        var group = event.target.closest('.desktop-type-group');
+        if (!group) return;
+        if (event.key === 'ArrowLeft' && event.target.closest('summary')) {
+            event.preventDefault();
+            openDesktopType(group);
+            group.querySelector('.desktop-type-categories a')?.focus();
+        } else if (event.key === 'ArrowRight' && event.target.closest('.desktop-type-categories')) {
+            event.preventDefault();
+            group.open = false;
+            group.querySelector('summary').focus();
+        }
+    });
+
     document.addEventListener('click', function (event) {
+        var typeSummary = event.target.closest('.desktop-type-group > summary');
+        if (typeSummary && event.pointerType === 'mouse') {
+            event.preventDefault();
+            openDesktopType(typeSummary.parentElement);
+        }
         document.querySelectorAll('details[data-navigation-menu][open]').forEach(function (menu) {
             if (!menu.contains(event.target) || event.target.closest('a[href]')) menu.open = false;
         });
