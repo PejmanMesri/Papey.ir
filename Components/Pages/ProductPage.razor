@@ -90,7 +90,7 @@ else
                 }
             </div>
 
-            <ProductSizeGuide ProductName="@_product.Name" ImageUrl="@_product.SizeGuideImageUrl" />
+            <ProductSizeGuide ProductName="@_product.Name" ImageUrl="@_product.SizeGuideImageUrl" ProductTypeName="@_product.ProductType?.Name" />
             <label class="form-label">تعداد:</label>
             <div style="display:flex; align-items:center; margin-bottom: 24px">
                 <div class="qty-box">
@@ -152,6 +152,7 @@ else
         await using var db = await DbFactory.CreateDbContextAsync();
         _product = await db.Products
             .Include(p => p.Category)
+            .Include(p => p.ProductType)
             .Include(p => p.Variants)
             .Include(p => p.Media)
             .FirstOrDefaultAsync(p => p.Slug == Slug && p.IsActive);

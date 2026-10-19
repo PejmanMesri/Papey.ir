@@ -173,7 +173,7 @@ else
         <label class="editor-upload"><strong>انتخاب تصویر راهنمای سایز</strong><span>JPG، PNG، WebP، GIF یا AVIF تا ۱۵ مگابایت؛ با ذخیره محصول ثبت می‌شود.</span><InputFile OnChange="UploadSizeGuide" accept=".jpg,.jpeg,.png,.webp,.gif,.avif" disabled="@(_saving || _guideUploading)" /></label>
         @if (_guideUploading) { <p role="status">در حال آپلود راهنمای سایز…</p> }
         @if (_guideError is not null) { <div class="alert-papey alert-danger" role="alert">@_guideError</div> }
-        <div class="editor-guide-preview"><img src="@(_guideUpload?.PreviewUrl ?? _product.SizeGuideImageUrl ?? ProductSizeGuide.DefaultImage)" alt="پیش‌نمایش راهنمای سایز" />
+        <div class="editor-guide-preview"><img src="@ProductSizeGuides.Resolve(_guideUpload?.PreviewUrl ?? _product.SizeGuideImageUrl, _types.FirstOrDefault(t => t.Id == _product.ProductTypeId)?.Name ?? _product.ProductType?.Name)" alt="پیش‌نمایش راهنمای سایز" />
         <div><p>@(_guideUpload is not null || _product.SizeGuideImageUrl is not null ? "راهنمای اختصاصی این محصول" : "راهنمای پیش‌فرض پاپی")</p>
         @if (_guideUpload is not null || _product.SizeGuideImageUrl is not null) { <button type="button" class="btn-papey btn-sm btn-outline" disabled="@_saving" @onclick="ResetSizeGuide">استفاده از راهنمای پیش‌فرض</button> }</div></div>
     </section>
@@ -293,7 +293,7 @@ else
             }
             return;
         }
-        var fresh = await db.Products.Include(p => p.Variants).Include(p => p.ProductCategories).FirstOrDefaultAsync(p => p.Id == Id);
+        var fresh = await db.Products.Include(p => p.ProductType).Include(p => p.Variants).Include(p => p.ProductCategories).FirstOrDefaultAsync(p => p.Id == Id);
         if (preserveDraft && _product is not null && fresh is not null) _product.Variants = fresh.Variants;
         else
         {
