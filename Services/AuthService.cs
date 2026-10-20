@@ -178,6 +178,14 @@ public class AuthService
     public async Task<(AppUser? User, string? Error)> RegisterAsync(string username, string password, string? email, string? phone, string? fullName)
     {
         username = username.Trim();
+        var normalizedPhone = SmsService.NormalizePhone(phone);
+        var usernamePhone = SmsService.NormalizePhone(username);
+        if ((normalizedPhone is not null && AdminPhones.Contains(normalizedPhone))
+            || (usernamePhone is not null && AdminPhones.Contains(usernamePhone)))
+            return (null, "reserved-phone");
+        if (!string.IsNullOrWhiteSpace(phone) && normalizedPhone is null)
+            return (null, "invalid");
+        phone = normalizedPhone;
         await using var db = await _dbFactory.CreateDbContextAsync();
         if (await db.Users.AnyAsync(u => u.Username.ToLower() == username.ToLower()))
             return (null, "duplicate");

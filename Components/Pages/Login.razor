@@ -164,7 +164,6 @@
     private string? _forgotError;
 
     private string ReturnUrlQuery => string.IsNullOrEmpty(ReturnUrl) ? "" : $"?returnUrl={Uri.EscapeDataString(ReturnUrl)}";
-    private string RedirectTarget => !string.IsNullOrEmpty(ReturnUrl) && ReturnUrl.StartsWith('/') ? ReturnUrl : "/";
 
     private async Task SendOtp()
     {
@@ -191,7 +190,7 @@
         if (user is null) { _otpError = "کد وارد شده صحیح نیست یا منقضی شده است."; return; }
         // Sign-in must happen in a real HTTP request (cookie headers), not over the Blazor circuit
         var token = SignInTickets.Create(user.Id);
-        Nav.NavigateTo($"/account/otp-complete?token={token}&returnUrl={Uri.EscapeDataString(RedirectTarget)}", forceLoad: true);
+        Nav.NavigateTo($"/account/otp-complete?token={token}&returnUrl={Uri.EscapeDataString(LoginRedirect.ForUser(user, ReturnUrl))}", forceLoad: true);
     }
 
     private async Task SendForgotOtp()

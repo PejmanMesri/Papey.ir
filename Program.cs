@@ -150,8 +150,7 @@ app.MapPost("/account/login", async (HttpContext http, [FromForm] string identif
     var failUrl = "/login?error=1" + (string.IsNullOrEmpty(returnUrl) ? "" : $"&returnUrl={Uri.EscapeDataString(returnUrl)}");
     if (user is null) return Results.Redirect(failUrl);
     await auth.SignInAsync(user);
-    var target = !string.IsNullOrEmpty(returnUrl) && returnUrl.StartsWith('/') ? returnUrl
-        : user.IsAdmin ? "/admin" : "/";
+    var target = LoginRedirect.ForUser(user, returnUrl);
     return Results.Redirect(target);
 }).DisableAntiforgery();
 
@@ -159,12 +158,13 @@ app.MapPost("/account/register", async ([FromForm] string username, [FromForm] s
     [FromForm] string fullName, [FromForm] string phone, [FromForm] string? email,
     [FromQuery] string? returnUrl, AuthService auth) =>
 {
+    phone = SmsService.NormalizePhone(phone) ?? "";
     if (string.IsNullOrWhiteSpace(fullName) || !System.Text.RegularExpressions.Regex.IsMatch(phone, @"^09\d{9}$"))
         return Results.Redirect("/register/password?error=invalid");
     var (user, error) = await auth.RegisterAsync(username, password, email, phone, fullName);
     if (user is null) return Results.Redirect($"/register/password?error={error}");
     await auth.SignInAsync(user);
-    var target = !string.IsNullOrEmpty(returnUrl) && returnUrl.StartsWith('/') ? returnUrl : "/";
+    var target = LoginRedirect.ForUser(user, returnUrl);
     return Results.Redirect(target);
 }).DisableAntiforgery();
 
@@ -184,8 +184,7 @@ app.MapGet("/account/otp-complete", async (string? token, string? returnUrl, Aut
     var user = await auth.GetUserByIdAsync(userId.Value);
     if (user is null) return Results.Redirect("/login?error=otp");
     await auth.SignInAsync(user);
-    var target = !string.IsNullOrEmpty(returnUrl) && returnUrl.StartsWith('/') ? returnUrl
-        : user.IsAdmin ? "/admin" : "/";
+    var target = LoginRedirect.ForUser(user, returnUrl);
     return Results.Redirect(target);
 });
 
