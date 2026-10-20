@@ -4,7 +4,24 @@
 (function () {
     'use strict';
 
-    // Desktop clothing types cascade to the left; native details still support click/touch.
+    // Keep one shared category panel open while moving through the desktop rail.
+    var desktopCloseTimers = new WeakMap();
+    document.addEventListener('pointerover', function (event) {
+        if (event.pointerType !== 'mouse') return;
+        var menu = event.target.closest('.desktop-type-menu');
+        if (!menu) return;
+        clearTimeout(desktopCloseTimers.get(menu));
+        if (event.target.closest('.desktop-type-menu > summary')) menu.open = true;
+    });
+    document.addEventListener('pointerout', function (event) {
+        if (event.pointerType !== 'mouse') return;
+        var menu = event.target.closest('.desktop-type-menu');
+        if (!menu || (event.relatedTarget && menu.contains(event.relatedTarget))) return;
+        clearTimeout(desktopCloseTimers.get(menu));
+        desktopCloseTimers.set(menu, setTimeout(function () {
+            if (!menu.contains(document.activeElement)) menu.open = false;
+        }, 180));
+    });
     function openDesktopType(group) {
         group.closest('.desktop-type-list').querySelectorAll('.desktop-type-group[open]').forEach(function (other) {
             if (other !== group) other.open = false;
@@ -25,8 +42,18 @@
             group.querySelector('.desktop-type-categories a')?.focus();
         } else if (event.key === 'ArrowRight' && event.target.closest('.desktop-type-categories')) {
             event.preventDefault();
-            group.open = false;
             group.querySelector('summary').focus();
+        } else if ((event.key === 'Enter' || event.key === ' ') && event.target.closest('summary')) {
+            event.preventDefault();
+            openDesktopType(group);
+        } else if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && event.target.closest('summary')) {
+            event.preventDefault();
+            var rail = group.closest('.desktop-type-list');
+            var summaries = Array.from(rail.querySelectorAll('.desktop-type-group > summary'));
+            var currentIndex = summaries.indexOf(group.querySelector('summary'));
+            var nextIndex = (currentIndex + (event.key === 'ArrowDown' ? 1 : -1) + summaries.length) % summaries.length;
+            openDesktopType(summaries[nextIndex].parentElement);
+            summaries[nextIndex].focus();
         }
     });
 
@@ -35,6 +62,11 @@
         if (typeSummary && event.pointerType === 'mouse') {
             event.preventDefault();
             openDesktopType(typeSummary.parentElement);
+        }
+        var menuSummary = event.target.closest('.desktop-type-menu > summary');
+        if (menuSummary && event.pointerType === 'mouse') {
+            event.preventDefault();
+            menuSummary.parentElement.open = true;
         }
         document.querySelectorAll('details[data-navigation-menu][open]').forEach(function (menu) {
             if (!menu.contains(event.target) || event.target.closest('a[href]')) menu.open = false;
