@@ -1,0 +1,54 @@
+@implements IDisposable
+@inject StoreSeo Seo
+@inject NavigationManager Navigation
+
+@if (_page is { } info)
+{
+    @if (info.Title is not null) { <PageTitle>@info.Title</PageTitle> }
+    <HeadContent>
+        <meta name="description" content="@info.Description" />
+        <meta name="robots" content="@(info.Indexable ? "index,follow" : "noindex,follow")" />
+        @if (info.Indexable)
+        {
+            <link rel="canonical" href="@info.Canonical" />
+            <meta property="og:locale" content="fa_IR" />
+            <meta property="og:site_name" content="پاپی" />
+            <meta property="og:type" content="@(info.ProductJson is null ? "website" : "product")" />
+            <meta property="og:title" content="@info.Title" />
+            <meta property="og:description" content="@info.Description" />
+            <meta property="og:url" content="@info.Canonical" />
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="twitter:title" content="@info.Title" />
+            <meta name="twitter:description" content="@info.Description" />
+            @if (info.Image is not null)
+            {
+                <meta property="og:image" content="@info.Image" />
+                <meta property="og:image:alt" content="@info.Title" />
+                <meta name="twitter:image" content="@info.Image" />
+            }
+            @if (info.ProductJson is not null) { <script type="application/ld+json">@((MarkupString)info.ProductJson)</script> }
+        }
+    </HeadContent>
+}
+
+@code {
+    private SeoPage? _page;
+    private int _version;
+    protected override async Task OnInitializedAsync()
+    {
+        Navigation.LocationChanged += LocationChanged;
+        await RefreshAsync();
+    }
+    private async Task RefreshAsync()
+    {
+        var version = ++_version;
+        var info = await Seo.ReadAsync(Navigation.Uri);
+        if (version == _version) _page = info;
+    }
+    private void LocationChanged(object? sender, LocationChangedEventArgs args) => _ = InvokeAsync(async () =>
+    {
+        await RefreshAsync();
+        StateHasChanged();
+    });
+    public void Dispose() { _version++; Navigation.LocationChanged -= LocationChanged; }
+}

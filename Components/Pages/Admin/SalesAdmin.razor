@@ -8,6 +8,7 @@
 <PageTitle>فروش و تراکنش‌ها | پنل مدیریت پاپی</PageTitle>
 
 <h1 style="margin-top:0">💰 فروش و تراکنش‌ها</h1>
+@if (_trackingNotice is not null) { <div class="alert-papey alert-info" role="status">@_trackingNotice</div> }
 
 <div class="stat-grid">
     <div class="stat-card">💰 کل فروش (پرداخت‌شده)<div class="num">@_totalRevenue.ToToman()</div></div>
@@ -71,7 +72,7 @@
                     }
                     else
                     {
-                        <select class="form-input" style="width:auto; padding:4px 8px; font-size:0.8rem"
+                        <select @key="(o.Id, _statusVersion)" class="form-input" style="width:auto; padding:4px 8px; font-size:0.8rem"
                                 value="@o.Status" @onchange="e => SetStatus(o, e.Value!.ToString()!)">
                             @foreach (var s in Enum.GetValues<OrderStatus>().Where(s => s is not (OrderStatus.Pending or OrderStatus.PaymentFailed)))
                             {
@@ -96,6 +97,23 @@
                 <tr>
                     <td colspan="8" style="padding:0">
                         <div class="card-box" style="margin:8px; border-radius:0">
+                            @if (o.PaidAt is not null && o.Status != OrderStatus.Cancelled)
+                            {
+                                var tracking = TrackingDraft(o);
+                                <section class="shipment-editor">
+                                    <h3>اطلاعات ارسال مرسوله</h3>
+                                    <p>شرکت ارسال و کد رهگیری را ذخیره کنید، سپس وضعیت سفارش را به «ارسال شده» تغییر دهید تا پیامک ارسال در صف قرار بگیرد.</p>
+                                    <form @onsubmit="() => SaveTracking(o)" @onsubmit:preventDefault>
+                                        <div class="shipment-fields">
+                                            <label>شرکت ارسال<input class="form-input" list="shipment-couriers" maxlength="25" required @bind="tracking.Courier" @bind:event="oninput" /></label>
+                                            <label>کد رهگیری مرسوله<input class="form-input" dir="ltr" maxlength="25" required @bind="tracking.Number" @bind:event="oninput" /></label>
+                                            <button type="submit" class="btn-papey" disabled="@_savingTracking">ذخیره اطلاعات ارسال</button>
+                                        </div>
+                                    </form>
+                                    <datalist id="shipment-couriers"><option value="تیپاکس" /><option value="پست" /><option value="چاپار" /></datalist>
+                                    @if (o.Status is OrderStatus.Shipped or OrderStatus.Delivered) { <small>ویرایش اطلاعات، پیامک قبلی را دوباره ارسال نمی‌کند.</small> }
+                                </section>
+                            }
                             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap:24px">
                                 <div>
                                     <h4 style="margin-top:0">👤 مشخصات مشتری</h4>
@@ -176,6 +194,32 @@
     private decimal _totalRevenue;
     private int _paidCount, _pendingCount, _failedCount;
     private int? _expandedId;
+    private string? _trackingNotice;
+    private bool _savingTracking;
+    private int _statusVersion;
+    private readonly Dictionary<int, TrackingForm> _trackingDrafts = new();
+    private sealed class TrackingForm { public string Courier { get; set; } = ""; public string Number { get; set; } = ""; }
+    private TrackingForm TrackingDraft(Order order)
+    {
+        if (!_trackingDrafts.TryGetValue(order.Id, out var draft))
+            _trackingDrafts[order.Id] = draft = new() { Courier = order.CourierName ?? "", Number = order.TrackingNumber ?? "" };
+        return draft;
+    }
+    private async Task SaveTracking(Order order)
+    {
+        if (_savingTracking) return;
+        _savingTracking = true;
+        try
+        {
+            var draft = TrackingDraft(order);
+            if (!await ShippingSms.SaveTrackingAsync(order.Id, draft.Courier, draft.Number))
+            { _trackingNotice = "ذخیره انجام نشد. شرکت ارسال و کد معتبر ۴ تا ۲۵ کاراکتری وارد کنید. هنگام ارسال پیامک امکان ویرایش وجود ندارد."; return; }
+            order.CourierName = draft.Courier.Trim();
+            order.TrackingNumber = ShipmentTracking.NormalizeNumber(draft.Number);
+            _trackingNotice = $"اطلاعات ارسال سفارش {order.OrderNumber} ذخیره شد.";
+        }
+        finally { _savingTracking = false; }
+    }
 
     // Filters
     private string _search = string.Empty;
@@ -237,8 +281,16 @@
         // (or the 20-min expiry job) and must not be overridden manually.
         if (o.Status is OrderStatus.Pending or OrderStatus.PaymentFailed) return;
         if (s is OrderStatus.Pending or OrderStatus.PaymentFailed) return;
-        if (!await ShippingSms.SetOrderStatusAsync(o.Id, s)) return;
+        if (!await ShippingSms.SetOrderStatusAsync(o.Id, s))
+        {
+            _statusVersion++;
+            _expandedId = o.Id;
+            _trackingNotice = "تغییر وضعیت انجام نشد. پیش از ارسال، شرکت ارسال و کد رهگیری معتبر را ذخیره کنید.";
+            return;
+        }
         o.Status = s;
+        if (s == OrderStatus.Shipped) o.ShippedAt ??= DateTime.UtcNow;
+        _trackingNotice = null;
         if (s == OrderStatus.Paid && o.PaidAt is null) o.PaidAt = DateTime.UtcNow;
         RecountStats();
     }

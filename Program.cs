@@ -75,6 +75,7 @@ builder.Services.AddHostedService<PrintJobNotifier>();
 builder.Services.AddDistributedMemoryCache();
 builder.Services.Configure<StoreProfile>(builder.Configuration.GetSection("Store"));
 builder.Services.AddScoped<CartService>();
+builder.Services.AddScoped<StoreSeo>();
 builder.Services.AddSingleton<TaxSettingsService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
@@ -155,6 +156,10 @@ app.UseRateLimiter();
 app.UseAntiforgery();
 
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
+app.MapGet("/sitemap.xml", async (StoreSeo seo) => Results.Text(await seo.SitemapAsync(), "application/xml; charset=utf-8"));
+app.MapGet("/robots.txt", (StoreSeo seo) => Results.Text(
+    "User-agent: *\nDisallow: /admin\nDisallow: /account\nDisallow: /cart\nDisallow: /checkout\nDisallow: /login\nDisallow: /register\nDisallow: /search\nDisallow: /payment/\nSitemap: " + seo.Url("/sitemap.xml") + "\n", "text/plain"));
+
 
 // Cookie auth endpoints (login/register/logout via form posts)
 app.MapPost("/account/login", async (HttpContext http, [FromForm] string identifier, [FromForm] string password,

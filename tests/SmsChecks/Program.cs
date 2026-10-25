@@ -36,6 +36,14 @@ await production.SendOtpAsync("09123456789", "12345");
 Check(handler.Key == "test-production" && handler.Body.Contains("900001"), "Production uses production key and approved OTP template");
 await production.SendShippingAsync("09123456789", "ORDER-123");
 Check(handler.Body.Contains("ORDERNUMBER") && handler.Body.Contains("900002"), "Shipping uses its own Verify template");
+config["SMSIR_SHIPPING_TRACKING_TEMPLATE_ID"] = "900003";
+await production.SendShippingAsync("09123456789", "ORDER-123", "Tipax", "1234567890123");
+using (var trackingPayload = JsonDocument.Parse(handler.Body))
+{
+    var parameters = trackingPayload.RootElement.GetProperty("parameters");
+    Check(handler.Path == "/v1/send/verify" && trackingPayload.RootElement.GetProperty("templateId").GetInt32() == 900003
+        && parameters.GetArrayLength() == 3 && parameters[2].GetProperty("value").GetString() == "1234567890123", "Approved tracking template receives courier and reference separately");
+}
 handler.Json = "{\"status\":1,\"data\":{\"messageIds\":[123,0,null],\"packId\":\"test-pack\"}}";
 result = await sms.SendBulkAsync(["09123456789", "09123456789", "09123456780", "09123456781"], "Test message");
 Check(!result.Success && result.Accepted == 1 && result.Rejected == 2 && handler.Body.Contains("sendDateTime"), "Bulk deduplicates and reports partial provider rejection");
@@ -60,6 +68,10 @@ var fallbackConfig = new ConfigurationBuilder().AddInMemoryCollection(new Dictio
 handler.Reset();
 await MakeSms("Production", fallbackConfig).SendOtpAsync("09123456789", "12345");
 Check(handler.Path == "/v1/send/bulk" && handler.Key == "test-production", "Assigned sender line works before templates are approved");
+await MakeSms("Production", fallbackConfig).SendShippingAsync("09123456789", "ORDER-123", "Tipax", "1234567890123");
+using (var fallbackBody = JsonDocument.Parse(handler.Body))
+    Check(fallbackBody.RootElement.GetProperty("messageText").GetString()!.Contains("1234567890123"), "Dedicated-line shipping SMS includes the tracking number");
+
 
 DotNetEnv.Env.NoClobber().TraversePath().Load();
 var localConfig = new ConfigurationBuilder().AddEnvironmentVariables().Build();
@@ -74,7 +86,7 @@ try
 {
     await using var db = factory.CreateDbContext();
     await db.Database.MigrateAsync();
-    Order Order(OrderStatus status) => new() { OrderNumber = "SMS-"+Guid.NewGuid().ToString("N")[..12], CustomerName = "Test", CustomerPhone = "09123456789", Province = "Test", City = "Test", FullAddress = "Test", Status = status, PaidAt = status == OrderStatus.Paid ? DateTime.UtcNow : null };
+    Order Order(OrderStatus status) => new() { OrderNumber = "SMS-"+Guid.NewGuid().ToString("N")[..12], CustomerName = "Test", CustomerPhone = "09123456789", Province = "Test", City = "Test", FullAddress = "Test", CourierName = "Tipax", TrackingNumber = "1234567890123", Status = status, PaidAt = status == OrderStatus.Paid ? DateTime.UtcNow : null };
     var order = Order(OrderStatus.Paid);
     var unpaid = Order(OrderStatus.Pending);
     db.Orders.AddRange(order, unpaid);
@@ -82,8 +94,14 @@ try
     var queue = new ShippingSmsQueue(factory, production);
     Check(!await queue.SetOrderStatusAsync(unpaid.Id, OrderStatus.Shipped), "Unpaid orders cannot be shipped manually");
     Check(!await queue.SetOrderStatusAsync(order.Id, (OrderStatus)999), "Undefined statuses are rejected");
+    order.CourierName = null; order.TrackingNumber = null; await db.SaveChangesAsync();
+    Check(!await queue.SetOrderStatusAsync(order.Id, OrderStatus.Shipped), "Shipping requires saved courier and tracking number");
+    Check(!await queue.SaveTrackingAsync(unpaid.Id, "Tipax", "123456789"), "Unpaid orders cannot receive shipment details");
+    Check(!await queue.SaveTrackingAsync(order.Id, "Tipax", "https://bad.example"), "Tracking numbers cannot contain URLs");
+    Check(await queue.SaveTrackingAsync(order.Id, "Tipax", "۱۲۳۴۵۶۷۸۹۰۱۲۳"), "Tracking saves and normalizes Persian digits");
     await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => queue.SetOrderStatusAsync(order.Id, OrderStatus.Shipped)));
     Check(await db.ShippingSmsJobs.CountAsync(j => j.OrderId == order.Id) == 1, "Concurrent shipping transitions queue exactly once");
+    Check(await db.Orders.AnyAsync(o => o.Id == order.Id && o.TrackingNumber == "1234567890123" && o.ShippedAt != null), "Shipment metadata and dispatch date persist");
     await queue.SetOrderStatusAsync(order.Id, OrderStatus.Processing);
     await queue.SetOrderStatusAsync(order.Id, OrderStatus.Shipped);
     Check(await db.ShippingSmsJobs.CountAsync(j => j.OrderId == order.Id) == 1, "Status toggles do not duplicate notification");
@@ -166,8 +184,8 @@ try
     Check(await db.Users.CountAsync(u => u.IsAdmin) == 1 &&
         await db.Users.AnyAsync(u => u.Id == existingAliasUser.Id && !u.IsAdmin),
         "Aliases create no duplicate administrators and preserve existing records");
-    Check(!(await auth.RegisterAsync("alias-claim", "test-password", null, "09120000001", null)).User!.IsAdmin,
-        "Password registration cannot grant admin access by claiming an alias");
+    Check((await auth.RegisterAsync("alias-claim", "test-password", null, "09120000001", null)).User is null,
+        "Password registration rejects reserved administrator aliases");
     Check(production.OrderNotificationPhones.SequenceEqual(new[] { "09120000001", "09120000002" }),
         "Order recipient list is deduplicated and excludes third login alias");
     Check(MakeSms("Production", fallbackConfig).OrderNotificationPhones.Length == 0,

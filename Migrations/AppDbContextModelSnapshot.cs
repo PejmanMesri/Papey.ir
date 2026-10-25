@@ -211,6 +211,10 @@ namespace Papey.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("CourierName")
+                        .HasMaxLength(25)
+                        .HasColumnType("character varying(25)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -257,6 +261,9 @@ namespace Papey.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<DateTime?>("ShippedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<decimal>("ShippingCost")
                         .HasColumnType("numeric(18,0)");
 
@@ -274,6 +281,10 @@ namespace Papey.Migrations
 
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("numeric(18,0)");
+
+                    b.Property<string>("TrackingNumber")
+                        .HasMaxLength(25)
+                        .HasColumnType("character varying(25)");
 
                     b.Property<int?>("UserId")
                         .HasColumnType("integer");

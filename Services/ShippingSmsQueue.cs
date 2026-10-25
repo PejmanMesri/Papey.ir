@@ -5,6 +5,22 @@ namespace Papey.Services;
 
 public sealed class ShippingSmsQueue(IDbContextFactory<AppDbContext> factory, SmsService sms)
 {
+    public async Task<bool> SaveTrackingAsync(int orderId, string courier, string number, CancellationToken ct = default)
+    {
+        if (!ShipmentTracking.IsValid(courier, number)) return false;
+        await using var db = await factory.CreateDbContextAsync(ct);
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var rows = await db.Orders.FromSqlInterpolated($"SELECT * FROM \"Orders\" WHERE \"Id\" = {orderId} FOR UPDATE").ToListAsync(ct);
+        var order = rows.FirstOrDefault();
+        if (order?.PaidAt is null || order.Status is OrderStatus.Pending or OrderStatus.PaymentFailed or OrderStatus.Cancelled
+            || await db.ShippingSmsJobs.AnyAsync(j => j.OrderId == orderId && j.State == ShippingSmsState.Sending, ct)) return false;
+        order.CourierName = courier.Trim();
+        order.TrackingNumber = ShipmentTracking.NormalizeNumber(number);
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+        return true;
+    }
+
     public async Task<bool> SetOrderStatusAsync(int orderId, OrderStatus status, CancellationToken ct = default)
     {
         if (!Enum.IsDefined(status) || status is OrderStatus.Pending or OrderStatus.PaymentFailed) return false;
@@ -13,10 +29,12 @@ public sealed class ShippingSmsQueue(IDbContextFactory<AppDbContext> factory, Sm
         var orders = await db.Orders.FromSqlInterpolated($"SELECT * FROM \"Orders\" WHERE \"Id\" = {orderId} FOR UPDATE").ToListAsync(ct);
         var order = orders.FirstOrDefault();
         if (order is null || order.Status is OrderStatus.Pending or OrderStatus.PaymentFailed) return false;
+        if (status == OrderStatus.Shipped && !ShipmentTracking.IsComplete(order)) return false;
         if (status == OrderStatus.Shipped && order.Status != OrderStatus.Shipped &&
             !await db.ShippingSmsJobs.AnyAsync(j => j.OrderId == order.Id, ct))
             db.ShippingSmsJobs.Add(new() { OrderId = order.Id, IsSandbox = sms.IsSandbox });
         order.Status = status;
+        if (status == OrderStatus.Shipped) order.ShippedAt ??= DateTime.UtcNow;
         if (status == OrderStatus.Paid && order.PaidAt is null) order.PaidAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
@@ -63,7 +81,8 @@ public sealed class ShippingSmsQueue(IDbContextFactory<AppDbContext> factory, Sm
         }
         else
         {
-            var result = await sms.SendShippingAsync(order.CustomerPhone, order.OrderNumber, ct);
+            var result = await sms.SendShippingAsync(order.CustomerPhone, order.OrderNumber,
+                order.CourierName, order.TrackingNumber, ct);
             job.Error = result.Error;
             job.MessageId = result.MessageId;
             if (result.Success)

@@ -70,6 +70,10 @@ public class Order
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? PaidAt { get; set; }
 
+    [MaxLength(25)] public string? CourierName { get; set; }
+    [MaxLength(25)] public string? TrackingNumber { get; set; }
+    public DateTime? ShippedAt { get; set; }
+
     public List<OrderItem> Items { get; set; } = new();
 }
 

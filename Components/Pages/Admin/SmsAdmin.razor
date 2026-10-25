@@ -13,6 +13,13 @@
     @(Sms.IsSandbox ? "محیط آزمایشی: پیامک واقعی ارسال نمی‌شود و اعتباری کسر نمی‌شود." : "محیط اصلی: ارسال پیامک از اعتبار حساب SMS.ir کسر می‌شود.")
 </div>
 @if (!Sms.CanSendBulk) { <div class="alert-papey alert-danger">کلید API یا شماره خط ارسال تنظیم نشده است.</div> }
+@if (!Sms.IsSandbox && Sms.ShippingTrackingTemplateId <= 0)
+{
+    <div class="alert-papey alert-info">
+        پیامک کد رهگیری از خط اختصاصی ارسال می‌شود و ممکن است برای شماره‌های مسدودکننده تبلیغات تحویل نشود.
+        برای ارسال خدماتی، قالب رهگیری با پارامترهای ORDERNUMBER، COURIER و TRACKINGCODE باید در SMS.ir تأیید و تنظیم شود.
+    </div>
+}
 <div class="card-box" style="margin-bottom:24px">
     <h2>ارسال گروهی</h2>
     <p>مخاطبان و متن را انتخاب کنید؛ پیش از ارسال، تعداد گیرندگان و متن نهایی را بررسی خواهید کرد.</p>

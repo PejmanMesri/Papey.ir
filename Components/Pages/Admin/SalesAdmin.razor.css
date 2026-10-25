@@ -1,0 +1,6 @@
+.shipment-editor { padding: 20px; margin-bottom: 24px; border: 1px solid var(--papey-border); border-radius: 14px; background: #faf9f6; }
+.shipment-editor h3 { margin-top: 0; }
+.shipment-editor p, .shipment-editor small { font-size: .8rem; color: var(--papey-muted); line-height: 1.9; }
+.shipment-fields { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; }
+.shipment-fields label { display: grid; gap: 8px; font-size: .85rem; }
+@media(max-width: 800px) { .shipment-fields { grid-template-columns: 1fr; } }

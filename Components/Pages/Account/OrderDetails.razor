@@ -60,6 +60,17 @@
                 </div>
             </section>
 
+            @if (!string.IsNullOrWhiteSpace(_order.TrackingNumber))
+            {
+                <section class="card-box" style="margin-bottom:24px" aria-label="رهگیری مرسوله">
+                    <h2>رهگیری مرسوله</h2>
+                    <p>شرکت ارسال: <strong>@_order.CourierName</strong></p>
+                    <p>کد رهگیری مرسوله: <strong dir="ltr" style="user-select:all;overflow-wrap:anywhere">@_order.TrackingNumber</strong></p>
+                    @if (_order.ShippedAt is { } shippedAt) { <p>تاریخ ارسال: @FaDate(shippedAt.ToLocalTime())</p> }
+                    <small>برای پیگیری، کد بالا را در سامانه شرکت ارسال وارد کنید.</small>
+                </section>
+            }
+
             <section class="card-box order-updates-card">
                 <h2>بروزرسانی‌های سفارش</h2>
                 <ol class="order-updates">

@@ -14,11 +14,12 @@ public sealed class SmsService(HttpClient http, IConfiguration config, IHostEnvi
     private string ApiKey => config[IsSandbox ? "SMSIR_SANDBOX_API_KEY" : "SMSIR_API_KEY"] ?? "";
     public int OtpTemplateId => IsSandbox ? config.GetValue<int?>("SMSIR_SANDBOX_TEMPLATE_ID") ?? 123456 : config.GetValue<int?>("SMSIR_OTP_TEMPLATE_ID") ?? 0;
     public int ShippingTemplateId => config.GetValue<int?>("SMSIR_SHIPPING_TEMPLATE_ID") ?? 0;
+    public int ShippingTrackingTemplateId => config.GetValue<int?>("SMSIR_SHIPPING_TRACKING_TEMPLATE_ID") ?? 0;
     public long LineNumber => config.GetValue<long?>("SMSIR_LINE_NUMBER") ?? 0;
     public bool IsConfigured => !string.IsNullOrWhiteSpace(ApiKey) && !ApiKey.StartsWith("YOUR_");
     public bool CanSendOtp => IsConfigured && (OtpTemplateId > 0 || (!IsSandbox && LineNumber > 0)) && (environment.IsDevelopment() || !IsSandbox);
     public bool CanSendBulk => IsConfigured && LineNumber > 0;
-    public bool CanSendShipping => IsConfigured && (LineNumber > 0 || (!IsSandbox && ShippingTemplateId > 0));
+    public bool CanSendShipping => IsConfigured && (LineNumber > 0 || (!IsSandbox && (ShippingTemplateId > 0 || ShippingTrackingTemplateId > 0)));
     public string[] OrderNotificationPhones => (config["ORDER_NOTIFICATION_PHONES"] ?? "")
         .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         .Select(NormalizePhone).OfType<string>().Distinct().ToArray();
@@ -42,6 +43,23 @@ public sealed class SmsService(HttpClient http, IConfiguration config, IHostEnvi
     public Task<SmsSendResult> SendShippingAsync(string phone, string orderNumber, CancellationToken ct = default) =>
         IsSandbox || ShippingTemplateId <= 0 ? SendBulkAsync([phone], $"پاپی؛ سفارش {orderNumber} شما ارسال شد.", ct)
         : SendVerifyAsync(phone, ShippingTemplateId, "ORDERNUMBER", orderNumber, ct);
+
+    public Task<SmsSendResult> SendShippingAsync(string phone, string orderNumber,
+        string? courier, string? trackingNumber, CancellationToken ct = default)
+    {
+        if (!ShipmentTracking.IsValid(courier, trackingNumber)) return SendShippingAsync(phone, orderNumber, ct);
+        var number = ShipmentTracking.NormalizeNumber(trackingNumber);
+        if (IsSandbox || ShippingTrackingTemplateId <= 0)
+            return SendBulkAsync([phone], $"پاپی؛ سفارش {orderNumber} شما ارسال شد.\nشرکت ارسال: {courier!.Trim()}\nکد رهگیری مرسوله: {number}\nجزئیات سفارش: https://papey.ir/account/orders", ct);
+        var mobile = NormalizePhone(phone);
+        if (mobile is null || orderNumber.Length is 0 or > 25)
+            return Task.FromResult(new SmsSendResult(false, "شماره یا مشخصات مرسوله معتبر نیست."));
+        return SendAsync("send/verify", new { mobile, templateId = ShippingTrackingTemplateId, parameters = new[] {
+            new { name = "ORDERNUMBER", value = orderNumber },
+            new { name = "COURIER", value = courier!.Trim() },
+            new { name = "TRACKINGCODE", value = number }
+        } }, 1, false, ct);
+    }
 
     public Task<SmsSendResult> SendOrderNotificationAsync(string phone, string orderNumber, CancellationToken ct = default) =>
         !IsSandbox && OrderTemplateId > 0
