@@ -126,7 +126,7 @@ else
         </div>
     </div>
     <RelatedProducts @key='("related", _product.Id)' ProductId="_product.Id" />
-    <ProductReviews @key='("reviews", _product.Id)' ProductId="_product.Id" Slug="_product.Slug" />
+    <ProductReviews @key='("reviews", _product.Id)' ProductId="_product.Id" Slug="@_product.Slug" />
 }
 
 @code {
