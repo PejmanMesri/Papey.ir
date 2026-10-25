@@ -4,6 +4,17 @@
 (function () {
     'use strict';
 
+    // Keep the official Enamad verification link usable during image-service outages.
+    function updateEnamadImage(image, failed) {
+        var badge = image instanceof HTMLImageElement && image.closest('.enamad-badge');
+        if (badge) badge.classList.toggle('enamad-image-unavailable', failed);
+    }
+    document.addEventListener('error', function (event) { updateEnamadImage(event.target, true); }, true);
+    document.addEventListener('load', function (event) { updateEnamadImage(event.target, false); }, true);
+    document.querySelectorAll('.enamad-badge img').forEach(function (image) {
+        if (image.complete) updateEnamadImage(image, image.naturalWidth === 0);
+    });
+
     // Keep one shared category panel open while moving through the desktop rail.
     var desktopCloseTimers = new WeakMap();
     document.addEventListener('pointerover', function (event) {
