@@ -16,6 +16,9 @@ public class Product
     [MaxLength(2000)]
     public string? Description { get; set; }
 
+    [MaxLength(80)]
+    public string? DesignCode { get; set; }
+
     [Column(TypeName = "numeric(18,0)")]
     public decimal Price { get; set; }
 

@@ -1,0 +1,93 @@
+@inject ProductReviewService Reviews
+@inject AuthService Auth
+
+<section class="reviews-section" id="reviews" aria-labelledby="reviews-title">
+    <header class="reviews-heading">
+        <div><span class="reviews-kicker">تجربه واقعی، انتخاب راحت‌تر</span><h2 id="reviews-title">نظر خریداران</h2><p>درباره کیفیت چاپ، جنس پارچه و اندازه لباس بخوان.</p></div>
+        @if (_reviews is { Count: > 0 } summary)
+        {
+            <div class="review-summary"><strong>@Fa(summary.Average.ToString("0.0")) <small>از ۵</small></strong><span>@Fa(summary.Count.ToString()) نظر خریدار</span></div>
+        }
+    </header>
+    @if (_notice is not null) { <div class="alert-papey @(_success ? "alert-success" : "alert-danger")" role="status">@_notice</div> }
+    @if (_eligible)
+    {
+        <details class="review-compose" open="@(_mine is null)">
+            <summary>@(_mine is null ? "تجربه خریدت را بنویس" : "ویرایش نظر شما") <span>فقط برای خریداران این محصول</span></summary>
+            <form @onsubmit="Save" @onsubmit:preventDefault>
+                <div class="review-ratings">
+                    <label>کیفیت چاپ<select class="form-input" @bind="_print">@for (var n = 5; n >= 1; n--) { <option value="@n">@Fa(n.ToString()) از ۵</option> }</select></label>
+                    <label>جنس پارچه<select class="form-input" @bind="_fabric">@for (var n = 5; n >= 1; n--) { <option value="@n">@Fa(n.ToString()) از ۵</option> }</select></label>
+                    <label>اندازه لباس<select class="form-input" @bind="_fit">@foreach (var fit in Enum.GetValues<ReviewFit>()) { <option value="@fit">@ProductReviewService.FitLabel(fit)</option> }</select></label>
+                </div>
+                <label class="review-comment-label" for="review-comment">نظر شما</label>
+                <textarea id="review-comment" class="form-input" rows="4" maxlength="2000" required @bind="_comment" @bind:event="oninput" placeholder="کیفیت چاپ و پارچه چطور بود؟ سایز انتخابی به شما می‌خورد؟"></textarea>
+                <div class="review-submit"><small>فقط نام کوچک شما کنار نظر نمایش داده می‌شود.</small><button type="submit" class="btn-papey" disabled="@_saving">@(_saving ? "در حال ذخیره…" : _mine is null ? "ثبت نظر" : "ذخیره ویرایش")</button></div>
+                @if (_mine?.IsHidden == true) { <p class="review-muted">نظر شما ذخیره شده و در حال حاضر نمایش عمومی ندارد.</p> }
+            </form>
+        </details>
+    }
+    else
+    {
+        <div class="review-purchase-note">
+            <span>برای ثبت نظر باید این محصول را با حساب خود خریداری کرده باشید.</span>
+            @if (Auth.CurrentUserId is null) { <a href="@LoginUrl">ورود به حساب ←</a> }
+        </div>
+    }
+    @if (_reviews is { Count: > 0 } page)
+    {
+        @foreach (var review in page.Reviews)
+        {
+            <article class="buyer-review" @key="review.Id">
+                <header><div><strong>@review.Name</strong><span class="verified-buyer">✓ خریدار تأییدشده</span></div><time>@Date(review.CreatedAt)</time></header>
+                <div class="review-score-tags"><span>کیفیت چاپ: @Fa(review.PrintQuality.ToString()) از ۵</span><span>پارچه: @Fa(review.FabricQuality.ToString()) از ۵</span><span>سایز: @ProductReviewService.FitLabel(review.Fit)</span></div>
+                <p class="review-text">@review.Comment</p>
+                @if (review.UpdatedAt is not null) { <small class="review-muted">ویرایش‌شده در @Date(review.UpdatedAt.Value)</small> }
+                @if (!string.IsNullOrWhiteSpace(review.Reply))
+                {
+                    <div class="review-reply"><strong>پاسخ پاپی</strong><p class="review-text">@review.Reply</p>@if (review.RepliedAt is { } replied) { <small>@Date(replied)</small> }</div>
+                }
+            </article>
+        }
+        @if (page.Count > 5)
+        {
+            <div class="review-pagination"><button type="button" class="btn-papey btn-outline btn-sm" disabled="@(_page == 0)" @onclick="() => ChangePage(-1)">قبلی</button><span>صفحه @Fa((_page + 1).ToString())</span><button type="button" class="btn-papey btn-outline btn-sm" disabled="@((_page + 1) * 5 >= page.Count)" @onclick="() => ChangePage(1)">بعدی</button></div>
+        }
+    }
+    else { <p class="reviews-empty">هنوز نظری برای این محصول ثبت نشده؛ اولین خریدار باش که تجربه‌اش را به اشتراک می‌گذارد.</p> }
+</section>
+
+@code {
+    [Parameter] public int ProductId { get; set; }
+    [Parameter] public string Slug { get; set; } = "";
+    private ReviewPage? _reviews;
+    private ProductReview? _mine;
+    private bool _eligible, _saving, _success;
+    private int _print = 5, _fabric = 5, _page;
+    private ReviewFit _fit = ReviewFit.TrueToSize;
+    private string _comment = "";
+    private string? _notice;
+    private string LoginUrl => "/login?returnUrl=" + Uri.EscapeDataString("/product/" + Slug);
+    private static string Fa(string text) => PersianHelpers.ToPersianDigits(text);
+    private static string Date(DateTime date) => Fa(date.ToLocalTime().ToString("yyyy/MM/dd", new System.Globalization.CultureInfo("fa-IR")));
+    protected override async Task OnInitializedAsync()
+    {
+        _reviews = await Reviews.ReadAsync(ProductId);
+        _eligible = await Reviews.CanReviewAsync(ProductId);
+        _mine = await Reviews.MineAsync(ProductId);
+        if (_mine is not null) { _print = _mine.PrintQuality; _fabric = _mine.FabricQuality; _fit = _mine.Fit; _comment = _mine.Comment; }
+    }
+    private async Task ChangePage(int delta) { _page = Math.Max(0, _page + delta); _reviews = await Reviews.ReadAsync(ProductId, _page); }
+    private async Task Save()
+    {
+        if (_saving) return;
+        _saving = true;
+        try
+        {
+            var error = await Reviews.SaveAsync(ProductId, new(_print, _fabric, _fit, _comment));
+            _success = error is null; _notice = error ?? "نظر شما ذخیره شد. ممنون که تجربه‌ات را گفتی.";
+            if (_success) { _mine = await Reviews.MineAsync(ProductId); _page = 0; _reviews = await Reviews.ReadAsync(ProductId); }
+        }
+        finally { _saving = false; }
+    }
+}

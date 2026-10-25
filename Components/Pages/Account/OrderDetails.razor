@@ -113,7 +113,10 @@
                             @foreach (var item in _order.Items)
                             {
                                 <tr>
-                                    <td data-label="محصول"><strong>@item.ProductName</strong></td>
+                                    <td data-label="محصول"><strong>@item.ProductName</strong>
+                                        @if (_order.PaidAt is not null && _order.Status is not (OrderStatus.Cancelled or OrderStatus.PaymentFailed) && item.Product is { IsActive: true })
+                                        { <br /><a href="/product/@item.Product.Slug#reviews" style="font-size:.8rem;text-decoration:underline">ثبت نظر درباره این خرید</a> }
+                                    </td>
                                     <td data-label="رنگ">@item.Color</td>
                                     <td data-label="سایز">@item.Size</td>
                                     <td data-label="قیمت واحد">@item.UnitPrice.ToToman()</td>
@@ -186,7 +189,7 @@
 
         await using var db = await DbFactory.CreateDbContextAsync();
         _order = await db.Orders
-            .Include(o => o.Items)
+            .Include(o => o.Items).ThenInclude(i => i.Product)
             .FirstOrDefaultAsync(o => o.Id == Id && o.UserId == userId);
     }
 

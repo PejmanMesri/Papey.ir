@@ -1,0 +1,25 @@
+@inject ProductRecommendations Recommendations
+
+@if (_related is { } related)
+{
+    @if (related.SameDesign.Count > 0)
+    {
+        <section class="related-section" aria-labelledby="same-design-title">
+            <div class="related-heading"><span>طرح مورد علاقه‌ات، مدل دلخواهت</span><h2 id="same-design-title">همین طرح روی لباس‌های دیگر</h2><p>همان داستان را با یک مدل تازه بپوش.</p></div>
+            <ProductGrid Products="related.SameDesign" />
+        </section>
+    }
+    @if (related.Similar.Count > 0)
+    {
+        <section class="related-section" aria-labelledby="similar-design-title">
+            <div class="related-heading"><span>برای سلیقه تو</span><h2 id="similar-design-title">این طرح‌ها را هم ببین</h2></div>
+            <ProductGrid Products="related.Similar" />
+        </section>
+    }
+}
+
+@code {
+    [Parameter] public int ProductId { get; set; }
+    private RelatedSelection? _related;
+    protected override async Task OnParametersSetAsync() => _related = await Recommendations.ReadAsync(ProductId);
+}

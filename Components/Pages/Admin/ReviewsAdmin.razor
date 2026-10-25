@@ -1,0 +1,55 @@
+@page "/admin/reviews"
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+@rendermode InteractiveServer
+@inject ProductReviewService Reviews
+
+<PageTitle>نظرهای خریداران | مدیریت پاپی</PageTitle>
+<div class="reviews-admin-head"><div><h1>نظرهای خریداران</h1><p>پاسخ شما با نام «پاپی» زیر نظر مشتری نمایش داده می‌شود.</p></div><label><input type="checkbox" @bind="_unanswered" @bind:after="ResetPage" /> فقط بدون پاسخ</label></div>
+@if (_notice is not null) { <div class="alert-papey alert-info" role="status">@_notice</div> }
+@if (_rows.Count == 0) { <div class="card-box">هنوز نظری در این بخش ثبت نشده است.</div> }
+@foreach (var review in _rows.Take(20))
+{
+    <article class="card-box admin-review" @key="review.Id">
+        <header><div><a href="/product/@review.Product.Slug#reviews" target="_blank" rel="noopener">@review.Product.Name ↗</a><span>@ProductReviewService.PublicName(review.User.FullName) · @PersianHelpers.ToPersianDigits(review.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd", new System.Globalization.CultureInfo("fa-IR")))</span></div><strong class="@(review.IsHidden ? "review-hidden" : "review-visible")">@(review.IsHidden ? "پنهان" : "نمایش عمومی")</strong></header>
+        <div class="admin-review-scores">چاپ: @Fa(review.PrintQuality) از ۵ · پارچه: @Fa(review.FabricQuality) از ۵ · سایز: @ProductReviewService.FitLabel(review.Fit)</div>
+        <p class="admin-review-text">@review.Comment</p>
+        <form @onsubmit="() => SaveReply(review)" @onsubmit:preventDefault>
+            <label for="reply-@review.Id">پاسخ پاپی</label>
+            <textarea id="reply-@review.Id" class="form-input" rows="3" maxlength="2000" @bind="_replies[review.Id]" @bind:event="oninput" placeholder="پاسخ خود را برای مشتری بنویسید…"></textarea>
+            <div class="admin-review-actions"><button type="submit" class="btn-papey btn-sm" disabled="@_busy">ذخیره پاسخ</button><button type="button" class="btn-papey btn-outline btn-sm" disabled="@_busy" @onclick="() => ToggleHidden(review)">@(review.IsHidden ? "نمایش دوباره نظر" : "پنهان کردن نظر")</button></div>
+        </form>
+    </article>
+}
+<div class="admin-review-pagination"><button type="button" class="btn-papey btn-outline" disabled="@(_page == 0 || _busy)" @onclick="() => ChangePage(-1)">قبلی</button><span>صفحه @Fa(_page + 1)</span><button type="button" class="btn-papey btn-outline" disabled="@(_rows.Count <= 20 || _busy)" @onclick="() => ChangePage(1)">بعدی</button></div>
+
+@code {
+    private List<ProductReview> _rows = new();
+    private readonly Dictionary<int, string> _replies = new();
+    private bool _unanswered, _busy;
+    private int _page;
+    private string? _notice;
+    private static string Fa(int value) => PersianHelpers.ToPersianDigits(value.ToString());
+    protected override Task OnInitializedAsync() => Load();
+    private async Task Load()
+    {
+        _rows = await Reviews.AdminReadAsync(_unanswered, _page);
+        foreach (var review in _rows) _replies[review.Id] = review.AdminReply ?? "";
+    }
+    private async Task ResetPage() { _page = 0; await Load(); }
+    private async Task ChangePage(int delta) { _page = Math.Max(0, _page + delta); await Load(); }
+    private async Task SaveReply(ProductReview review)
+    {
+        if (_busy) return;
+        _busy = true;
+        try { _notice = await Reviews.ReplyAsync(review.Id, _replies[review.Id]) ? "پاسخ ذخیره شد." : "ذخیره انجام نشد؛ متن پاسخ را بررسی کنید."; await Load(); }
+        finally { _busy = false; }
+    }
+    private async Task ToggleHidden(ProductReview review)
+    {
+        if (_busy) return;
+        _busy = true;
+        try { _notice = await Reviews.SetHiddenAsync(review.Id, !review.IsHidden) ? "وضعیت نمایش نظر تغییر کرد." : "تغییر انجام نشد."; await Load(); }
+        finally { _busy = false; }
+    }
+}

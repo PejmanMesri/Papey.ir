@@ -25,11 +25,19 @@ public class AppDbContext : DbContext
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<OrderPrintJob> OrderPrintJobs => Set<OrderPrintJob>();
     public DbSet<ProductFavorite> ProductFavorites => Set<ProductFavorite>();
+    public DbSet<ProductReview> ProductReviews => Set<ProductReview>();
     public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
     public DbSet<PageView> PageViews => Set<PageView>();
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
+        mb.Entity<Product>().HasIndex(p => p.DesignCode);
+        mb.Entity<ProductReview>().HasIndex(r => new { r.ProductId, r.UserId }).IsUnique();
+        mb.Entity<ProductReview>().HasIndex(r => new { r.ProductId, r.IsHidden, r.CreatedAt });
+        mb.Entity<ProductReview>().HasOne(r => r.Product).WithMany().HasForeignKey(r => r.ProductId).OnDelete(DeleteBehavior.Cascade);
+        mb.Entity<ProductReview>().HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Restrict);
+        mb.Entity<ProductReview>().HasOne(r => r.Order).WithMany().HasForeignKey(r => r.OrderId).OnDelete(DeleteBehavior.Restrict);
+        mb.Entity<ProductReview>().ToTable(t => t.HasCheckConstraint("CK_ProductReviews_Scores", "\"PrintQuality\" BETWEEN 1 AND 5 AND \"FabricQuality\" BETWEEN 1 AND 5 AND \"Fit\" BETWEEN 1 AND 3"));
         mb.Entity<StoreSettings>().ToTable(t => t.HasCheckConstraint("CK_StoreSettings_Singleton", "\"Id\" = 1"));
         mb.Entity<StoreSettings>().HasData(new StoreSettings { Id = 1, TaxEnabled = false });
         mb.Entity<Category>().HasIndex(c => c.Slug).IsUnique();

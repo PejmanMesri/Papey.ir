@@ -76,6 +76,8 @@ builder.Services.AddDistributedMemoryCache();
 builder.Services.Configure<StoreProfile>(builder.Configuration.GetSection("Store"));
 builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<StoreSeo>();
+builder.Services.AddScoped<ProductRecommendations>();
+builder.Services.AddScoped<ProductReviewService>();
 builder.Services.AddSingleton<TaxSettingsService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);

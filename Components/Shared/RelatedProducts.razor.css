@@ -1,0 +1,5 @@
+.related-section { margin: 52px 0; }
+.related-heading { margin-bottom: 24px; }
+.related-heading span { color: var(--papey-accent-dark); font-size: .8rem; font-weight: 700; }
+.related-heading h2 { margin: 8px 0; font-size: clamp(1.2rem, 3vw, 1.65rem); }
+.related-heading p { color: var(--papey-muted); font-size: .9rem; }

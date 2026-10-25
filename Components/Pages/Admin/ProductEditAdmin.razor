@@ -40,6 +40,11 @@ else
                     <label for="edit-product-name">نام محصول <span class="required-mark">*</span></label>
                     <input id="edit-product-name" class="form-input" maxlength="200" placeholder="مثلاً تیشرت طرح تهران" @bind="_product.Name" @bind:event="oninput" />
                 </div>
+                <div class="editor-field editor-full">
+                    <label for="edit-design-code">کد طرح مشترک <span class="editor-unit">اختیاری</span></label>
+                    <input id="edit-design-code" class="form-input" maxlength="80" dir="ltr" placeholder="مثلاً luffy-01" @bind="_product.DesignCode" @bind:event="oninput" />
+                    <small>برای نمایش یک طرح روی تیشرت، هودی یا مدل‌های دیگر، کد یکسان وارد کنید. اگر خالی باشد، نام طرح به‌صورت خودکار مقایسه می‌شود.</small>
+                </div>
                 <div class="editor-field">
                     <label for="edit-product-price">قیمت فروش <span class="editor-unit">تومان</span></label>
                     <input id="edit-product-price" class="form-input editor-number" type="number" min="0" step="1000" @bind="_product.Price" @bind:event="oninput" />
@@ -312,6 +317,8 @@ else
         { _infoError = "نام محصول را وارد کنید (حداکثر ۲۰۰ کاراکتر)."; return; }
         if (_product.Price < 0 || _product.OldPrice < 0)
         { _infoError = "قیمت محصول نمی‌تواند منفی باشد."; return; }
+        if (_product.DesignCode?.Length > 80)
+        { _infoError = "کد طرح مشترک باید حداکثر ۸۰ کاراکتر باشد."; return; }
         _saving = true;
         try { await SaveInfoCore(); }
         catch { _infoError = "ذخیره انجام نشد. دوباره تلاش کنید."; }
@@ -325,6 +332,7 @@ else
         var t = creating ? new Product { Slug = "p-" + Guid.NewGuid().ToString("N") } : await db.Products.FindAsync(Id);
         if (t is null) { _infoError = "محصول یافت نشد."; return; }
         t.Name = _product!.Name.Trim(); t.Price = _product.Price; t.OldPrice = _product.OldPrice;
+        t.DesignCode = string.IsNullOrWhiteSpace(_product.DesignCode) ? null : _product.DesignCode.Trim().ToLowerInvariant();
         t.ProductTypeId = _product.ProductTypeId;
         t.Description = _product.Description; t.IsNew = _product.IsNew;
         t.IsFeatured = _product.IsFeatured; t.IsActive = _product.IsActive;
