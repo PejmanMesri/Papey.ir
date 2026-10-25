@@ -45,24 +45,25 @@
         }
         else if (_tab == "forgot")
         {
+            <form @onsubmit="SubmitForgot" @onsubmit:preventDefault>
             <h3 style="margin:0 0 14px; font-size:1rem">🔑 فراموشی رمز عبور</h3>
             @if (_forgotDone)
             {
                 <div class="alert-papey alert-success">✓ رمز عبور با موفقیت تغییر کرد. اکنون وارد شوید.</div>
-                <button class="btn-papey" style="width:100%" @onclick='() => { _tab = "password"; ResetForgot(); }'>ورود با رمز جدید</button>
+                <button class="btn-papey" style="width:100%" type="button" @onclick='() => { _tab = "password"; ResetForgot(); }'>ورود با رمز جدید</button>
             }
             else if (!_forgotOtpSent)
             {
                 <p style="font-size:0.85rem; color:var(--papey-muted)">شماره موبایل حساب خود را وارد کنید تا کد بازیابی ارسال شود.</p>
                 <div class="form-group">
                     <label class="form-label">شماره موبایل</label>
-                    <input class="form-input" @bind="_forgotPhone" placeholder="09xxxxxxxxx" maxlength="11" />
+                    <input class="form-input" @bind="_forgotPhone" @bind:event="oninput" placeholder="09xxxxxxxxx" maxlength="11" />
                 </div>
                 @if (_forgotError is not null)
                 {
                     <div class="alert-papey alert-danger">@_forgotError</div>
                 }
-                <button class="btn-papey" style="width:100%" @onclick="SendForgotOtp" disabled="@_sending">
+                <button class="btn-papey" style="width:100%" type="submit" disabled="@_sending">
                     @(_sending ? "در حال ارسال..." : "ارسال کد بازیابی")
                 </button>
             }
@@ -75,36 +76,38 @@
                 }
                 <div class="form-group">
                     <label class="form-label">کد تایید</label>
-                    <input class="form-input" @bind="_forgotCode" maxlength="5" style="text-align:center; letter-spacing:8px; font-size:1.3rem" />
+                    <input class="form-input" @bind="_forgotCode" @bind:event="oninput" maxlength="5" style="text-align:center; letter-spacing:8px; font-size:1.3rem" />
                 </div>
                 <div class="form-group">
                     <label class="form-label">رمز عبور جدید</label>
-                    <input class="form-input" type="password" @bind="_forgotNewPass" placeholder="حداقل ۶ کاراکتر" />
+                    <input class="form-input" type="password" @bind="_forgotNewPass" @bind:event="oninput" placeholder="حداقل ۶ کاراکتر" />
                 </div>
                 @if (_forgotError is not null)
                 {
                     <div class="alert-papey alert-danger">@_forgotError</div>
                 }
-                <button class="btn-papey" style="width:100%" @onclick="ResetPassword" disabled="@_sending">
+                <button class="btn-papey" style="width:100%" type="submit" disabled="@_sending">
                     @(_sending ? "در حال بررسی..." : "تغییر رمز عبور")
                 </button>
-                <button class="btn-papey btn-outline" style="width:100%; margin-top:8px" @onclick="ResetForgot">ویرایش شماره</button>
+                <button class="btn-papey btn-outline" style="width:100%; margin-top:8px" type="button" @onclick="ResetForgot">ویرایش شماره</button>
             }
+            </form>
         }
         else
         {
+            <form @onsubmit="SubmitOtp" @onsubmit:preventDefault>
             @if (!_otpSent)
             {
                 <p style="font-size:0.85rem; color:var(--papey-muted); line-height:1.9">شماره موبایل خود را وارد کنید. پس از تایید کد، وارد می‌شوید؛ اگر حسابی نداشته باشید، حساب شما خودکار ساخته می‌شود.</p>
                 <div class="form-group">
                     <label class="form-label" for="login-phone">شماره موبایل</label>
-                    <input id="login-phone" class="form-input" type="tel" inputmode="tel" autocomplete="tel-national" dir="ltr" @bind="_phone" placeholder="09xxxxxxxxx" maxlength="16" />
+                    <input id="login-phone" class="form-input" type="tel" inputmode="tel" autocomplete="tel-national" dir="ltr" @bind="_phone" @bind:event="oninput" placeholder="09xxxxxxxxx" maxlength="16" />
                 </div>
                 @if (_otpError is not null)
                 {
                     <div class="alert-papey alert-danger">@_otpError</div>
                 }
-                <button class="btn-papey" style="width:100%" @onclick="SendOtp" disabled="@_sending">
+                <button class="btn-papey" style="width:100%" type="submit" disabled="@_sending">
                     @(_sending ? "در حال ارسال..." : "ارسال کد یکبارمصرف")
                 </button>
             }
@@ -117,15 +120,16 @@
                 }
                 <div class="form-group">
                     <label class="form-label">کد تایید</label>
-                    <input class="form-input" aria-label="کد تایید" inputmode="numeric" autocomplete="one-time-code" dir="ltr" @bind="_code" maxlength="5" style="text-align:center; letter-spacing:8px; font-size:1.3rem" />
+                    <input class="form-input" aria-label="کد تایید" inputmode="numeric" autocomplete="one-time-code" dir="ltr" @bind="_code" @bind:event="oninput" maxlength="5" style="text-align:center; letter-spacing:8px; font-size:1.3rem" />
                 </div>
                 @if (_otpError is not null)
                 {
                     <div class="alert-papey alert-danger">@_otpError</div>
                 }
-                <button class="btn-papey" style="width:100%" @onclick="VerifyOtp" disabled="@_sending">تایید و ادامه</button>
-                <button class="btn-papey btn-outline" style="width:100%; margin-top:8px" @onclick="ResetOtp">ویرایش شماره</button>
+                <button class="btn-papey" style="width:100%" type="submit" disabled="@_sending">تایید و ادامه</button>
+                <button class="btn-papey btn-outline" style="width:100%; margin-top:8px" type="button" @onclick="ResetOtp">ویرایش شماره</button>
             }
+            </form>
         }
 
         @if (_tab == "password")
@@ -165,8 +169,13 @@
 
     private string ReturnUrlQuery => string.IsNullOrEmpty(ReturnUrl) ? "" : $"?returnUrl={Uri.EscapeDataString(ReturnUrl)}";
 
+    private Task SubmitOtp() => _otpSent ? VerifyOtp() : SendOtp();
+    private Task SubmitForgot() => _forgotDone ? Task.CompletedTask
+        : _forgotOtpSent ? ResetPassword() : SendForgotOtp();
+
     private async Task SendOtp()
     {
+        if (_sending) return;
         _sending = true; _otpError = null;
         var (ok, devCode, error) = await Auth.RequestOtpAsync(_phone);
         _sending = false;
@@ -184,6 +193,7 @@
 
     private async Task VerifyOtp()
     {
+        if (_sending) return;
         _sending = true; _otpError = null;
         var user = await Auth.VerifyOtpAndSignInAsync(_phone, _code);
         _sending = false;
@@ -195,6 +205,7 @@
 
     private async Task SendForgotOtp()
     {
+        if (_sending) return;
         _sending = true; _forgotError = null;
         var (ok, devCode, error) = await Auth.RequestOtpAsync(_forgotPhone, requireExistingUser: true);
         _sending = false;
@@ -215,6 +226,7 @@
 
     private async Task ResetPassword()
     {
+        if (_sending) return;
         _sending = true; _forgotError = null;
         var (ok, error) = await Auth.ResetPasswordByOtpAsync(_forgotPhone, _forgotCode, _forgotNewPass);
         _sending = false;
