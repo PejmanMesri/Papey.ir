@@ -121,10 +121,19 @@ if (app.Environment.IsDevelopment())
 
 // Render the storefront's 404 page for missing browser pages, preserving HTTP 404.
 // Keep API and printer hub responses in their original format.
-app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api")
-    && !context.Request.Path.StartsWithSegments("/hubs")
-    && (HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method)),
-    branch => branch.UseStatusCodePagesWithReExecute("/not-found"));
+app.UseStatusCodePagesWithReExecute("/not-found");
+app.Use(async (context, next) =>
+{
+    await next(context);
+    if (context.Response.StatusCode != StatusCodes.Status404NotFound
+        || context.Request.Path.StartsWithSegments("/api")
+        || context.Request.Path.StartsWithSegments("/hubs")
+        || !(HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method)))
+    {
+        var statusPages = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IStatusCodePagesFeature>();
+        if (statusPages is not null) statusPages.Enabled = false;
+    }
+});
 
 // Serve user-uploaded files (uploads, favicon, images) via classic static files.
 app.UseStaticFiles();
