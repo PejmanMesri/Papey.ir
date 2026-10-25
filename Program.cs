@@ -1,6 +1,5 @@
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -58,8 +57,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
-builder.Services.AddDataProtection().PersistKeysToFileSystem(
-    new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "App_Data", "data-protection")));
+builder.Services.AddPapeyDataProtection(builder.Configuration, builder.Environment);
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;

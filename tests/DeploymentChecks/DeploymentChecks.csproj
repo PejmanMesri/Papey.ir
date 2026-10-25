@@ -10,5 +10,6 @@
     <PackageReference Include="Npgsql" Version="10.0.3" />
     <Compile Include="../../Services/OtpSignInTickets.cs" Link="OtpSignInTickets.cs" />
     <Compile Include="../../Services/DatabaseConnection.cs" Link="DatabaseConnection.cs" />
+    <Compile Include="../../Services/DataProtectionConfiguration.cs" Link="DataProtectionConfiguration.cs" />
   </ItemGroup>
 </Project>

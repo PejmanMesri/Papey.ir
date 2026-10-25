@@ -1,6 +1,13 @@
 using Microsoft.Extensions.Configuration;
 using Npgsql;
 using Papey.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using System.Security.Claims;
 
 static void Check(bool condition, string description)
 {
@@ -35,6 +42,52 @@ parsed = new NpgsqlConnectionStringBuilder(DatabaseConnection.Build(config));
 Check(parsed.Host == "localhost" && parsed.Password == "secret;Host=attacker", "Database password cannot inject connection settings");
 config["ConnectionStrings:DefaultConnection"] = "Host=custom;Database=store;Username=user;Password=secret";
 Check(new NpgsqlConnectionStringBuilder(DatabaseConnection.Build(config)).Host == "custom", "Explicit connection configuration takes precedence");
+
+var protectionRoot = Path.Combine(Path.GetTempPath(), "papey-cookie-checks-" + Guid.NewGuid().ToString("N"));
+Directory.CreateDirectory(protectionRoot);
+try
+{
+    var sharedKeys = Path.Combine(protectionRoot, "persistent-keys");
+    ServiceProvider Release(string name, string? applicationName = null, bool legacy = false)
+    {
+        var release = Path.Combine(protectionRoot, name);
+        Directory.CreateDirectory(release);
+        var host = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { ContentRootPath = release });
+        host.Configuration["DataProtection:KeyPath"] = sharedKeys;
+        host.Configuration["DataProtection:ApplicationName"] = applicationName;
+        if (legacy) host.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(sharedKeys));
+        else host.Services.AddPapeyDataProtection(host.Configuration, host.Environment);
+        host.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie();
+        return host.Services.BuildServiceProvider();
+    }
+    ISecureDataFormat<AuthenticationTicket> CookieFormat(IServiceProvider services) =>
+        services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
+            .Get(CookieAuthenticationDefaults.AuthenticationScheme).TicketDataFormat;
+    var ticket = new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(
+        [new Claim(ClaimTypes.NameIdentifier, "42")], CookieAuthenticationDefaults.AuthenticationScheme)),
+        new AuthenticationProperties { IsPersistent = true, ExpiresUtc = DateTimeOffset.UtcNow.AddDays(14) },
+        CookieAuthenticationDefaults.AuthenticationScheme);
+    using var releaseA = Release("release-a");
+    var cookie = CookieFormat(releaseA).Protect(ticket);
+    using var releaseB = Release("release-b");
+    Check(CookieFormat(releaseB).Unprotect(cookie)?.Principal.FindFirstValue(ClaimTypes.NameIdentifier) == "42",
+        "An existing authentication cookie survives a different release directory");
+    using var restarted = Release("release-b");
+    Check(CookieFormat(restarted).Unprotect(cookie)?.Properties.IsPersistent == true,
+        "A persistent login survives a new application service provider");
+    using var otherApp = Release("other-app", "Unrelated.Storefront");
+    Check(CookieFormat(otherApp).Unprotect(cookie) is null, "Different application identities remain isolated");
+    using var legacy = Release("legacy-release", legacy: true);
+    var legacyCookie = CookieFormat(legacy).Protect(ticket);
+    var legacyIdentity = legacy.GetRequiredService<IOptions<DataProtectionOptions>>().Value.ApplicationDiscriminator;
+    using var upgraded = Release("upgraded-release", legacyIdentity);
+    Check(CookieFormat(upgraded).Unprotect(legacyCookie)?.Principal.FindFirstValue(ClaimTypes.NameIdentifier) == "42",
+        "Retaining the previous discriminator preserves cookies issued before the fix");
+}
+finally
+{
+    Directory.Delete(protectionRoot, recursive: true);
+}
 
 sealed class TestClock : TimeProvider
 {
