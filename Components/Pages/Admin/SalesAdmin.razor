@@ -102,12 +102,12 @@
                                 var tracking = TrackingDraft(o);
                                 <section class="shipment-editor">
                                     <h3>اطلاعات ارسال مرسوله</h3>
-                                    <p>شرکت ارسال و کد رهگیری را ذخیره کنید، سپس وضعیت سفارش را به «ارسال شده» تغییر دهید تا پیامک ارسال در صف قرار بگیرد.</p>
+                                    <p>با ذخیره شرکت ارسال و کد رهگیری، سفارش به‌صورت خودکار «ارسال شده» می‌شود و پیامک ارسال در صف قرار می‌گیرد.</p>
                                     <form @onsubmit="() => SaveTracking(o)" @onsubmit:preventDefault>
                                         <div class="shipment-fields">
                                             <label>شرکت ارسال<input class="form-input" list="shipment-couriers" maxlength="25" required @bind="tracking.Courier" @bind:event="oninput" /></label>
                                             <label>کد رهگیری مرسوله<input class="form-input" dir="ltr" maxlength="25" required @bind="tracking.Number" @bind:event="oninput" /></label>
-                                            <button type="submit" class="btn-papey" disabled="@_savingTracking">ذخیره اطلاعات ارسال</button>
+                                            <button type="submit" class="btn-papey" disabled="@_savingTracking">@(_savingTracking ? "در حال ذخیره…" : "ذخیره اطلاعات ارسال")</button>
                                         </div>
                                     </form>
                                     <datalist id="shipment-couriers"><option value="تیپاکس" /><option value="پست" /><option value="چاپار" /></datalist>
@@ -214,9 +214,14 @@
             var draft = TrackingDraft(order);
             if (!await ShippingSms.SaveTrackingAsync(order.Id, draft.Courier, draft.Number))
             { _trackingNotice = "ذخیره انجام نشد. شرکت ارسال و کد معتبر ۴ تا ۲۵ کاراکتری وارد کنید. هنگام ارسال پیامک امکان ویرایش وجود ندارد."; return; }
-            order.CourierName = draft.Courier.Trim();
-            order.TrackingNumber = ShipmentTracking.NormalizeNumber(draft.Number);
-            _trackingNotice = $"اطلاعات ارسال سفارش {order.OrderNumber} ذخیره شد.";
+            await using var db = await DbFactory.CreateDbContextAsync();
+            var saved = await db.Orders.AsNoTracking().SingleAsync(o => o.Id == order.Id);
+            order.CourierName = saved.CourierName;
+            order.TrackingNumber = saved.TrackingNumber;
+            order.Status = saved.Status;
+            order.ShippedAt = saved.ShippedAt;
+            _statusVersion++;
+            _trackingNotice = $"اطلاعات ارسال سفارش {order.OrderNumber} ذخیره شد. وضعیت: {PersianHelpers.StatusLabel(order.Status)}";
         }
         finally { _savingTracking = false; }
     }

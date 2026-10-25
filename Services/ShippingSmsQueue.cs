@@ -16,6 +16,13 @@ public sealed class ShippingSmsQueue(IDbContextFactory<AppDbContext> factory, Sm
             || await db.ShippingSmsJobs.AnyAsync(j => j.OrderId == orderId && j.State == ShippingSmsState.Sending, ct)) return false;
         order.CourierName = courier.Trim();
         order.TrackingNumber = ShipmentTracking.NormalizeNumber(number);
+        if (order.Status is OrderStatus.Paid or OrderStatus.Processing)
+        {
+            order.Status = OrderStatus.Shipped;
+            order.ShippedAt ??= DateTime.UtcNow;
+            if (!await db.ShippingSmsJobs.AnyAsync(j => j.OrderId == order.Id, ct))
+                db.ShippingSmsJobs.Add(new() { OrderId = order.Id, IsSandbox = sms.IsSandbox });
+        }
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
         return true;

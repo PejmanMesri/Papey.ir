@@ -99,6 +99,12 @@ try
     Check(!await queue.SaveTrackingAsync(unpaid.Id, "Tipax", "123456789"), "Unpaid orders cannot receive shipment details");
     Check(!await queue.SaveTrackingAsync(order.Id, "Tipax", "https://bad.example"), "Tracking numbers cannot contain URLs");
     Check(await queue.SaveTrackingAsync(order.Id, "Tipax", "۱۲۳۴۵۶۷۸۹۰۱۲۳"), "Tracking saves and normalizes Persian digits");
+    Check(await db.Orders.AnyAsync(o => o.Id == order.Id && o.Status == OrderStatus.Shipped && o.ShippedAt != null)
+        && await db.ShippingSmsJobs.CountAsync(j => j.OrderId == order.Id) == 1,
+        "Saving shipment details atomically marks shipped and queues its SMS");
+    await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => queue.SaveTrackingAsync(order.Id, "Tipax", "1234567890123")));
+    Check(await db.ShippingSmsJobs.CountAsync(j => j.OrderId == order.Id) == 1,
+        "Concurrent repeat saves cannot duplicate shipping SMS");
     await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => queue.SetOrderStatusAsync(order.Id, OrderStatus.Shipped)));
     Check(await db.ShippingSmsJobs.CountAsync(j => j.OrderId == order.Id) == 1, "Concurrent shipping transitions queue exactly once");
     Check(await db.Orders.AnyAsync(o => o.Id == order.Id && o.TrackingNumber == "1234567890123" && o.ShippedAt != null), "Shipment metadata and dispatch date persist");
@@ -109,6 +115,11 @@ try
     var processed = await Task.WhenAll(queue.ProcessOneAsync(), queue.ProcessOneAsync());
     Check(processed.Count(p => p) == 1 && handler.Calls == 1 && await db.ShippingSmsJobs.AnyAsync(j => j.State == ShippingSmsState.Accepted), "Concurrent workers send once and persist acceptance");
     Check(!await queue.RetryAsync(await db.ShippingSmsJobs.Select(j => j.Id).FirstAsync()), "Accepted messages cannot be retried");
+    await queue.SetOrderStatusAsync(order.Id, OrderStatus.Delivered);
+    Check(await queue.SaveTrackingAsync(order.Id, "Tipax", "1234567890124")
+        && await db.Orders.AnyAsync(o => o.Id == order.Id && o.Status == OrderStatus.Delivered)
+        && await db.ShippingSmsJobs.CountAsync(j => j.OrderId == order.Id) == 1,
+        "Editing delivered shipment details preserves delivery and never requeues its SMS");
 
     var failed = Order(OrderStatus.Paid);
     db.Orders.Add(failed); await db.SaveChangesAsync();
