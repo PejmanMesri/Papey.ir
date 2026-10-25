@@ -453,14 +453,6 @@ label.form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-
 .site-footer .footer-category-root { color: #ddd; font-weight: 700; margin-top: 4px; }
 .site-footer .footer-category-child { padding-right: 12px; font-size: .8rem; }
 .footer-bottom { border-top: 1px solid #333; margin-top: 32px; padding-top: 20px; text-align: center; font-size: 0.8rem; }
-.site-footer .enamad-badge { display: inline-flex; align-items: center; justify-content: center; width: 149px; min-height: 160px; padding: 12px; border: 1px solid #e5e0d8; border-radius: 14px; background: #fff; }
-.enamad-badge img { display: block; width: 125px; height: 136px; object-fit: contain; cursor: pointer; }
-.enamad-badge:focus-visible { outline: 3px solid var(--papey-accent); outline-offset: 5px; }
-.enamad-fallback { display: none; }
-.enamad-badge.enamad-image-unavailable img { display: none; }
-.enamad-badge.enamad-image-unavailable .enamad-fallback { display: flex; flex-direction: column; align-items: center; gap: 12px; color: #213b54; text-align: center; }
-.enamad-fallback strong { font-size: .8rem; }
-.enamad-fallback small { font-size: .65rem; color: #687989; }
 
 @media (max-width: 768px) {
     .product-detail { grid-template-columns: 1fr; }
