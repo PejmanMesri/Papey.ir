@@ -85,6 +85,9 @@ namespace Papey.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("AuthVersion")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -97,6 +100,12 @@ namespace Papey.Migrations
                         .HasColumnType("character varying(200)");
 
                     b.Property<bool>("IsAdmin")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDisabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsStaff")
                         .HasColumnType("boolean");
 
                     b.Property<string>("PasswordHash")

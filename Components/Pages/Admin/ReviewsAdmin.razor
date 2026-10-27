@@ -5,7 +5,7 @@
 @inject ProductReviewService Reviews
 
 <PageTitle>نظرهای خریداران | مدیریت پاپی</PageTitle>
-<div class="reviews-admin-head"><div><h1>نظرهای خریداران</h1><p>پاسخ شما با نام «پاپی» زیر نظر مشتری نمایش داده می‌شود.</p></div><label><input type="checkbox" @bind="_unanswered" @bind:after="ResetPage" /> فقط بدون پاسخ</label></div>
+<div class="reviews-admin-head"><div><h1>نظرهای خریداران</h1><p>پاسخ شما با عنوان «مدیر سایت» زیر نظر مشتری نمایش داده می‌شود.</p></div><label><input type="checkbox" @bind="_unanswered" @bind:after="ResetPage" /> فقط بدون پاسخ</label></div>
 @if (_notice is not null) { <div class="alert-papey alert-info" role="status">@_notice</div> }
 @if (_rows.Count == 0) { <div class="card-box">هنوز نظری در این بخش ثبت نشده است.</div> }
 @foreach (var review in _rows.Take(20))
@@ -15,7 +15,7 @@
         <div class="admin-review-scores">چاپ: @Fa(review.PrintQuality) از ۵ · پارچه: @Fa(review.FabricQuality) از ۵ · سایز: @ProductReviewService.FitLabel(review.Fit)</div>
         <p class="admin-review-text">@review.Comment</p>
         <form @onsubmit="() => SaveReply(review)" @onsubmit:preventDefault>
-            <label for="reply-@review.Id">پاسخ پاپی</label>
+            <label for="reply-@review.Id">پاسخ مدیر سایت</label>
             <textarea id="reply-@review.Id" class="form-input" rows="3" maxlength="2000" @bind="_replies[review.Id]" @bind:event="oninput" placeholder="پاسخ خود را برای مشتری بنویسید…"></textarea>
             <div class="admin-review-actions"><button type="submit" class="btn-papey btn-sm" disabled="@_busy">ذخیره پاسخ</button><button type="button" class="btn-papey btn-outline btn-sm" disabled="@_busy" @onclick="() => ToggleHidden(review)">@(review.IsHidden ? "نمایش دوباره نظر" : "پنهان کردن نظر")</button></div>
         </form>

@@ -67,7 +67,11 @@ public sealed class ProductReviewService(IDbContextFactory<AppDbContext> factory
         review.PrintQuality = input.PrintQuality; review.FabricQuality = input.FabricQuality; review.Fit = input.Fit; review.Comment = input.Comment.Trim();
         await db.SaveChangesAsync(); await tx.CommitAsync(); return null;
     }
-    private async Task<bool> IsAdminAsync(AppDbContext db) => auth.CurrentUserId is { } id && await db.Users.AnyAsync(u => u.Id == id && u.IsAdmin);
+    private async Task<bool> IsAdminAsync(AppDbContext db)
+    {
+        var user = auth.CurrentUserId is { } id ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id) : null;
+        return user?.CanManageStore == true && AccountAccess.Valid(auth.CurrentPrincipal ?? new(), user);
+    }
     public async Task<List<ProductReview>> AdminReadAsync(bool unanswered, int page)
     {
         await using var db = await factory.CreateDbContextAsync();

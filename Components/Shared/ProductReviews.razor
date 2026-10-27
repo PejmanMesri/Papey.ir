@@ -45,7 +45,7 @@
                 @if (review.UpdatedAt is not null) { <small class="review-muted">ویرایش‌شده در @Date(review.UpdatedAt.Value)</small> }
                 @if (!string.IsNullOrWhiteSpace(review.Reply))
                 {
-                    <div class="review-reply"><strong>پاسخ پاپی</strong><p class="review-text">@review.Reply</p>@if (review.RepliedAt is { } replied) { <small>@Date(replied)</small> }</div>
+                    <div class="review-reply"><strong>پاسخ مدیر سایت</strong><p class="review-text">@review.Reply</p>@if (review.RepliedAt is { } replied) { <small>@Date(replied)</small> }</div>
                 }
             </article>
         }

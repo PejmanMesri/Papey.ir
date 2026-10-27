@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Papey.Data;
 using Papey.Models;
@@ -14,15 +15,17 @@ public class AuthService
     private readonly IConfiguration _config;
     private readonly SmsService _sms;
     private readonly IHostEnvironment _environment;
+    private readonly AuthenticationStateProvider? _authentication;
 
     public AuthService(IDbContextFactory<AppDbContext> dbFactory, IHttpContextAccessor http,
-        IConfiguration config, SmsService sms, IHostEnvironment environment)
+        IConfiguration config, SmsService sms, IHostEnvironment environment, AuthenticationStateProvider? authentication = null)
     {
         _dbFactory = dbFactory;
         _http = http;
         _config = config;
         _sms = sms;
         _environment = environment;
+        _authentication = authentication;
     }
 
     /// <summary>Verified phone aliases for the existing seeded admin account.</summary>
@@ -51,7 +54,7 @@ public class AuthService
             ? await FindPhoneUserAsync(db, phone)
             : await db.Users.FirstOrDefaultAsync(u =>
                 u.Username.ToLower() == identifier.ToLower() || u.Phone == identifier);
-        if (user is null) return null;
+        if (user is null || user.IsDisabled) return null;
         return BCrypt.Net.BCrypt.Verify(password, user.PasswordHash) ? user : null;
     }
 
@@ -67,6 +70,8 @@ public class AuthService
             return (false, null, "ورود پیامکی در حال حاضر فعال نیست. از رمز عبور استفاده کنید.");
 
         await using var db = await _dbFactory.CreateDbContextAsync();
+        if ((await FindPhoneUserAsync(db, phone))?.IsDisabled == true)
+            return (false, null, "این حساب غیرفعال است. با پشتیبانی تماس بگیرید.");
         if (requireExistingUser && await FindPhoneUserAsync(db, phone) is null)
             return (false, null, "کاربری با این شماره موبایل یافت نشد.");
 
@@ -127,6 +132,10 @@ public class AuthService
         otp.IsUsed = true;
 
         var user = await FindPhoneUserAsync(db, phone);
+        if (user?.IsDisabled == true)
+        {
+            await db.SaveChangesAsync(); await transaction.CommitAsync(); return null;
+        }
         if (user is null && AdminPhones.Contains(phone))
         {
             await db.SaveChangesAsync();
@@ -153,27 +162,34 @@ public class AuthService
     public async Task<AppUser?> GetUserByIdAsync(int id)
     {
         await using var db = await _dbFactory.CreateDbContextAsync();
-        return await db.Users.FindAsync(id);
+        return await db.Users.FirstOrDefaultAsync(u => u.Id == id && !u.IsDisabled);
     }
 
     public async Task SignInAsync(AppUser user)
     {
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.Username),
-            new(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User"),
-        };
-        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        if (user.IsDisabled) throw new UnauthorizedAccessException();
         await _http.HttpContext!.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(identity), new AuthenticationProperties { IsPersistent = true });
+            AccountAccess.Principal(user), new AuthenticationProperties { IsPersistent = true });
     }
 
     public async Task SignOutAsync()
         => await _http.HttpContext!.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
     public int? CurrentUserId =>
-        int.TryParse(_http.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var id) ? id : null;
+        int.TryParse(CurrentPrincipal?.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var id) ? id : null;
+    public ClaimsPrincipal? CurrentPrincipal
+    {
+        get
+        {
+            try
+            {
+                var state = _authentication?.GetAuthenticationStateAsync();
+                if (state?.IsCompletedSuccessfully == true) return state.Result.User;
+            }
+            catch (InvalidOperationException) { /* Regular HTTP endpoints use HttpContext. */ }
+            return _http.HttpContext?.User;
+        }
+    }
 
     public async Task<(AppUser? User, string? Error)> RegisterAsync(string username, string password, string? email, string? phone, string? fullName)
     {
@@ -216,6 +232,7 @@ public class AuthService
         if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
             return (false, "رمز عبور فعلی اشتباه است.");
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        user.AuthVersion++;
         await db.SaveChangesAsync();
         return (true, null);
     }
@@ -252,9 +269,10 @@ public class AuthService
         otp.IsUsed = true;
 
         var user = await FindPhoneUserAsync(db, phone);
-        if (user is null) { await db.SaveChangesAsync(); await transaction.CommitAsync(); return (false, "کاربری با این شماره موبایل یافت نشد."); }
+        if (user is null || user.IsDisabled) { await db.SaveChangesAsync(); await transaction.CommitAsync(); return (false, "حساب فعال با این شماره موبایل یافت نشد."); }
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        user.AuthVersion++;
         await db.SaveChangesAsync();
         await transaction.CommitAsync();
         return (true, null);

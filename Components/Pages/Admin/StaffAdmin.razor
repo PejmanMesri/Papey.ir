@@ -1,0 +1,73 @@
+@page "/admin/staff"
+@attribute [Authorize(Roles = "Owner")]
+@layout AdminLayout
+@rendermode InteractiveServer
+@inject StaffAccounts Accounts
+
+<PageTitle>همکاران و فروشندگان | مدیریت پاپی</PageTitle>
+<h1>همکاران و فروشندگان</h1>
+<p class="staff-intro">همکاران به تمام بخش‌های مدیریت فروشگاه دسترسی دارند؛ تعریف و مدیریت حساب همکاران فقط برای مدیر اصلی است. پاسخ آن‌ها به نظرها با عنوان «مدیر سایت» نمایش داده می‌شود.</p>
+@if (_notice is not null) { <div class="alert-papey @(_ok ? "alert-success" : "alert-danger")" role="status">@_notice</div> }
+<section class="card-box staff-create">
+    <h2>تعریف همکار جدید</h2>
+    <form @onsubmit="Create" @onsubmit:preventDefault>
+        <div class="staff-fields">
+            <label for="staff-name">نام و نام خانوادگی<input id="staff-name" class="form-input" maxlength="200" required @bind="_name" @bind:event="oninput" /></label>
+            <label for="staff-username">نام کاربری<input id="staff-username" class="form-input" dir="ltr" autocomplete="off" minlength="3" maxlength="50" pattern="[a-zA-Z0-9._-]{3,50}" required @bind="_username" @bind:event="oninput" /><small>حروف انگلیسی، عدد، نقطه، خط یا زیرخط</small></label>
+            <label for="staff-phone">موبایل (اختیاری)<input id="staff-phone" class="form-input" type="tel" dir="ltr" maxlength="16" @bind="_phone" @bind:event="oninput" /></label>
+            <label for="staff-password">رمز عبور<input id="staff-password" class="form-input" type="password" dir="ltr" autocomplete="new-password" minlength="10" maxlength="128" required @bind="_password" @bind:event="oninput" /><small>حداقل ۱۰ کاراکتر</small></label>
+        </div>
+        <button type="submit" class="btn-papey" disabled="@_busy">@(_busy ? "در حال ذخیره…" : "ایجاد حساب مدیر سایت")</button>
+    </form>
+</section>
+<section aria-label="فهرست همکاران">
+    <h2>حساب‌های همکاران</h2>
+    @if (_staff.Count == 0) { <div class="card-box">هنوز حساب همکاری تعریف نشده است.</div> }
+    @foreach (var staff in _staff)
+    {
+        <article class="card-box staff-account" @key="staff.Id">
+            <header><div><strong>@staff.Name</strong><span dir="ltr">@staff.Username</span><small>مدیر سایت @(!string.IsNullOrEmpty(staff.Phone) ? "· " + staff.Phone : "")</small></div><span class="status-chip">@(staff.Disabled ? "غیرفعال" : "فعال")</span></header>
+            <div class="staff-actions"><button type="button" class="btn-papey btn-outline btn-sm" disabled="@_busy" @onclick="() => Toggle(staff)">@(staff.Disabled ? "فعال کردن حساب" : "غیرفعال کردن حساب")</button><small>غیرفعال‌سازی دسترسی و نشست‌های فعال را لغو می‌کند.</small></div>
+            <details><summary>تغییر رمز عبور</summary>
+                <form @onsubmit="() => ResetPassword(staff)" @onsubmit:preventDefault class="staff-reset">
+                    <label for="reset-@staff.Id">رمز جدید<input id="reset-@staff.Id" class="form-input" type="password" dir="ltr" autocomplete="new-password" minlength="10" maxlength="128" required @bind="_passwords[staff.Id]" @bind:event="oninput" /></label>
+                    <button type="submit" class="btn-papey btn-sm" disabled="@_busy">ذخیره رمز جدید</button>
+                </form><small>بعد از تغییر رمز، همکار باید دوباره وارد شود.</small>
+            </details>
+        </article>
+    }
+</section>
+
+@code {
+    private List<StaffAccount> _staff = new();
+    private readonly Dictionary<int, string> _passwords = new();
+    private string _name = "", _username = "", _phone = "", _password = "";
+    private string? _notice;
+    private bool _busy, _ok;
+    protected override Task OnInitializedAsync() => Load();
+    private async Task Load() { _staff = await Accounts.ReadAsync(); foreach (var staff in _staff) _passwords.TryAdd(staff.Id, ""); }
+    private async Task Create()
+    {
+        if (_busy) return; _busy = true;
+        try
+        {
+            var error = await Accounts.CreateAsync(_username, _name, _phone, _password);
+            _ok = error is null; _notice = error ?? "حساب همکار ایجاد شد.";
+            _password = "";
+            if (_ok) { _name = _username = _phone = ""; await Load(); }
+        }
+        finally { _busy = false; }
+    }
+    private async Task Toggle(StaffAccount staff)
+    {
+        if (_busy) return; _busy = true;
+        try { _ok = await Accounts.SetDisabledAsync(staff.Id, !staff.Disabled); _notice = _ok ? "وضعیت حساب تغییر کرد." : "تغییر حساب مجاز نیست."; await Load(); }
+        finally { _busy = false; }
+    }
+    private async Task ResetPassword(StaffAccount staff)
+    {
+        if (_busy) return; _busy = true;
+        try { var error = await Accounts.ResetPasswordAsync(staff.Id, _passwords[staff.Id]); _passwords[staff.Id] = ""; _ok = error is null; _notice = error ?? "رمز جدید ذخیره و نشست‌های قبلی لغو شد."; }
+        finally { _busy = false; }
+    }
+}

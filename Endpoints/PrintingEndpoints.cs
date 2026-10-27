@@ -23,7 +23,7 @@ public static class PrintingEndpoints
                 string.IsNullOrEmpty(request.Password) || request.Password.Length > 1024)
                 return Results.Unauthorized();
             var user = await auth.ValidateLoginAsync(request.Identifier, request.Password);
-            if (user is null || !user.IsAdmin) return Results.Unauthorized();
+            if (user is null || !user.CanManageStore) return Results.Unauthorized();
             await auth.SignInAsync(user);
             return Results.NoContent();
         }).RequireRateLimiting("printing-login");
@@ -104,7 +104,7 @@ public sealed class PrintingSecurityFilter(IAntiforgery antiforgery, IDbContextF
         http.Response.Headers.CacheControl = "no-store";
         await using var db = await factory.CreateDbContextAsync(http.RequestAborted);
         if (!int.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ||
-            !await db.Users.AnyAsync(u => u.Id == userId && u.IsAdmin, http.RequestAborted))
+            !await db.Users.AnyAsync(u => u.Id == userId && !u.IsDisabled && (u.IsAdmin || u.IsStaff), http.RequestAborted))
             return Results.Forbid();
 
         if (HttpMethods.IsPost(http.Request.Method))

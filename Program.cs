@@ -36,6 +36,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         o.LogoutPath = "/logout";
         o.AccessDeniedPath = "/login";
         o.ExpireTimeSpan = TimeSpan.FromDays(14);
+        o.Events.OnValidatePrincipal = AccountAccess.ValidateCookie;
         if (builder.Configuration.GetValue<bool>("Deployment:HttpsOnly"))
             o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
         o.Events.OnRedirectToLogin = context =>
@@ -78,6 +79,7 @@ builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<StoreSeo>();
 builder.Services.AddScoped<ProductRecommendations>();
 builder.Services.AddScoped<ProductReviewService>();
+builder.Services.AddScoped<StaffAccounts>();
 builder.Services.AddSingleton<TaxSettingsService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
@@ -96,6 +98,8 @@ builder.Services.AddHostedService<PendingOrderExpiryService>();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddScoped<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider, StoreAuthenticationStateProvider>();
+builder.Services.AddScoped<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler, AccountCircuitHandler>();
 
 var app = builder.Build();
 

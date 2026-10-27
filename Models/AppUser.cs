@@ -22,6 +22,11 @@ public class AppUser
     public string? FullName { get; set; }
 
     public bool IsAdmin { get; set; }
+    public bool IsStaff { get; set; }
+    public bool IsDisabled { get; set; }
+    public int AuthVersion { get; set; }
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public bool CanManageStore => !IsDisabled && (IsAdmin || IsStaff);
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
