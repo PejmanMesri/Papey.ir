@@ -29,7 +29,7 @@ public sealed class StaffAccounts(IDbContextFactory<AppDbContext> factory, AuthS
         var normalizedPhone = SmsService.NormalizePhone(phone);
         if (!Regex.IsMatch(username, @"^[a-zA-Z0-9._-]{3,50}$") || name.Length is 0 or > 200)
             return "نام نمایشی و نام کاربری معتبر وارد کنید؛ نام کاربری ۳ تا ۵۰ حرف انگلیسی، عدد، نقطه، خط یا زیرخط.";
-        if (password.Length is < 10 or > 128) return "رمز عبور باید ۱۰ تا ۱۲۸ کاراکتر باشد.";
+        if (password.Length < 10 || System.Text.Encoding.UTF8.GetByteCount(password) > 72) return "رمز عبور باید حداقل ۱۰ کاراکتر باشد و بیش از حد طولانی نباشد.";
         if (!string.IsNullOrWhiteSpace(phone) && normalizedPhone is null) return "شماره موبایل معتبر نیست.";
         if ((normalizedPhone is not null && auth.AdminPhones.Contains(normalizedPhone)) || auth.AdminPhones.Contains(SmsService.NormalizePhone(username) ?? ""))
             return "شماره مدیر اصلی قابل اختصاص به همکار نیست.";
@@ -52,7 +52,7 @@ public sealed class StaffAccounts(IDbContextFactory<AppDbContext> factory, AuthS
     {
         await using var db = await factory.CreateDbContextAsync();
         if (!await IsOwnerAsync(db)) return "فقط مدیر اصلی مجاز به تغییر رمز همکاران است.";
-        if (password.Length is < 10 or > 128) return "رمز عبور باید ۱۰ تا ۱۲۸ کاراکتر باشد.";
+        if (password.Length < 10 || System.Text.Encoding.UTF8.GetByteCount(password) > 72) return "رمز عبور باید حداقل ۱۰ کاراکتر باشد و بیش از حد طولانی نباشد.";
         var hash = BCrypt.Net.BCrypt.HashPassword(password);
         var changed = await db.Users.Where(u => u.Id == id && u.IsStaff && !u.IsAdmin)
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.PasswordHash, hash).SetProperty(u => u.AuthVersion, u => u.AuthVersion + 1));

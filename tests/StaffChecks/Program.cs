@@ -41,6 +41,8 @@ try
     var ownerAuth = Auth(owner); var accounts = new StaffAccounts(factory, ownerAuth);
     Check(AccountAccess.Principal(owner).IsInRole("Owner") && AccountAccess.Principal(owner).IsInRole("Admin"), "Existing main administrator owns staff management and retains all admin permissions");
     Check(await accounts.CreateAsync("support.one", "Support Test", "09121112222", staffPassword) is null, "Owner can create a staff account");
+    Check(await accounts.CreateAsync("too.long", "Invalid password", null, new string('x', 73)) is not null,
+        "Oversized passwords are rejected before hashing rather than being silently truncated");
     var staff = await db.Users.AsNoTracking().SingleAsync(u => u.Username == "support.one");
     var staffPrincipal = AccountAccess.Principal(staff);
     using var circuitState = new StoreAuthenticationStateProvider(NullLoggerFactory.Instance, factory);

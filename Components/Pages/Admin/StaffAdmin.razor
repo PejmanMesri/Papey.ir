@@ -15,7 +15,7 @@
             <label for="staff-name">نام و نام خانوادگی<input id="staff-name" class="form-input" maxlength="200" required @bind="_name" @bind:event="oninput" /></label>
             <label for="staff-username">نام کاربری<input id="staff-username" class="form-input" dir="ltr" autocomplete="off" minlength="3" maxlength="50" pattern="[a-zA-Z0-9._-]{3,50}" required @bind="_username" @bind:event="oninput" /><small>حروف انگلیسی، عدد، نقطه، خط یا زیرخط</small></label>
             <label for="staff-phone">موبایل (اختیاری)<input id="staff-phone" class="form-input" type="tel" dir="ltr" maxlength="16" @bind="_phone" @bind:event="oninput" /></label>
-            <label for="staff-password">رمز عبور<input id="staff-password" class="form-input" type="password" dir="ltr" autocomplete="new-password" minlength="10" maxlength="128" required @bind="_password" @bind:event="oninput" /><small>حداقل ۱۰ کاراکتر</small></label>
+            <label for="staff-password">رمز عبور<input id="staff-password" class="form-input" type="password" dir="ltr" autocomplete="new-password" minlength="10" maxlength="72" required @bind="_password" @bind:event="oninput" /><small>حداقل ۱۰ کاراکتر</small></label>
         </div>
         <button type="submit" class="btn-papey" disabled="@_busy">@(_busy ? "در حال ذخیره…" : "ایجاد حساب مدیر سایت")</button>
     </form>
@@ -30,7 +30,7 @@
             <div class="staff-actions"><button type="button" class="btn-papey btn-outline btn-sm" disabled="@_busy" @onclick="() => Toggle(staff)">@(staff.Disabled ? "فعال کردن حساب" : "غیرفعال کردن حساب")</button><small>غیرفعال‌سازی دسترسی و نشست‌های فعال را لغو می‌کند.</small></div>
             <details><summary>تغییر رمز عبور</summary>
                 <form @onsubmit="() => ResetPassword(staff)" @onsubmit:preventDefault class="staff-reset">
-                    <label for="reset-@staff.Id">رمز جدید<input id="reset-@staff.Id" class="form-input" type="password" dir="ltr" autocomplete="new-password" minlength="10" maxlength="128" required @bind="_passwords[staff.Id]" @bind:event="oninput" /></label>
+                    <label for="reset-@staff.Id">رمز جدید<input id="reset-@staff.Id" class="form-input" type="password" dir="ltr" autocomplete="new-password" minlength="10" maxlength="72" required @bind="_passwords[staff.Id]" @bind:event="oninput" /></label>
                     <button type="submit" class="btn-papey btn-sm" disabled="@_busy">ذخیره رمز جدید</button>
                 </form><small>بعد از تغییر رمز، همکار باید دوباره وارد شود.</small>
             </details>
