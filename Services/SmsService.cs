@@ -25,6 +25,12 @@ public sealed class SmsService(HttpClient http, IConfiguration config, IHostEnvi
         .Select(NormalizePhone).OfType<string>().Distinct().ToArray();
     public int OrderTemplateId => config.GetValue<int?>("SMSIR_ORDER_TEMPLATE_ID") ?? 0;
     public bool CanSendOrderNotification => IsConfigured && (LineNumber > 0 || (!IsSandbox && OrderTemplateId > 0));
+    public int CustomDesignTemplateId => config.GetValue<int?>("SMSIR_CUSTOM_DESIGN_TEMPLATE_ID") ?? 0;
+    public bool CanSendCustomDesign => IsConfigured && (LineNumber > 0 || (!IsSandbox && CustomDesignTemplateId > 0));
+    public Task<SmsSendResult> SendCustomDesignAsync(string phone, string number, CancellationToken ct = default) =>
+        !IsSandbox && CustomDesignTemplateId > 0
+            ? SendVerifyAsync(phone, CustomDesignTemplateId, "REQUESTNUMBER", number, ct)
+            : SendBulkAsync([phone], $"پاپی؛ درخواست طرح اختصاصی جدید {number} ثبت شد. برای بررسی طرح و تماس با مشتری: https://papey.ir/admin/custom-designs", ct);
 
     public static string? NormalizePhone(string? phone)
     {

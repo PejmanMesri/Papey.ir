@@ -207,6 +207,122 @@ namespace Papey.Migrations
                     b.ToTable("Colors");
                 });
 
+            modelBuilder.Entity("Papey.Models.CustomDesignRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AdminNotes")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Colour")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Garment")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("LayersJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Size")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SubmissionKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status", "CreatedAt");
+
+                    b.HasIndex("UserId", "SubmissionKey")
+                        .IsUnique();
+
+                    b.ToTable("CustomDesignRequests");
+                });
+
+            modelBuilder.Entity("Papey.Models.CustomDesignSmsJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("AvailableAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsSandbox")
+                        .HasColumnType("boolean");
+
+                    b.Property<long?>("MessageId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RequestId", "Phone")
+                        .IsUnique();
+
+                    b.HasIndex("State", "AvailableAt");
+
+                    b.ToTable("CustomDesignSmsJobs");
+                });
+
             modelBuilder.Entity("Papey.Models.Order", b =>
                 {
                     b.Property<int>("Id")
@@ -989,6 +1105,28 @@ namespace Papey.Migrations
                     b.Navigation("ProductType");
                 });
 
+            modelBuilder.Entity("Papey.Models.CustomDesignRequest", b =>
+                {
+                    b.HasOne("Papey.Models.AppUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Papey.Models.CustomDesignSmsJob", b =>
+                {
+                    b.HasOne("Papey.Models.CustomDesignRequest", "Request")
+                        .WithMany("SmsJobs")
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Request");
+                });
+
             modelBuilder.Entity("Papey.Models.Order", b =>
                 {
                     b.HasOne("Papey.Models.AppUser", "User")
@@ -1197,6 +1335,11 @@ namespace Papey.Migrations
             modelBuilder.Entity("Papey.Models.Category", b =>
                 {
                     b.Navigation("Products");
+                });
+
+            modelBuilder.Entity("Papey.Models.CustomDesignRequest", b =>
+                {
+                    b.Navigation("SmsJobs");
                 });
 
             modelBuilder.Entity("Papey.Models.Order", b =>

@@ -1,0 +1,69 @@
+@page "/admin/custom-designs"
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+@rendermode InteractiveServer
+@inject IDbContextFactory<AppDbContext> Factory
+@inject AuthService Auth
+@inject SmsService Sms
+
+<PageTitle>درخواست‌های طرح اختصاصی | مدیریت پاپی</PageTitle>
+<div class="custom-admin-header"><div><h1>درخواست‌های طرح اختصاصی</h1><p>این درخواست‌ها پرداخت نشده‌اند؛ برای قیمت و جزئیات با مشتری هماهنگ کنید.</p></div><button type="button" class="btn-papey btn-outline" @onclick="Load">تازه‌سازی</button></div>
+<div class="custom-admin-filter"><label>وضعیت<select class="form-input" @bind="_filter" @bind:after="Reset"> <option value="">همه درخواست‌ها</option>@foreach (var status in Enum.GetValues<CustomDesignStatus>()) { <option value="@((int)status)">@CustomDesignCatalog.StatusName(status)</option> }</select></label><span>پیامک پذیرش‌شده به معنی تحویل قطعی به گوشی نیست؛ گزارش SMS.ir را بررسی کنید.</span></div>
+@if (!Sms.CanSendCustomDesign || Sms.OrderNotificationPhones.Length == 0) { <div class="alert-papey alert-info">ارسال پیامک درخواست اختصاصی تنظیم نشده است؛ خط ارسال یا قالب و گیرندگان را بررسی کنید. درخواست‌ها در این صفحه محفوظ هستند.</div> }
+@if (_notice is not null) { <div class="alert-papey alert-info" role="status">@_notice</div> }
+@if (_rows.Count == 0) { <div class="card-box">درخواستی با این وضعیت وجود ندارد.</div> }
+@foreach (var request in _rows.Take(15))
+{
+    <article class="card-box custom-admin-request" @key="request.Id"><header><div><strong dir="ltr">@request.Number</strong><span>@request.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm", new System.Globalization.CultureInfo("fa-IR"))</span></div><b>@CustomDesignCatalog.StatusName(request.Status)</b></header>
+        <div class="custom-admin-summary"><strong>@request.Name</strong><a href="tel:@request.Phone" dir="ltr">@request.Phone</a><span>@CustomDesignCatalog.GarmentName(request.Garment) · @CustomDesignCatalog.ColourName(request.Garment, request.Colour) · @request.Size · @PersianHelpers.ToPersianDigits(request.Quantity.ToString()) عدد</span><small>حساب کاربر: @request.User.Username</small></div>
+        @if (!string.IsNullOrEmpty(request.Notes)) { <p class="custom-request-notes">@request.Notes</p> }
+        <details class="custom-admin-details"><summary>مشاهده چیدمان و دریافت فایل‌های اصلی</summary><CustomDesignPreview Request="request" Downloads="true" /></details>
+        <div class="custom-admin-sms"><strong>اعلان پیامکی مدیران</strong>@foreach (var job in request.SmsJobs) { <span><bdi>@job.Phone</bdi>: @SmsLabel(job.State) @if (job.MessageId is not null) { <small>شناسه: @job.MessageId</small> } @if (job.Error is not null) { <small>@job.Error</small> }</span> }</div>
+        <form @onsubmit="() => Save(request)" @onsubmit:preventDefault><label>وضعیت درخواست<select class="form-input" @bind="_statuses[request.Id]">@foreach (var status in Enum.GetValues<CustomDesignStatus>()) { <option value="@status">@CustomDesignCatalog.StatusName(status)</option> }</select></label><label>یادداشت داخلی مدیر <small>برای مشتری نمایش داده نمی‌شود</small><textarea class="form-input" rows="2" maxlength="2000" @bind="_notes[request.Id]" @bind:event="oninput" placeholder="نتیجه تماس، قیمت توافق‌شده و…"></textarea></label><button type="submit" class="btn-papey btn-sm" disabled="@_busy">ذخیره پیگیری</button></form>
+    </article>
+}
+<div class="custom-admin-pages"><button class="btn-papey btn-outline" type="button" disabled="@(_page == 0)" @onclick="() => Page(-1)">قبلی</button><span>صفحه @PersianHelpers.ToPersianDigits((_page + 1).ToString())</span><button class="btn-papey btn-outline" type="button" disabled="@(_rows.Count <= 15)" @onclick="() => Page(1)">بعدی</button></div>
+
+@code {
+    private List<CustomDesignRequest> _rows = [];
+    private readonly Dictionary<Guid, CustomDesignStatus> _statuses = [];
+    private readonly Dictionary<Guid, string> _notes = [];
+    private string _filter = "";
+    private string? _notice;
+    private int _page;
+    private bool _busy;
+    protected override Task OnInitializedAsync() => Load();
+    private async Task<bool> CanManage(AppDbContext db)
+    {
+        var user = Auth.CurrentUserId is int id ? await db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Id == id) : null;
+        return user?.CanManageStore == true && Auth.CurrentPrincipal is not null && AccountAccess.Valid(Auth.CurrentPrincipal, user, roles: true);
+    }
+    private async Task Load()
+    {
+        await using var db = await Factory.CreateDbContextAsync();
+        if (!await CanManage(db)) { _rows = []; return; }
+        var query = db.CustomDesignRequests.AsNoTracking().Include(r => r.User).Include(r => r.SmsJobs).AsQueryable();
+        if (int.TryParse(_filter, out var status)) query = query.Where(r => (int)r.Status == status);
+        _rows = await query.OrderByDescending(r => r.CreatedAt).Skip(_page * 15).Take(16).ToListAsync();
+        foreach (var r in _rows) { _statuses[r.Id] = r.Status; _notes[r.Id] = r.AdminNotes; }
+    }
+    private async Task Save(CustomDesignRequest request)
+    {
+        if (_busy) return; _busy = true;
+        try
+        {
+            await using var db = await Factory.CreateDbContextAsync();
+            if (!await CanManage(db) || !Enum.IsDefined(_statuses[request.Id]) || _notes[request.Id].Length > 2000) return;
+            await db.CustomDesignRequests.Where(r => r.Id == request.Id).ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Status, _statuses[request.Id]).SetProperty(r => r.AdminNotes, _notes[request.Id]));
+            _notice = "وضعیت و یادداشت داخلی ذخیره شد."; await Load();
+        }
+        finally { _busy = false; }
+    }
+    private async Task Reset() { _page = 0; await Load(); }
+    private async Task Page(int delta) { _page = Math.Max(0, _page + delta); await Load(); }
+    private static string SmsLabel(ShippingSmsState state) => state switch {
+        ShippingSmsState.Pending => "در صف ارسال", ShippingSmsState.Sending => "در حال ارسال", ShippingSmsState.Accepted => "پذیرش توسط سرویس",
+        ShippingSmsState.Failed => "ناموفق", ShippingSmsState.Unknown => "نیازمند بررسی گزارش سرویس", _ => "لغو شده"
+    };
+}

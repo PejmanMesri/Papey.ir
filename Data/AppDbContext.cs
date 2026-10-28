@@ -26,11 +26,19 @@ public class AppDbContext : DbContext
     public DbSet<OrderPrintJob> OrderPrintJobs => Set<OrderPrintJob>();
     public DbSet<ProductFavorite> ProductFavorites => Set<ProductFavorite>();
     public DbSet<ProductReview> ProductReviews => Set<ProductReview>();
+    public DbSet<CustomDesignRequest> CustomDesignRequests => Set<CustomDesignRequest>();
+    public DbSet<CustomDesignSmsJob> CustomDesignSmsJobs => Set<CustomDesignSmsJob>();
     public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
     public DbSet<PageView> PageViews => Set<PageView>();
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
+        mb.Entity<CustomDesignRequest>().HasIndex(r => new { r.UserId, r.SubmissionKey }).IsUnique();
+        mb.Entity<CustomDesignRequest>().HasIndex(r => new { r.Status, r.CreatedAt });
+        mb.Entity<CustomDesignRequest>().HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Restrict);
+        mb.Entity<CustomDesignSmsJob>().HasIndex(j => new { j.RequestId, j.Phone }).IsUnique();
+        mb.Entity<CustomDesignSmsJob>().HasIndex(j => new { j.State, j.AvailableAt });
+        mb.Entity<CustomDesignSmsJob>().HasOne(j => j.Request).WithMany(r => r.SmsJobs).HasForeignKey(j => j.RequestId).OnDelete(DeleteBehavior.Cascade);
         mb.Entity<Product>().HasIndex(p => p.DesignCode);
         mb.Entity<ProductReview>().HasIndex(r => new { r.ProductId, r.UserId }).IsUnique();
         mb.Entity<ProductReview>().HasIndex(r => new { r.ProductId, r.IsHidden, r.CreatedAt });

@@ -1,0 +1,21 @@
+@page "/account/custom-designs"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IDbContextFactory<AppDbContext> Factory
+@inject AuthService Auth
+
+<PageTitle>طرح‌های اختصاصی من | پاپی</PageTitle>
+<section class="custom-history"><header><div><h1>طرح‌های اختصاصی من</h1><p>ثبت درخواست رایگان است؛ هزینه نهایی پس از بررسی و هماهنگی با شما مشخص می‌شود.</p></div><a href="/custom-design" class="btn-papey">طراحی جدید ＋</a></header>
+@if (_rows.Count == 0) { <div class="card-box">هنوز درخواستی ثبت نکرده‌اید. اولین لباس با طرح خودتان را بسازید.</div> }
+@foreach (var request in _rows.Take(10))
+{
+    <article class="card-box"><div class="history-request-title"><strong dir="ltr">@request.Number</strong><span>@CustomDesignCatalog.StatusName(request.Status)</span></div><p>@CustomDesignCatalog.GarmentName(request.Garment) · @CustomDesignCatalog.ColourName(request.Garment, request.Colour) · سایز @request.Size · @PersianHelpers.ToPersianDigits(request.Quantity.ToString()) عدد</p><small>@request.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd", new System.Globalization.CultureInfo("fa-IR")) · بدون پرداخت؛ منتظر هماهنگی قیمت با پاپی</small><details><summary>مشاهده طرح و توضیحات من</summary><p class="history-notes">@request.Notes</p><CustomDesignPreview Request="request" Downloads="true" /></details></article>
+}
+<div class="history-pages"><button type="button" class="btn-papey btn-outline" disabled="@(_page == 0)" @onclick="() => Page(-1)">قبلی</button><button type="button" class="btn-papey btn-outline" disabled="@(_rows.Count <= 10)" @onclick="() => Page(1)">بعدی</button></div></section>
+@code {
+    private List<CustomDesignRequest> _rows = [];
+    private int _page;
+    protected override Task OnInitializedAsync() => Load();
+    private async Task Load() { await using var db = await Factory.CreateDbContextAsync(); _rows = await db.CustomDesignRequests.AsNoTracking().Where(r => r.UserId == Auth.CurrentUserId).OrderByDescending(r => r.CreatedAt).Skip(_page * 10).Take(11).ToListAsync(); }
+    private async Task Page(int delta) { _page = Math.Max(0, _page + delta); await Load(); }
+}

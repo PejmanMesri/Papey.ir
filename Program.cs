@@ -41,14 +41,14 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
         o.Events.OnRedirectToLogin = context =>
         {
-            if (context.Request.Path.StartsWithSegments("/api/admin/printing") || context.Request.Path.StartsWithSegments("/hubs/admin/printing"))
+            if (context.Request.Path.StartsWithSegments("/api/admin/printing") || context.Request.Path.StartsWithSegments("/hubs/admin/printing") || context.Request.Path.StartsWithSegments("/api/custom-designs"))
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             else context.Response.Redirect(context.RedirectUri);
             return Task.CompletedTask;
         };
         o.Events.OnRedirectToAccessDenied = context =>
         {
-            if (context.Request.Path.StartsWithSegments("/api/admin/printing") || context.Request.Path.StartsWithSegments("/hubs/admin/printing"))
+            if (context.Request.Path.StartsWithSegments("/api/admin/printing") || context.Request.Path.StartsWithSegments("/hubs/admin/printing") || context.Request.Path.StartsWithSegments("/api/custom-designs"))
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
             else context.Response.Redirect(context.RedirectUri);
             return Task.CompletedTask;
@@ -62,6 +62,9 @@ builder.Services.AddPapeyDataProtection(builder.Configuration, builder.Environme
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("custom-designs", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(10), QueueLimit = 0 }));
     options.AddPolicy("printing-login", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions
         {
@@ -80,6 +83,9 @@ builder.Services.AddScoped<StoreSeo>();
 builder.Services.AddScoped<ProductRecommendations>();
 builder.Services.AddScoped<ProductReviewService>();
 builder.Services.AddScoped<StaffAccounts>();
+builder.Services.AddScoped<CustomDesignService>();
+builder.Services.AddScoped<CustomDesignSmsQueue>();
+builder.Services.AddHostedService<CustomDesignSmsWorker>();
 builder.Services.AddSingleton<TaxSettingsService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
@@ -162,6 +168,7 @@ app.UseRateLimiter();
 app.UseAntiforgery();
 
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
+app.MapCustomDesignEndpoints();
 app.MapGet("/sitemap.xml", async (StoreSeo seo) => Results.Text(await seo.SitemapAsync(), "application/xml; charset=utf-8"));
 app.MapGet("/robots.txt", (StoreSeo seo) => Results.Text(
     "User-agent: *\nDisallow: /admin\nDisallow: /account\nDisallow: /cart\nDisallow: /checkout\nDisallow: /login\nDisallow: /register\nDisallow: /search\nDisallow: /payment/\nSitemap: " + seo.Url("/sitemap.xml") + "\n", "text/plain"));

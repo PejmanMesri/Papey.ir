@@ -14,6 +14,7 @@
             <nav class="mobile-menu-panel" aria-label="منوی فروشگاه">
                 <a href="/">خانه</a>
                 <a href="/products">همه محصولات</a>
+                <a href="/custom-design">✦ طراحی لباس اختصاصی</a>
                 @foreach (var type in _navTypes)
                 {
                     <details class="mobile-category">
@@ -30,6 +31,7 @@
                     <Authorized>
                         <a href="/account">حساب من</a>
                         <a href="/account/orders">سفارش‌های من</a>
+                        <a href="/account/custom-designs">طرح‌های اختصاصی من</a>
                         <a href="/account/favorites">علاقه‌مندی‌ها</a>
                         @if (context.User.IsInRole("Admin")) { <a href="/admin">پنل مدیریت</a> }
                         <a href="/logout">خروج</a>
@@ -69,6 +71,7 @@
                         <div class="account-dropdown">
                             <a href="/account">🏠 پیشخوان</a>
                             <a href="/account/orders">🧾 سفارش‌ها</a>
+                            <a href="/account/custom-designs">✦ طرح‌های اختصاصی من</a>
                             <a href="/account/favorites">♡ علاقه‌مندی‌ها</a>
                             <a href="/account/addresses">📍 نشانی‌ها</a>
                             <a href="/account/profile">👤 جزئیات حساب</a>
@@ -105,6 +108,7 @@
             <div>
                 <h4>خدمات مشتریان</h4>
                 <a href="/contact">نحوه ارتباط با ما</a>
+                <a href="/custom-design">طراحی لباس اختصاصی</a>
 
             </div>
             <div>
