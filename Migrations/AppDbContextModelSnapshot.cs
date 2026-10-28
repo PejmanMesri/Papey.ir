@@ -218,6 +218,14 @@ namespace Papey.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<DateTime?>("AdminRepliedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AdminReply")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<string>("Colour")
                         .IsRequired()
                         .HasMaxLength(20)

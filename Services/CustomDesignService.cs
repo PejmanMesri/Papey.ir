@@ -11,6 +11,20 @@ public sealed class CustomDesignService(IDbContextFactory<AppDbContext> factory,
 {
     public const long MaxFileBytes = 5 * 1024 * 1024, MaxTotalBytes = 24 * 1024 * 1024;
     public string Folder(Guid id) => Path.Combine(environment.ContentRootPath, "App_Data", "custom-designs", id.ToString("N"));
+    public async Task<bool> UpdateAsync(ClaimsPrincipal principal, Guid id, CustomDesignStatus status, string reply, string notes, CancellationToken ct = default)
+    {
+        if (!Enum.IsDefined(status) || reply.Length > 2000 || notes.Length > 2000) return false;
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var uid = int.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var parsed) ? parsed : 0;
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Id == uid, ct);
+        if (user?.CanManageStore != true || !AccountAccess.Valid(principal, user, roles: true)) return false;
+        var request = await db.CustomDesignRequests.SingleOrDefaultAsync(r => r.Id == id, ct);
+        if (request is null) return false;
+        reply = reply.Trim();
+        if (request.AdminReply != reply) request.AdminRepliedAt = reply.Length > 0 ? DateTime.UtcNow : null;
+        request.Status = status; request.AdminReply = reply; request.AdminNotes = notes.Trim();
+        await db.SaveChangesAsync(ct); return true;
+    }
     public static bool ValidLayers(IReadOnlyList<DesignLayer>? layers, int count) => layers is { Count: > 0 and <= 12 }
         && count is > 0 and <= 8 && Enumerable.Range(0, count).All(i => layers.Any(l => l.File == i))
         && layers.All(l => l.File >= 0 && l.File < count && l.Side is "front" or "back" && l.CanvasVersion is 1 or 2

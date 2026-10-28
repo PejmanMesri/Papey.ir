@@ -5,21 +5,23 @@
 @inject IDbContextFactory<AppDbContext> Factory
 @inject AuthService Auth
 @inject SmsService Sms
+@inject CustomDesignService Designs
 
 <PageTitle>درخواست‌های طرح اختصاصی | مدیریت پاپی</PageTitle>
 <div class="custom-admin-header"><div><h1>درخواست‌های طرح اختصاصی</h1><p>این درخواست‌ها پرداخت نشده‌اند؛ برای قیمت و جزئیات با مشتری هماهنگ کنید.</p></div><button type="button" class="btn-papey btn-outline" @onclick="Load">تازه‌سازی</button></div>
-<div class="custom-admin-filter"><label>وضعیت<select class="form-input" @bind="_filter" @bind:after="Reset"> <option value="">همه درخواست‌ها</option>@foreach (var status in Enum.GetValues<CustomDesignStatus>()) { <option value="@((int)status)">@CustomDesignCatalog.StatusName(status)</option> }</select></label><span>پیامک پذیرش‌شده به معنی تحویل قطعی به گوشی نیست؛ گزارش SMS.ir را بررسی کنید.</span></div>
+<div class="custom-admin-filter"><label>وضعیت<select class="form-input" @bind="_filter" @bind:after="Reset"> <option value="">همه درخواست‌ها</option>@foreach (var status in Enum.GetValues<CustomDesignStatus>()) { <option value="@((int)status)">@CustomDesignCatalog.StatusName(status)</option> }</select></label></div>
 @if (!Sms.CanSendCustomDesign || Sms.OrderNotificationPhones.Length == 0) { <div class="alert-papey alert-info">ارسال پیامک درخواست اختصاصی تنظیم نشده است؛ خط ارسال یا قالب و گیرندگان را بررسی کنید. درخواست‌ها در این صفحه محفوظ هستند.</div> }
 @if (_notice is not null) { <div class="alert-papey alert-info" role="status">@_notice</div> }
 @if (_rows.Count == 0) { <div class="card-box">درخواستی با این وضعیت وجود ندارد.</div> }
 @foreach (var request in _rows.Take(15))
 {
     <article class="card-box custom-admin-request" @key="request.Id"><header><div><strong dir="ltr">@request.Number</strong><span>@request.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm", new System.Globalization.CultureInfo("fa-IR"))</span></div><b>@CustomDesignCatalog.StatusName(request.Status)</b></header>
-        <div class="custom-admin-summary"><strong>@request.Name</strong><a href="tel:@request.Phone" dir="ltr">@request.Phone</a><span>@CustomDesignCatalog.GarmentName(request.Garment) · @CustomDesignCatalog.ColourName(request.Garment, request.Colour) · @request.Size · @PersianHelpers.ToPersianDigits(request.Quantity.ToString()) عدد</span><small>حساب کاربر: @request.User.Username</small></div>
+        <div class="custom-admin-summary"><strong>@request.Name</strong><a href="tel:@request.Phone" dir="ltr">@request.Phone</a><span>@CustomDesignCatalog.GarmentName(request.Garment) · @CustomDesignCatalog.ColourName(request.Garment, request.Colour) · @request.Size · @PersianHelpers.ToPersianDigits(request.Quantity.ToString()) عدد</span></div>
+        <details class="custom-admin-details custom-request-manage"><summary>بررسی طرح و پاسخ به مشتری <small>@(request.AdminReply.Length > 0 ? "پاسخ داده شده" : "بدون پاسخ")</small></summary>
         @if (!string.IsNullOrEmpty(request.Notes)) { <p class="custom-request-notes">@request.Notes</p> }
         <details class="custom-admin-details"><summary>مشاهده چیدمان و دریافت فایل‌های اصلی</summary><CustomDesignPreview Request="request" Downloads="true" /></details>
-        <div class="custom-admin-sms"><strong>اعلان پیامکی مدیران</strong>@foreach (var job in request.SmsJobs) { <span><bdi>@job.Phone</bdi>: @SmsLabel(job.State) @if (job.MessageId is not null) { <small>شناسه: @job.MessageId</small> } @if (job.Error is not null) { <small>@job.Error</small> }</span> }</div>
-        <form @onsubmit="() => Save(request)" @onsubmit:preventDefault><label>وضعیت درخواست<select class="form-input" @bind="_statuses[request.Id]">@foreach (var status in Enum.GetValues<CustomDesignStatus>()) { <option value="@status">@CustomDesignCatalog.StatusName(status)</option> }</select></label><label>یادداشت داخلی مدیر <small>برای مشتری نمایش داده نمی‌شود</small><textarea class="form-input" rows="2" maxlength="2000" @bind="_notes[request.Id]" @bind:event="oninput" placeholder="نتیجه تماس، قیمت توافق‌شده و…"></textarea></label><button type="submit" class="btn-papey btn-sm" disabled="@_busy">ذخیره پیگیری</button></form>
+        <form @onsubmit="() => Save(request)" @onsubmit:preventDefault><label>وضعیت درخواست<select class="form-input" @bind="_statuses[request.Id]">@foreach (var status in Enum.GetValues<CustomDesignStatus>()) { <option value="@status">@CustomDesignCatalog.StatusName(status)</option> }</select></label><label class="custom-public-reply">پاسخ به مشتری <small>در بخش «طرح‌های اختصاصی من» به مشتری نمایش داده می‌شود.</small><textarea class="form-input" rows="3" maxlength="2000" @bind="_replies[request.Id]" @bind:event="oninput" placeholder="نتیجه بررسی طرح، قیمت پیشنهادی یا توضیحات برای مشتری…"></textarea></label><details class="custom-internal-notes"><summary>یادداشت داخلی و گزارش پیامک</summary><label>یادداشت داخلی مدیر <small>برای مشتری نمایش داده نمی‌شود</small><textarea class="form-input" rows="2" maxlength="2000" @bind="_notes[request.Id]" @bind:event="oninput"></textarea></label><div class="custom-admin-sms"><strong>اعلان پیامکی مدیران</strong><small>پذیرش توسط سرویس به معنی تحویل قطعی نیست.</small>@foreach (var job in request.SmsJobs) { <span><bdi>@job.Phone</bdi>: @SmsLabel(job.State) @if (job.MessageId is not null) { <small>شناسه: @job.MessageId</small> } @if (job.Error is not null) { <small>@job.Error</small> }</span> }</div></details><button type="submit" class="btn-papey btn-sm" disabled="@_busy">ذخیره پاسخ و وضعیت</button></form>
+        </details>
     </article>
 }
 <div class="custom-admin-pages"><button class="btn-papey btn-outline" type="button" disabled="@(_page == 0)" @onclick="() => Page(-1)">قبلی</button><span>صفحه @PersianHelpers.ToPersianDigits((_page + 1).ToString())</span><button class="btn-papey btn-outline" type="button" disabled="@(_rows.Count <= 15)" @onclick="() => Page(1)">بعدی</button></div>
@@ -28,6 +30,7 @@
     private List<CustomDesignRequest> _rows = [];
     private readonly Dictionary<Guid, CustomDesignStatus> _statuses = [];
     private readonly Dictionary<Guid, string> _notes = [];
+    private readonly Dictionary<Guid, string> _replies = [];
     private string _filter = "";
     private string? _notice;
     private int _page;
@@ -45,18 +48,17 @@
         var query = db.CustomDesignRequests.AsNoTracking().Include(r => r.User).Include(r => r.SmsJobs).AsQueryable();
         if (int.TryParse(_filter, out var status)) query = query.Where(r => (int)r.Status == status);
         _rows = await query.OrderByDescending(r => r.CreatedAt).Skip(_page * 15).Take(16).ToListAsync();
-        foreach (var r in _rows) { _statuses[r.Id] = r.Status; _notes[r.Id] = r.AdminNotes; }
+        foreach (var r in _rows) { _statuses[r.Id] = r.Status; _notes[r.Id] = r.AdminNotes; _replies[r.Id] = r.AdminReply; }
     }
     private async Task Save(CustomDesignRequest request)
     {
         if (_busy) return; _busy = true;
         try
         {
-            await using var db = await Factory.CreateDbContextAsync();
-            if (!await CanManage(db) || !Enum.IsDefined(_statuses[request.Id]) || _notes[request.Id].Length > 2000) return;
-            await db.CustomDesignRequests.Where(r => r.Id == request.Id).ExecuteUpdateAsync(s => s
-                .SetProperty(r => r.Status, _statuses[request.Id]).SetProperty(r => r.AdminNotes, _notes[request.Id]));
-            _notice = "وضعیت و یادداشت داخلی ذخیره شد."; await Load();
+            var saved = Auth.CurrentPrincipal is not null && await Designs.UpdateAsync(Auth.CurrentPrincipal, request.Id,
+                _statuses[request.Id], _replies[request.Id], _notes[request.Id]);
+            _notice = saved ? "پاسخ و وضعیت ذخیره شد؛ مشتری می‌تواند پاسخ را در حساب خود ببیند." : "ذخیره انجام نشد؛ دسترسی و طول متن را بررسی کنید.";
+            if (saved) await Load();
         }
         finally { _busy = false; }
     }

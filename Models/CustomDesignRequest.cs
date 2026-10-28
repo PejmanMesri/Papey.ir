@@ -20,6 +20,8 @@ public sealed class CustomDesignRequest
     public string LayersJson { get; set; } = "[]";
     public CustomDesignStatus Status { get; set; }
     [MaxLength(2000)] public string AdminNotes { get; set; } = "";
+    [MaxLength(2000)] public string AdminReply { get; set; } = "";
+    public DateTime? AdminRepliedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public List<CustomDesignSmsJob> SmsJobs { get; set; } = [];
     [System.ComponentModel.DataAnnotations.Schema.NotMapped]
