@@ -29,9 +29,19 @@ public sealed class CustomDesignService(IDbContextFactory<AppDbContext> factory,
         && count is > 0 and <= 8 && Enumerable.Range(0, count).All(i => layers.Any(l => l.File == i))
         && layers.All(l => l.File >= 0 && l.File < count && l.Side is "front" or "back" && l.CanvasVersion is 1 or 2
             && double.IsFinite(l.X) && double.IsFinite(l.Y) && double.IsFinite(l.Width) && double.IsFinite(l.Height)
-            && double.IsFinite(l.Rotation) && l.Rotation == 0
+            && double.IsFinite(l.Rotation) && l.Rotation is >= -180 and <= 180 && (l.CanvasVersion == 2 || l.Rotation == 0)
             && l.Width is >= .02 and <= 1 && l.Height is >= .02 and <= 1
-            && l.X >= 0 && l.Y >= 0 && l.X + l.Width <= 1.00001 && l.Y + l.Height <= 1.00001);
+            && l.X >= 0 && l.Y >= 0 && l.X + l.Width <= 1.00001 && l.Y + l.Height <= 1.00001 && WithinCanvas(l));
+
+    private static bool WithinCanvas(DesignLayer l)
+    {
+        if (l.CanvasVersion == 1) return true;
+        var angle = l.Rotation * Math.PI / 180;
+        var halfX = (Math.Abs(Math.Cos(angle)) * l.Width + Math.Abs(Math.Sin(angle)) * l.Height / .8) / 2;
+        var halfY = (Math.Abs(Math.Sin(angle)) * l.Width * .8 + Math.Abs(Math.Cos(angle)) * l.Height) / 2;
+        var cx = l.X + l.Width / 2; var cy = l.Y + l.Height / 2;
+        return cx - halfX >= -.00001 && cy - halfY >= -.00001 && cx + halfX <= 1.00001 && cy + halfY <= 1.00001;
+    }
 
     // Parse the PNG envelope before storing: dimensions, chunk boundaries, CRCs and terminal IEND.
     // Files stay private and are only served with image/png and nosniff.

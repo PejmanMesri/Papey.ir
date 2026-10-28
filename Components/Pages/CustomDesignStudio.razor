@@ -12,7 +12,7 @@
         <section class="studio-preview" aria-label="پیش‌نمایش لباس">
             <div class="studio-preview-head"><span>بومِ تو</span><div class="studio-side-switch" role="group" aria-label="سمت لباس"><button type="button" data-side="front" aria-pressed="true">جلو <small data-count-front></small></button><button type="button" data-side="back" aria-pressed="false">پشت <small data-count-back></small></button></div></div>
             <div class="studio-stage"><img class="studio-garment" src="/img/custom-studio/tshirt-white-front.webp" alt="نمای جلوی تیشرت سفید" draggable="false" /><div class="studio-print-zone" aria-label="محدوده چاپ؛ طرح را بکشید تا جابه‌جا شود" tabindex="0"></div><span class="studio-stage-caption">پیش‌نمایش تقریبی · جای چاپ با شما هماهنگ می‌شود</span></div>
-            <p class="studio-hint">طرح را هر جای لباس، روی آستین یا نزدیک لبه پایین بگذار؛ برای تنظیم دقیق از کنترل‌های چیدمان استفاده کن.</p>
+            <div class="studio-quick-tools" hidden role="group" aria-label="تنظیم مستقیم طرح"><button type="button" data-smaller aria-label="کوچک کردن طرح">− کوچک‌تر</button><button type="button" data-larger aria-label="بزرگ کردن طرح">＋ بزرگ‌تر</button><button type="button" data-turn-left aria-label="چرخش طرح به چپ">↺ چرخش</button><output data-angle aria-live="polite">۰°</output><button type="button" data-turn-right aria-label="چرخش طرح به راست">چرخش ↻</button></div><p class="studio-hint">طرح را بکش تا جابه‌جا شود؛ گوشه‌ها برای تغییر اندازه و دستگیره ↻ برای چرخش است. روی آستین و لبه پایین هم می‌توانی طراحی کنی.</p>
         </section>
         <aside class="studio-tools">
             <section class="studio-tool-card"><h2><span>۰۱</span> لباس را انتخاب کن</h2><div class="studio-garments" role="group" aria-label="مدل لباس">@foreach (var garment in CustomDesignCatalog.Garments) { <button type="button" data-garment="@garment.Id" aria-pressed="@(garment.Id == "tshirt" ? "true" : "false")">@garment.Name</button> }</div><label class="studio-label">رنگ لباس</label><div class="studio-colours" role="group" aria-label="رنگ لباس"></div><div class="studio-two-fields"><label>سایز<select class="form-input" data-size>@foreach (var size in CustomDesignCatalog.Sizes) { <option>@size</option> }</select></label><label>تعداد<input class="form-input" type="number" data-quantity min="1" max="100" value="1" /></label></div><ProductSizeGuide ProductName="لباس اختصاصی شما" ProductTypeName="@_typeName" /></section>
@@ -20,7 +20,7 @@
                 @if (_userId is null) { <a class="studio-upload studio-login-upload" href="/login?returnUrl=%2Fcustom-design"><strong>برای افزودن طرح وارد شو ←</strong><small>طرح اختصاصی به حساب شما متصل می‌شود.</small></a> }
                 else { <label class="studio-upload"><span aria-hidden="true">＋</span><strong>انتخاب فایل‌های PNG</strong><small>پس‌زمینه شفاف، نتیجه تمیزتر</small><input type="file" data-files accept="image/png,.png" multiple aria-label="افزودن فایل‌های PNG" /></label> }
                 <p class="studio-upload-note">تا ۸ فایل، هر فایل ۵ مگابایت؛ مجموع ۲۴ مگابایت. می‌توانی تا ۱۲ طرح روی جلو و پشت بچینی.</p><div class="studio-layers" aria-label="طرح‌های افزوده‌شده"></div>
-                <div class="studio-layer-controls" hidden><div class="studio-control-title"><strong>چیدمان طرح انتخاب‌شده</strong><button type="button" data-duplicate>یک کپی دیگر ＋</button></div><label>اندازه طرح<input type="range" data-scale min="2" max="100" value="50" /></label><label>افقی<input type="range" data-x min="0" max="100" value="25" /></label><label>عمودی<input type="range" data-y min="0" max="100" value="25" /></label><div class="studio-layer-actions"><button type="button" data-center>وسط‌چین</button><button type="button" data-other-side>انتقال به سمت دیگر</button><button type="button" data-remove>حذف طرح</button></div></div>
+                <div class="studio-layer-controls" hidden><div class="studio-control-title"><strong>چیدمان طرح انتخاب‌شده</strong><button type="button" data-duplicate>یک کپی دیگر ＋</button></div><label>اندازه طرح<input type="range" data-scale min="2" max="100" value="50" /></label><label>چرخش<input type="range" data-rotation min="-180" max="180" value="0" /></label><label>افقی<input type="range" data-x min="0" max="100" value="25" /></label><label>عمودی<input type="range" data-y min="0" max="100" value="25" /></label><div class="studio-layer-actions"><button type="button" data-center>وسط‌چین</button><button type="button" data-other-side>انتقال به سمت دیگر</button><button type="button" data-remove>حذف طرح</button></div></div>
             </section>
         </aside>
     </div>
@@ -47,7 +47,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
-        _module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/CustomDesignStudio.razor.js?v=2");
+        _module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/CustomDesignStudio.razor.js?v=3");
         _reference = DotNetObjectReference.Create(this);
         await _module.InvokeVoidAsync("init", _root, CustomDesignCatalog.Garments, _reference);
     }
