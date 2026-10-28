@@ -23,9 +23,7 @@ export function init(root, catalog, dotnet) {
         const url = `/img/custom-studio/${garment}-${colour}-${side}.webp`;
         if (image.getAttribute('src') !== url) image.src = url;
         image.alt = `نمای ${side === 'front' ? 'جلو' : 'پشت'} ${g.name} ${c.name}`;
-        // Keep the same printable area in both interactive and archived previews.
-        zone.style.top = garment === 'hoodie' ? (side === 'front' ? '34%' : '36%') : '26%';
-        zone.style.height = garment === 'hoodie' ? '27%' : '39%';
+        // Use the full photograph so sleeves and the hem are reachable as well as the chest.
         all('[data-garment]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.garment === garment)));
         all('[data-side]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.side === side)));
         for (const s of ['front', 'back']) { const count = layers.filter(l => l.side === s).length; q(`[data-count-${s}]`).textContent = count ? `(${count})` : ''; }
@@ -90,7 +88,7 @@ export function init(root, catalog, dotnet) {
                 try { await img.decode(); } catch { URL.revokeObjectURL(url); throw Error('تصویر قابل خواندن نیست؛ یک PNG سالم انتخاب کن.'); }
                 if (!img.naturalWidth || img.naturalWidth > 12000 || img.naturalHeight > 12000 || img.naturalWidth*img.naturalHeight > 40000000) { URL.revokeObjectURL(url); throw Error('ابعاد تصویر بیش از حد مجاز است؛ حداکثر ۴۰ مگاپیکسل.'); }
                 const asset = {id:crypto.randomUUID(), file, name:file.name, url, ratio:img.naturalWidth/img.naturalHeight}; assets.push(asset);
-                const l = {id:crypto.randomUUID(), asset:asset.id, side, x:.25, y:.2, width:.5, height:.5, rotation:0}; setWidth(l,.55); l.x=(1-l.width)/2; l.y=(1-l.height)/2; layers.push(l); selected=l.id;
+                const l = {id:crypto.randomUUID(), asset:asset.id, side, x:.25, y:.2, width:.25, height:.25, rotation:0}; setWidth(l,.25); l.x=(1-l.width)/2; l.y=(1-l.height)/2; layers.push(l); selected=l.id;
             }
             feedback.hidden = true;
         } catch(error) { notice(error.message); }
@@ -109,7 +107,7 @@ export function init(root, catalog, dotnet) {
         if(!layers.length){notice('اول یک طرح PNG روی لباس قرار بده.');feedback.focus();return;}
         busy=true;root.classList.add('is-busy');const button=q('[data-submit]');button.disabled=true;button.textContent='در حال ارسال طرح‌ها…';
         const form = new FormData(q('form'));form.set('key',key);form.set('garment',garment);form.set('colour',colour);form.set('size',q('[data-size]').value);form.set('quantity',q('[data-quantity]').value);
-        form.set('layers',JSON.stringify(layers.map(l=>({file:assets.findIndex(a=>a.id===l.asset),side:l.side,x:l.x,y:l.y,width:l.width,height:l.height,rotation:0}))));
+        form.set('layers',JSON.stringify(layers.map(l=>({file:assets.findIndex(a=>a.id===l.asset),side:l.side,x:l.x,y:l.y,width:l.width,height:l.height,rotation:0,canvasVersion:2}))));
         assets.forEach((a,i)=>form.append('files',a.file,`design-${i}.png`));
         try {
             const r=await fetch('/api/custom-designs',{method:'POST',body:form,headers:{'X-CSRF-TOKEN':form.get('__RequestVerificationToken')},signal,redirect:'error'});

@@ -14,6 +14,15 @@ public static class CustomDesignCatalog
     public static bool Valid(string garment, string colour, string size) =>
         Garments.Any(g => g.Id == garment && g.Colours.Any(c => c.Id == colour)) && Sizes.Contains(size);
     public static string Image(string garment, string colour, string side) => $"/img/custom-studio/{garment}-{colour}-{side}.webp";
+    // Older requests used coordinates inside a chest-only rectangle. Preserve their original layouts.
+    public static Models.DesignLayer StagePlacement(string garment, Models.DesignLayer layer)
+    {
+        if (layer.CanvasVersion == 2) return layer;
+        var top = garment == "hoodie" ? (layer.Side == "front" ? .34 : .36) : .26;
+        var height = garment == "hoodie" ? .27 : .39;
+        return layer with { X = .29 + layer.X * .42, Y = top + layer.Y * height,
+            Width = layer.Width * .42, Height = layer.Height * height, CanvasVersion = 2 };
+    }
     public static string GarmentName(string garment) => Garments.FirstOrDefault(g => g.Id == garment)?.Name ?? garment;
     public static string ColourName(string garment, string colour) => Garments.FirstOrDefault(g => g.Id == garment)?.Colours.FirstOrDefault(c => c.Id == colour)?.Name ?? colour;
     public static string StatusName(Models.CustomDesignStatus status) => status switch {

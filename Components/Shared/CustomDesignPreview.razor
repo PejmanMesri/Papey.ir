@@ -5,8 +5,8 @@
 {
     var layers = _layers.Where(l => l.Side == side).ToArray();
     if (layers.Length == 0) continue;
-    <section><h3>@(side == "front" ? "جلوی لباس" : "پشت لباس")</h3><div class="request-preview-stage"><img class="request-garment" src="@CustomDesignCatalog.Image(Request.Garment, Request.Colour, side)" alt="پیش‌نمایش @(side == "front" ? "جلو" : "پشت") لباس" /><div class="request-print-zone" style="@Zone(side)">
-    @foreach (var layer in layers) { <img class="request-artwork" src="@($"/api/custom-designs/{Request.Id}/files/{layer.File}")" style="left:@Pct(layer.X);top:@Pct(layer.Y);width:@Pct(layer.Width);height:@Pct(layer.Height)" alt="طرح ارسالی مشتری" /> }
+    <section><h3>@(side == "front" ? "جلوی لباس" : "پشت لباس")</h3><div class="request-preview-stage"><img class="request-garment" src="@CustomDesignCatalog.Image(Request.Garment, Request.Colour, side)" alt="پیش‌نمایش @(side == "front" ? "جلو" : "پشت") لباس" /><div class="request-print-zone">
+    @foreach (var layer in layers) { var placement = CustomDesignCatalog.StagePlacement(Request.Garment, layer); <img class="request-artwork" src="@($"/api/custom-designs/{Request.Id}/files/{layer.File}")" style="left:@Pct(placement.X);top:@Pct(placement.Y);width:@Pct(placement.Width);height:@Pct(placement.Height)" alt="طرح ارسالی مشتری" /> }
     </div></div></section>
 }
 </div>
@@ -20,5 +20,4 @@
     private List<DesignLayer> _layers = [];
     protected override void OnParametersSet() { _layers = JsonSerializer.Deserialize<List<DesignLayer>>(Request.LayersJson) ?? []; }
     private static string Pct(double value) => (value * 100).ToString("0.#####", CultureInfo.InvariantCulture) + "%";
-    private string Zone(string side) => Request.Garment == "hoodie" ? $"top:{(side == "front" ? 34 : 36)}%;height:27%" : "top:26%;height:39%";
 }

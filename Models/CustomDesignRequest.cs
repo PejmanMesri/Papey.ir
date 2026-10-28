@@ -41,4 +41,4 @@ public sealed class CustomDesignSmsJob
     [MaxLength(500)] public string? Error { get; set; }
 }
 
-public sealed record DesignLayer(int File, string Side, double X, double Y, double Width, double Height, double Rotation);
+public sealed record DesignLayer(int File, string Side, double X, double Y, double Width, double Height, double Rotation, int CanvasVersion = 1);

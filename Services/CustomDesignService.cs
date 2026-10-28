@@ -13,7 +13,7 @@ public sealed class CustomDesignService(IDbContextFactory<AppDbContext> factory,
     public string Folder(Guid id) => Path.Combine(environment.ContentRootPath, "App_Data", "custom-designs", id.ToString("N"));
     public static bool ValidLayers(IReadOnlyList<DesignLayer>? layers, int count) => layers is { Count: > 0 and <= 12 }
         && count is > 0 and <= 8 && Enumerable.Range(0, count).All(i => layers.Any(l => l.File == i))
-        && layers.All(l => l.File >= 0 && l.File < count && l.Side is "front" or "back"
+        && layers.All(l => l.File >= 0 && l.File < count && l.Side is "front" or "back" && l.CanvasVersion is 1 or 2
             && double.IsFinite(l.X) && double.IsFinite(l.Y) && double.IsFinite(l.Width) && double.IsFinite(l.Height)
             && double.IsFinite(l.Rotation) && l.Rotation == 0
             && l.Width is >= .02 and <= 1 && l.Height is >= .02 and <= 1
