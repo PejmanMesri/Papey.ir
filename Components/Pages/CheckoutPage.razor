@@ -178,6 +178,8 @@ else
         _processing = true; _error = null;
         try
         {
+            if (!Zarinpal.IsConfigured) { _error = "درگاه پرداخت هنوز فعال نشده است. با پشتیبانی تماس بگیرید."; _processing = false; return; }
+            if (Cart.Items.Count == 0 || Auth.CurrentUserId is null) { _error = "سبد خرید یا نشست شما معتبر نیست؛ صفحه را تازه کنید."; _processing = false; return; }
             await using var db = await DbFactory.CreateDbContextAsync();
 
             await using var transaction = await db.Database.BeginTransactionAsync();
@@ -214,6 +216,11 @@ else
                     _error = $"موجودی «{item.ProductName}» کافی نیست.";
                     _processing = false;
                     return;
+                }
+                if (variant.EffectivePrice != item.UnitPrice)
+                {
+                    _error = "قیمت یکی از محصولات تغییر کرده است؛ به سبد خرید برگردید و مبلغ جدید را بررسی کنید.";
+                    _processing = false; return;
                 }
                 order.Items.Add(new OrderItem
                 {
@@ -255,14 +262,16 @@ else
 
             await transaction.CommitAsync();
 
-            // Request payment from Zarinpal sandbox (amount in Rials = Toman × 10)
+            // Request from the configured gateway, explicitly in rials.
             var pay = await Zarinpal.RequestPaymentAsync(
-                (long)(order.GrandTotal * 10),
+                ZarinpalService.ToRials(order.GrandTotal),
                 $"سفارش {order.OrderNumber} فروشگاه پاپی",
                 order.CustomerPhone);
 
             if (!pay.Success)
             {
+                order.Status = OrderStatus.PaymentFailed;
+                await db.SaveChangesAsync();
                 _error = $"خطا در اتصال به درگاه پرداخت: {pay.Error}";
                 _processing = false;
                 return;

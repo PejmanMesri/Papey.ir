@@ -148,6 +148,13 @@ app.Use(async (context, next) =>
 
 // Serve user-uploaded files (uploads, favicon, images) via classic static files.
 app.UseStaticFiles();
+app.Use(async (context, next) =>
+{
+    if (!context.Request.Path.StartsWithSegments("/api") && !context.Request.Path.StartsWithSegments("/hubs")
+        && !context.Request.Path.StartsWithSegments("/_blazor") && context.Request.Path != "/healthz")
+        CartIdentity.Ensure(context, app.Configuration.GetValue<bool>("Deployment:HttpsOnly"));
+    await next(context);
+});
 
 app.MapGet("/admin/product-drafts/{name}", (string name, HttpContext http, ProductDraftUploads uploads) =>
 {

@@ -13,7 +13,7 @@
         {
             <p>در حال بررسی پرداخت...</p>
         }
-        else if (_order is not null && _order.Status == OrderStatus.Paid)
+        else if (_order?.PaidAt is not null)
         {
             <p style="font-size:4rem; margin:8px">✅</p>
             <h2>پرداخت با موفقیت انجام شد</h2>
@@ -84,6 +84,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!ZarinpalService.ValidAuthority(Authority)) { _message = "شناسه پرداخت معتبر نیست."; _loading = false; return; }
         await using var db = await DbFactory.CreateDbContextAsync();
         _order = await db.Orders.Include(o => o.Items)
             .FirstOrDefaultAsync(o => o.PaymentAuthority == Authority);
@@ -106,7 +107,7 @@
         // Idempotency: don't verify twice
         if (_order.Status == OrderStatus.Paid) { _loading = false; return; }
 
-        var verify = await Zarinpal.VerifyPaymentAsync(Authority!, (long)(_order.GrandTotal * 10));
+        var verify = await Zarinpal.VerifyPaymentAsync(Authority!, ZarinpalService.ToRials(_order.GrandTotal));
         if (verify.Success)
         {
             await using var tx = await db.Database.BeginTransactionAsync();
@@ -133,7 +134,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender || _order?.Status != OrderStatus.Paid) return;
+        if (!firstRender || _order?.PaidAt is null) return;
 
         _invoiceOpenAttempted = true;
         _invoiceOpened = await JS.InvokeAsync<bool>("papey.openOrderInvoiceOnce", _order.Id, $"/account/orders/{_order.Id}/invoice");

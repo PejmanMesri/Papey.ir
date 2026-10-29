@@ -1,0 +1,25 @@
+using System.Net;
+using System.Net.Sockets;
+using System.Diagnostics;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using Papey.Data;
+using Papey.Models;
+int checks=0;void Check(bool ok,string name){if(!ok)throw new Exception(name);checks++;Console.WriteLine("PASS: "+name);}
+var source=new NpgsqlConnectionStringBuilder(Environment.GetEnvironmentVariable("PAPEY_TEST_CONNECTION")??throw new Exception("Disposable test DB required")){Pooling=false};var database="papey_payment_flow_"+Guid.NewGuid().ToString("N");await using var admin=new NpgsqlConnection(new NpgsqlConnectionStringBuilder(source.ConnectionString){Database="postgres"}.ConnectionString);await admin.OpenAsync();await new NpgsqlCommand($"CREATE DATABASE \"{database}\"",admin).ExecuteNonQueryAsync();source.Database=database;
+var options=new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(source.ConnectionString).Options;var root=Path.Combine(Path.GetTempPath(),"papey-payment-tests-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);Process? server=null;
+try{
+ await using var db=new AppDbContext(options);await db.Database.MigrateAsync();
+ Order Order(string number,string? authority=null)=>new(){OrderNumber=number,CustomerName="Test customer",CustomerPhone="09120000000",Province="Test",City="Test",FullAddress="Test",GrandTotal=100000,TotalAmount=100000,PaymentAuthority=authority};
+ var untouched=Order("TEST-NO-AUTH");var cancel=Order("TEST-CANCEL","A"+new string('1',35));var paid=Order("TEST-PAID","A"+new string('2',35));paid.Status=OrderStatus.Shipped;paid.PaidAt=DateTime.UtcNow;paid.PaymentRefId="987654321";db.Orders.AddRange(untouched,cancel,paid);await db.SaveChangesAsync();
+ var listener=new TcpListener(IPAddress.Loopback,0);listener.Start();var port=((IPEndPoint)listener.LocalEndpoint).Port;listener.Stop();
+ var start=new ProcessStartInfo("dotnet"){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};start.ArgumentList.Add(Path.GetFullPath("bin/Debug/net10.0/Papey.dll"));start.ArgumentList.Add("--urls");start.ArgumentList.Add($"http://127.0.0.1:{port}");
+ foreach(var v in new Dictionary<string,string>{["ConnectionStrings__DefaultConnection"]=source.ConnectionString,["ASPNETCORE_ENVIRONMENT"]="Production",["Deployment__HttpsOnly"]="false",["Deployment__RequireSecureConfiguration"]="false",["DataProtection__KeyPath"]=root,["DataProtection__ApplicationName"]="PaymentFlowChecks",["ADMIN_USERNAME"]="test-owner",["ADMIN_PASSWORD"]="Disposable-test-owner-password-123",["ZARINPAL_MERCHANT_ID"]="00000000-0000-0000-0000-000000000000",["ZARINPAL_SANDBOX"]="true",["SMSIR_SANDBOX"]="true",["SMSIR_API_KEY"]="YOUR_DISABLED_TEST_KEY",["SMSIR_SANDBOX_API_KEY"]="YOUR_DISABLED_TEST_KEY",["ORDER_NOTIFICATION_PHONES"]=""})start.Environment[v.Key]=v.Value;
+ server=Process.Start(start)!;var output=server.StandardOutput.ReadToEndAsync();var errors=server.StandardError.ReadToEndAsync();using var client=new HttpClient(new HttpClientHandler{AllowAutoRedirect=false}){BaseAddress=new Uri($"http://127.0.0.1:{port}")};for(var i=0;i<100;i++){try{if((await client.GetAsync("/healthz")).IsSuccessStatusCode)break;}catch{}if(server.HasExited)throw new Exception("Isolated server failed");await Task.Delay(200);}
+ await client.GetAsync("/payment/callback?Status=NOK");await db.Entry(untouched).ReloadAsync();Check(untouched.Status==OrderStatus.Pending,"Missing callback authority cannot modify an unrelated unpaid order");
+ await client.GetAsync("/payment/callback?Authority=malformed&Status=OK");await db.Entry(untouched).ReloadAsync();Check(untouched.Status==OrderStatus.Pending,"Malformed callback cannot trigger verification or change an order");
+ var failed=await client.GetStringAsync("/payment/callback?Authority="+cancel.PaymentAuthority+"&Status=NOK");await db.Entry(cancel).ReloadAsync();Check(cancel.Status==OrderStatus.PaymentFailed&&cancel.PaidAt==null,"Cancelled payment stays unpaid");
+ var success=await client.GetStringAsync("/payment/callback?Authority="+paid.PaymentAuthority+"&Status=NOK");await db.Entry(paid).ReloadAsync();Check(paid.Status==OrderStatus.Shipped&&paid.PaidAt!=null,"Repeated cancelled callback cannot downgrade an already paid shipment");Check(success.Contains("TEST-PAID")&&WebUtility.HtmlDecode(success).Contains("۹۸۷۶۵۴۳۲۱"),"Paid callback displays order and payment tracking reference after shipping");
+ Check(await db.OrderAdminSmsJobs.CountAsync()==0&&await db.OrderPrintJobs.CountAsync()==0,"Invalid, cancelled and repeated callbacks enqueue no paid-order side effects");
+ Console.WriteLine($"{checks} HTTP payment flow checks passed; no provider or financial calls.");
+}finally{if(server is {HasExited:false}){server.Kill(true);await server.WaitForExitAsync();}await new NpgsqlCommand($"DROP DATABASE \"{database}\" WITH (FORCE)",admin).ExecuteNonQueryAsync();if(Path.GetDirectoryName(root)==Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar)&&Path.GetFileName(root).StartsWith("papey-payment-tests-"))Directory.Delete(root,true);}

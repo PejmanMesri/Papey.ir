@@ -12,17 +12,20 @@ namespace Papey.Services;
 /// </summary>
 public class CartService
 {
-    private const string CartKey = "papey:cart";
+    private readonly string _cartKey;
     private readonly IDbContextFactory<AppDbContext> _dbFactory;
     private readonly IDistributedCache _cache;
 
     public List<CartItem> Items { get; private set; } = new();
     public event Action? OnChange;
 
-    public CartService(IDbContextFactory<AppDbContext> dbFactory, IDistributedCache cache)
+    public CartService(IDbContextFactory<AppDbContext> dbFactory, IDistributedCache cache, IHttpContextAccessor? accessor = null)
     {
         _dbFactory = dbFactory;
         _cache = cache;
+        var context = accessor?.HttpContext;
+        var id = context?.Items[CartIdentity.ItemKey] as string ?? context?.Request.Cookies[CartIdentity.CookieName];
+        _cartKey = "papey:cart:" + (CartIdentity.Valid(id) ? id : Guid.NewGuid().ToString("N"));
     }
 
     public int TotalQuantity => Items.Sum(i => i.Quantity);
@@ -32,9 +35,23 @@ public class CartService
     {
         try
         {
-            var json = await _cache.GetStringAsync(CartKey);
+            var json = await _cache.GetStringAsync(_cartKey);
             if (!string.IsNullOrEmpty(json))
                 Items = JsonSerializer.Deserialize<List<CartItem>>(json) ?? new();
+            if (Items.Count > 0)
+            {
+                await using var db = await _dbFactory.CreateDbContextAsync();
+                var ids = Items.Select(i => i.ProductVariantId).ToArray();
+                var variants = await db.ProductVariants.AsNoTracking().Include(v => v.Product).Where(v => ids.Contains(v.Id)).ToDictionaryAsync(v => v.Id);
+                Items.RemoveAll(i => !variants.TryGetValue(i.ProductVariantId, out var variant) || !ProductInventory.CanOrder(variant, 1));
+                foreach (var item in Items)
+                {
+                    var variant = variants[item.ProductVariantId];
+                    item.UnitPrice = variant.EffectivePrice;
+                    item.MaxStock = ProductInventory.MaximumQuantity(variant);
+                    item.Quantity = Math.Clamp(item.Quantity, 1, item.MaxStock);
+                }
+            }
         }
         catch { /* keep current */ }
     }
@@ -43,7 +60,7 @@ public class CartService
     {
         try
         {
-            await _cache.SetStringAsync(CartKey, JsonSerializer.Serialize(Items),
+            await _cache.SetStringAsync(_cartKey, JsonSerializer.Serialize(Items),
                 new DistributedCacheEntryOptions { SlidingExpiration = TimeSpan.FromDays(7) });
         }
         catch { /* keep in-memory only */ }

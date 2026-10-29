@@ -51,6 +51,16 @@ try
     Check(await cart.AddAsync(limited.Id, "White", "M", 2) && !await cart.AddAsync(limited.Id, "White", "M", 2), "Repeated adds cannot exceed finite stock");
     await cart.SetQuantityAsync(available.Id, 15000);
     Check(cart.Items.Single(i => i.ProductVariantId == available.Id).Quantity == 15000, "Unlimited cart quantities can increase beyond stored stock");
+    var privateA = Guid.NewGuid().ToString("N"); var privateB = Guid.NewGuid().ToString("N");
+    CartService PrivateCart(string id) { var context = new Microsoft.AspNetCore.Http.DefaultHttpContext(); context.Request.Headers.Cookie = CartIdentity.CookieName + "=" + id; return new(factory, cache, new Microsoft.AspNetCore.Http.HttpContextAccessor { HttpContext = context }); }
+    var cartA = PrivateCart(privateA); var cartB = PrivateCart(privateB);
+    Check(await cartA.AddAsync(unlimited.Id, "Black", "M", 2), "Visitor A can create a private basket");
+    await cartB.LoadAsync(); Check(cartB.Items.Count == 0, "Visitor B cannot read visitor A basket");
+    var sameBrowser = PrivateCart(privateA); await sameBrowser.LoadAsync(); Check(sameBrowser.Items.Single().Quantity == 2, "A private basket survives a fresh browser request");
+    await db.Products.Where(p => p.Id == unlimited.Id).ExecuteUpdateAsync(s => s.SetProperty(p => p.Price, 175));
+    await sameBrowser.LoadAsync(); Check(sameBrowser.Items.Single().UnitPrice == 175, "Basket reload uses current database prices before payment");
+    await cartB.ClearAsync(); await sameBrowser.LoadAsync(); Check(sameBrowser.Items.Count == 1, "Clearing one visitor basket cannot clear another basket");
+    await db.Products.Where(p => p.Id == unlimited.Id).ExecuteUpdateAsync(s => s.SetProperty(p => p.Price, 100));
     await db.Products.Where(p => p.Id == unlimited.Id).ExecuteUpdateAsync(s => s.SetProperty(p => p.HasUnlimitedStock, false));
     await db.ProductVariants.Where(v => v.Id == available.Id).ExecuteUpdateAsync(s => s.SetProperty(v => v.Stock, 4));
     await cart.SetQuantityAsync(available.Id, 15000);
