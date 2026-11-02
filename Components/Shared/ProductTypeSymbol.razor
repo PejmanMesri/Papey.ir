@@ -1,10 +1,6 @@
-@if (Value is "hoodie" or "🧥")
+@if (ProductTypeIcons.Image(TypeName, Value) is string icon)
 {
-    <img class="product-type-symbol" src="/img/icons/hoodie.svg" alt="" aria-hidden="true" width="64" height="64" />
-}
-else if (Value == "long-sleeve")
-{
-    <img class="product-type-symbol" src="/img/icons/long-sleeve.svg" alt="" aria-hidden="true" width="64" height="64" />
+    <img class="product-type-symbol" src="@icon" alt="" aria-hidden="true" width="64" height="64" />
 }
 else
 {
@@ -13,4 +9,5 @@ else
 
 @code {
     [Parameter] public string? Value { get; set; }
+    [Parameter] public string? TypeName { get; set; }
 }

@@ -11,7 +11,7 @@
 <div class="card-box" style="max-width:640px">
     <div style="display:flex; gap:12px; align-items:end; margin-bottom:16px; flex-wrap:wrap">
         <div><label class="form-label">نام نوع</label><input class="form-input" @bind="_newName" placeholder="مثلاً شلوار" /></div>
-        <div><label class="form-label">آیکن فیلتر</label><input class="form-input" @bind="_newIcon" maxlength="64" placeholder="مثلاً 👕" /></div>
+        <div><label class="form-label">آیکن فیلتر</label><input class="form-input" @bind="_newIcon" maxlength="64" placeholder="اختیاری؛ آیکن لباس خودکار است" /></div>
         <button class="btn-papey" @onclick="Add">➕ افزودن</button>
     </div>
     <table class="table-papey mobile-card-table">
@@ -34,7 +34,7 @@
                         }
                         else
                         {
-                            <span style="font-size:1.35rem"><ProductTypeSymbol Value='@(string.IsNullOrWhiteSpace(t.FilterIcon) ? "—" : t.FilterIcon)' /></span>
+                            <span style="font-size:1.35rem"><ProductTypeSymbol TypeName="@t.Name" Value="@t.FilterIcon" /></span>
                         }
                     </td>
                     <td data-label="محصولات">@PersianHelpers.ToPersianDigits(_productCounts.GetValueOrDefault(t.Id, 0).ToString())</td>

@@ -20,7 +20,7 @@
     <div class="home-categories">
         @foreach (var type in _types)
         {
-            <a class="home-category" href="/products?type=@type.Id"><span class="home-category-icon" aria-hidden="true"><ProductTypeSymbol Value="@ProductTypeIcon(type)" /></span><div><h3>@type.Name</h3><span>دیدن همه طرح‌ها ←</span></div></a>
+            <a class="home-category" href="/products?type=@type.Id"><span class="home-category-icon" aria-hidden="true"><ProductTypeSymbol TypeName="@type.Name" Value="@type.FilterIcon" /></span><div><h3>@type.Name</h3><span>دیدن همه طرح‌ها ←</span></div></a>
         }
     </div>
 </section>
@@ -55,6 +55,5 @@
         _heroProducts = await db.Products.Include(p => p.Media).Where(p => p.IsActive && p.HomeHeroSlot != null)
             .OrderBy(p => p.HomeHeroSlot).Take(2).ToListAsync();
     }
-    private static string ProductTypeIcon(ProductTypeEntity type)
-        => string.IsNullOrWhiteSpace(type.FilterIcon) ? type.Name == "هودی" ? "🧥" : "👕" : type.FilterIcon;
+
 }

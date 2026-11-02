@@ -40,7 +40,7 @@
                     {
                         <button type="button" class="clothing-type-option @GetClothingTypeClass(type) @(_selectedProductTypeId == type.Id ? "is-selected" : "")"
                                 @onclick="() => NavigateToProductType(type)">
-                            <span class="clothing-type-icon"><ProductTypeSymbol Value="@GetProductTypeIcon(type)" /></span>
+                            <span class="clothing-type-icon"><ProductTypeSymbol TypeName="@type.Name" Value="@type.FilterIcon" /></span>
                             <span>@type.Name</span>
                         </button>
                     }
@@ -214,8 +214,5 @@
     private static string GetClothingTypeClass(ProductTypeEntity type)
         => type.Name == "هودی" ? "is-hoodie" : "is-tshirt";
 
-    private static string GetProductTypeIcon(ProductTypeEntity type)
-        => string.IsNullOrWhiteSpace(type.FilterIcon)
-            ? type.Name == "هودی" ? "🧥" : "👕"
-            : type.FilterIcon;
+
 }
