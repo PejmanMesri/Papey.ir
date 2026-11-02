@@ -8,10 +8,10 @@
 
 <h1 style="margin-top:0">🏷 انواع محصول</h1>
 
-<div class="card-box" style="max-width:640px">
+<div class="card-box" style="max-width:960px">
     <div style="display:flex; gap:12px; align-items:end; margin-bottom:16px; flex-wrap:wrap">
         <div><label class="form-label">نام نوع</label><input class="form-input" @bind="_newName" placeholder="مثلاً شلوار" /></div>
-        <div><label class="form-label">آیکن فیلتر</label><input class="form-input" @bind="_newIcon" maxlength="64" placeholder="اختیاری؛ آیکن لباس خودکار است" /></div>
+        <div><label class="form-label">آیکن فیلتر</label><ProductTypeIconPicker @bind-Value="_newIcon" TypeName="@_newName" /></div>
         <button class="btn-papey" @onclick="Add">➕ افزودن</button>
     </div>
     <table class="table-papey mobile-card-table">
@@ -30,7 +30,7 @@
                     <td data-label="آیکن فیلتر">
                         @if (_editId == t.Id)
                         {
-                            <input class="form-input" style="width:110px" maxlength="64" @bind="_editIcon" />
+                            <ProductTypeIconPicker @bind-Value="_editIcon" TypeName="@_editName" />
                         }
                         else
                         {
@@ -154,6 +154,7 @@
 
     private async Task SaveEdit(ProductTypeEntity t)
     {
+        if (string.IsNullOrWhiteSpace(_editName)) { _msgSuccess = false; _msg = "نام نوع الزامی است."; return; }
         await using var db = await DbFactory.CreateDbContextAsync();
         var x = await db.ProductTypes.FindAsync(t.Id);
         if (x is not null)

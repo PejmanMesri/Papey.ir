@@ -1,0 +1,34 @@
+<div class="type-icon-picker">
+    <div class="type-icon-options" role="group" aria-label="انتخاب آیکن لباس">
+        @foreach (var option in Options)
+        {
+            <button type="button" class="type-icon-option @(Selected == option.Value ? "selected" : "")"
+                    aria-pressed="@(Selected == option.Value)" title="@option.Label"
+                    @onclick="() => ValueChanged.InvokeAsync(option.Value)">
+                <ProductTypeSymbol Value="@option.Value" TypeName="@(option.Value == "" ? TypeName : null)" />
+                <span>@option.Label</span>
+            </button>
+        }
+    </div>
+    <label class="type-icon-custom">ایموجی دلخواه (اختیاری)
+        <input class="form-input" maxlength="64" aria-label="ایموجی دلخواه" placeholder="مثلاً 👖"
+               value="@(IsBuiltIn ? "" : Value)" @onchange="CustomChanged" />
+    </label>
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string? TypeName { get; set; }
+    private static readonly (string Value, string Label)[] Options =
+    [ ("", "خودکار"), ("tshirt", "تیشرت"), ("hoodie", "هودی"), ("long-sleeve", "لانگ اسلیو"), ("clothing", "عمومی") ];
+    private string Selected => Value?.Trim().ToLowerInvariant() switch
+    {
+        null or "" or "—" => "",
+        "👕" or "t-shirt" => "tshirt",
+        "🧥" => "hoodie",
+        var value => value
+    };
+    private bool IsBuiltIn => Options.Any(option => option.Value == Selected);
+    private Task CustomChanged(ChangeEventArgs args) => ValueChanged.InvokeAsync(args.Value?.ToString()?.Trim() ?? "");
+}
