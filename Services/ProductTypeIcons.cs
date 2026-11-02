@@ -4,6 +4,7 @@ public static class ProductTypeIcons
 {
     public static string? Image(string? name, string? value)
     {
+        if (ProductTypeIconUploads.IsUploaded(value)) return value;
         var normalized = (name ?? "").Trim().ToLowerInvariant().Replace('ي', 'ی').Replace("‌", "").Replace(" ", "").Replace("-", "");
         var icon = value?.Trim().ToLowerInvariant();
         // Explicit choices take priority over automatic name matching.

@@ -9,10 +9,17 @@
 <h1 style="margin-top:0">🏷 انواع محصول</h1>
 
 <div class="card-box" style="max-width:960px">
+    <details style="margin-bottom:20px; padding:14px; background:#f5f3ed; border-radius:12px">
+        <summary style="cursor:pointer; font-weight:700">راهنمای انتخاب و بارگذاری آیکن</summary>
+        <p>از آیکن‌های آماده انتخاب کنید یا تصویر دلخواه خود را بارگذاری کنید. فرمت‌های مجاز: SVG، PNG، JPG / JPEG، WebP، GIF، AVIF، ICO و BMP؛ حداکثر حجم ۲ مگابایت.</p>
+        <p>برای بهترین نتیجه، تصویر مربع با پس‌زمینه شفاف و اندازه ۲۵۶ × ۲۵۶ پیکسل یا بزرگ‌تر انتخاب کنید. طرح لباس را وسط تصویر قرار دهید و اطراف آن کمی فضای خالی بگذارید. SVG ساده یا PNG شفاف پیشنهاد می‌شود.</p>
+        <p>SVG باید بدون اسکریپت، استایل، متن و لینک خارجی باشد؛ نوشته‌ها را به مسیر (Path) تبدیل کنید یا خروجی PNG بگیرید. فایل‌های طراحی مانند PSD، AI و PDF را ابتدا به یکی از فرمت‌های تصویری بالا تبدیل کنید.</p>
+        <p>پیش‌نمایش پس از بارگذاری نمایش داده می‌شود؛ برای ثبت نهایی روی «افزودن» یا دکمه ذخیره همان ردیف بزنید. فایل‌های استفاده‌نشده پس از ۲۴ ساعت، در پاک‌سازی روزانه حذف می‌شوند.</p>
+    </details>
     <div style="display:flex; gap:12px; align-items:end; margin-bottom:16px; flex-wrap:wrap">
         <div><label class="form-label">نام نوع</label><input class="form-input" @bind="_newName" placeholder="مثلاً شلوار" /></div>
-        <div><label class="form-label">آیکن فیلتر</label><ProductTypeIconPicker @bind-Value="_newIcon" TypeName="@_newName" /></div>
-        <button class="btn-papey" @onclick="Add">➕ افزودن</button>
+        <div><label class="form-label">آیکن فیلتر</label><ProductTypeIconPicker @bind-Value="_newIcon" TypeName="@_newName" UploadingChanged="IconUploading" /></div>
+        <button class="btn-papey" disabled="@(_iconUploads > 0)" @onclick="Add">➕ افزودن</button>
     </div>
     <table class="table-papey mobile-card-table">
         <thead><tr><th>نام</th><th>آیکن فیلتر</th><th>محصولات</th><th>ترتیب</th><th>وضعیت</th><th></th></tr></thead>
@@ -30,7 +37,7 @@
                     <td data-label="آیکن فیلتر">
                         @if (_editId == t.Id)
                         {
-                            <ProductTypeIconPicker @bind-Value="_editIcon" TypeName="@_editName" />
+                            <ProductTypeIconPicker @bind-Value="_editIcon" TypeName="@_editName" UploadingChanged="IconUploading" />
                         }
                         else
                         {
@@ -50,7 +57,7 @@
                     <td data-label="عملیات">
                         @if (_editId == t.Id)
                         {
-                            <button class="btn-papey btn-sm" @onclick="() => SaveEdit(t)">✓</button>
+                            <button class="btn-papey btn-sm" disabled="@(_iconUploads > 0)" aria-label="ذخیره نوع لباس" @onclick="() => SaveEdit(t)">✓</button>
                         }
                         else
                         {
@@ -82,6 +89,8 @@
     private string? _msg;
     private int? _deleteId;
     private bool _deleting, _msgSuccess;
+    private int _iconUploads;
+    private void IconUploading(bool uploading) => _iconUploads = Math.Max(0, _iconUploads + (uploading ? 1 : -1));
 
     private async Task ConfirmDelete()
     {
@@ -118,6 +127,7 @@
 
     private async Task Add()
     {
+        if (_iconUploads > 0) return;
         _msg = null; _msgSuccess = false;
         if (string.IsNullOrWhiteSpace(_newName)) { _msg = "نام نوع الزامی است."; return; }
         await using var db = await DbFactory.CreateDbContextAsync();
@@ -154,6 +164,7 @@
 
     private async Task SaveEdit(ProductTypeEntity t)
     {
+        if (_iconUploads > 0) return;
         if (string.IsNullOrWhiteSpace(_editName)) { _msgSuccess = false; _msg = "نام نوع الزامی است."; return; }
         await using var db = await DbFactory.CreateDbContextAsync();
         var x = await db.ProductTypes.FindAsync(t.Id);

@@ -1,3 +1,6 @@
+@inject ProductTypeIconUploads IconUploads
+@inject AuthService Auth
+
 <div class="type-icon-picker">
     <div class="type-icon-options" role="group" aria-label="انتخاب آیکن لباس">
         @foreach (var option in Options)
@@ -12,14 +15,24 @@
     </div>
     <label class="type-icon-custom">ایموجی دلخواه (اختیاری)
         <input class="form-input" maxlength="64" aria-label="ایموجی دلخواه" placeholder="مثلاً 👖"
-               value="@(IsBuiltIn ? "" : Value)" @onchange="CustomChanged" />
+               value="@(IsBuiltIn || ProductTypeIconUploads.IsUploaded(Value) ? "" : Value)" @onchange="CustomChanged" />
     </label>
+    <label class="type-icon-upload">بارگذاری تصویر دلخواه
+        <InputFile OnChange="Upload" accept=".svg,.png,.jpg,.jpeg,.webp,.gif,.avif,.ico,.bmp" disabled="@_uploading" />
+    </label>
+    @if (_uploading) { <p role="status">در حال بارگذاری…</p> }
+    @if (ProductTypeIconUploads.IsUploaded(Value))
+    {
+        <div class="type-icon-preview"><ProductTypeSymbol Value="@Value" /><span>تصویر انتخاب شد؛ برای ثبت، افزودن یا ذخیره را بزنید.</span></div>
+    }
+    @if (_error is not null) { <p role="alert" class="type-icon-error">@_error</p> }
 </div>
 
 @code {
     [Parameter] public string? Value { get; set; }
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
     [Parameter] public string? TypeName { get; set; }
+    [Parameter] public EventCallback<bool> UploadingChanged { get; set; }
     private static readonly (string Value, string Label)[] Options =
     [ ("", "خودکار"), ("tshirt", "تیشرت"), ("hoodie", "هودی"), ("long-sleeve", "لانگ اسلیو"), ("clothing", "عمومی") ];
     private string Selected => Value?.Trim().ToLowerInvariant() switch
@@ -31,4 +44,21 @@
     };
     private bool IsBuiltIn => Options.Any(option => option.Value == Selected);
     private Task CustomChanged(ChangeEventArgs args) => ValueChanged.InvokeAsync(args.Value?.ToString()?.Trim() ?? "");
+    private bool _uploading;
+    private string? _error;
+    private async Task Upload(InputFileChangeEventArgs args)
+    {
+        if (_uploading) return;
+        _uploading = true; _error = null;
+        await UploadingChanged.InvokeAsync(true);
+        try
+        {
+            await using var input = args.File.OpenReadStream(ProductTypeIconUploads.MaxBytes);
+            var url = await IconUploads.SaveAsync(Auth.CurrentPrincipal, input, args.File.Name);
+            await ValueChanged.InvokeAsync(url);
+        }
+        catch (InvalidOperationException ex) { _error = ex.Message; }
+        catch (IOException) { _error = "بارگذاری انجام نشد؛ حداکثر حجم ۲ مگابایت است. دوباره تلاش کنید."; }
+        finally { _uploading = false; await UploadingChanged.InvokeAsync(false); }
+    }
 }

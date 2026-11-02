@@ -84,6 +84,8 @@ builder.Services.AddScoped<ProductRecommendations>();
 builder.Services.AddScoped<ProductReviewService>();
 builder.Services.AddScoped<StaffAccounts>();
 builder.Services.AddScoped<SizeGuideSettings>();
+builder.Services.AddScoped<ProductTypeIconUploads>();
+builder.Services.AddHostedService<ProductTypeIconCleanupWorker>();
 builder.Services.AddScoped<CustomDesignService>();
 builder.Services.AddScoped<CustomDesignSmsQueue>();
 builder.Services.AddHostedService<CustomDesignSmsWorker>();
