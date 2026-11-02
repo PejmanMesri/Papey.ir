@@ -1,6 +1,6 @@
 @if (ProductTypeIcons.Image(TypeName, Value) is string icon)
 {
-    <img class="product-type-symbol" src="@icon" alt="" aria-hidden="true" width="64" height="64" />
+    <img class="product-type-symbol" src="@(icon + "?v=garments-20261102")" alt="" aria-hidden="true" width="64" height="64" />
 }
 else
 {
