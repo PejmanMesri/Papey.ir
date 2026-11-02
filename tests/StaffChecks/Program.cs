@@ -96,8 +96,12 @@ try
     Check((await ownerClient.GetStringAsync("/admin/staff")).Contains("staff-username"), "Owner can open the staff management form");
     var denied = await staffClient.GetAsync("/admin/staff");
     Check(!denied.IsSuccessStatusCode && !(await denied.Content.ReadAsStringAsync()).Contains("staff-username"), "Staff is denied the owner-only route on the server");
-    foreach (var path in new[] { "/admin", "/admin/products", "/admin/reviews", "/admin/sales", "/admin/settings", "/admin/sms" })
+    foreach (var path in new[] { "/admin", "/admin/products", "/admin/reviews", "/admin/sales", "/admin/sms" })
         Check((await staffClient.GetAsync(path)).IsSuccessStatusCode, "Staff retains access to " + path);
+    Check(!(await staffClient.GetAsync("/admin/settings")).IsSuccessStatusCode, "Seller cannot open owner-only settings");
+    Check((await ownerClient.GetStringAsync("/admin/settings")).Contains("guide-settings-title"), "Owner settings include product-type size guides");
+    var sellerDashboard=WebUtility.HtmlDecode(await staffClient.GetStringAsync("/admin"));
+    Check(sellerDashboard.Contains("میز کار فروشنده")&&!sellerDashboard.Contains("فروش ۳۰ روز اخیر"), "Seller dashboard focuses on fulfillment rather than owner analytics");
     Check((await staffClient.GetStringAsync("/")).Contains("admin-storefront-return"), "Staff sees the storefront return-to-admin link");
     Check(await accounts.ResetPasswordAsync(staff.Id, newPassword) is null, "Owner can reset a staff password");
     await activity(null!);

@@ -1,4 +1,5 @@
 @inject IJSRuntime JS
+@inject SizeGuideSettings Guides
 @implements IAsyncDisposable
 
 <button class="size-guide-trigger" type="button" @onclick="Open" aria-haspopup="dialog">
@@ -17,8 +18,11 @@
 @code {
     [Parameter] public string? ImageUrl { get; set; }
     [Parameter] public string? ProductTypeName { get; set; }
+    [Parameter] public int? ProductTypeId { get; set; }
     [Parameter] public string ProductName { get; set; } = "";
-    private string GuideUrl => ProductSizeGuides.Resolve(ImageUrl, ProductTypeName);
+    private string GuideUrl => _guideUrl ?? ProductSizeGuides.Resolve(null, ProductTypeName);
+    private string? _guideUrl;
+    protected override async Task OnParametersSetAsync() { _guideUrl = await Guides.ReadAsync(ProductTypeId, ProductTypeName); }
     private ElementReference _dialog;
     private IJSObjectReference? _module;
     private async Task Open()

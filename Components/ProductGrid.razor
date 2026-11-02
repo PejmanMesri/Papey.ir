@@ -15,8 +15,9 @@ else
             <div class="product-card">
                 <div class="product-media">
                 @if (p.IsNew) { <span class="badge-new">جدید</span> }
-                <a class="img-wrap" href="/product/@p.Slug">
-                    <img src="@p.ImageUrl" alt="@p.Name" loading="lazy" />
+                <a class="img-wrap @(SecondImage(p) is not null ? "has-second-image" : "")" href="/product/@p.Slug">
+                    <img class="product-image-primary" src="@p.ImageUrl" alt="@p.Name" loading="lazy" />
+                    @if (SecondImage(p) is string alternate) { <img class="product-image-secondary" src="@alternate" alt="" aria-hidden="true" loading="lazy" /> }
                 </a>
                 <button class="favorite-button @(_favoriteProductIds.Contains(p.Id) ? "is-favorite" : "")"
                         type="button"
@@ -50,6 +51,8 @@ else
     [Parameter] public List<Product> Products { get; set; } = new();
 
     private HashSet<int> _favoriteProductIds = [];
+    private static string? SecondImage(Product product) => product.Media.Where(m => m.Type == MediaType.Image && !string.IsNullOrWhiteSpace(m.Url) && m.Url != product.ImageUrl)
+        .OrderBy(m => m.DisplayOrder).ThenBy(m => m.Id).Select(m => m.Url).FirstOrDefault();
 
     protected override async Task OnInitializedAsync()
     {

@@ -89,7 +89,7 @@ else
                 }
             </div>
 
-            <ProductSizeGuide ProductName="@_product.Name" ImageUrl="@_product.SizeGuideImageUrl" ProductTypeName="@_product.ProductType?.Name" />
+            <ProductSizeGuide ProductName="@_product.Name" ProductTypeId="@(_product.ProductTypeId ?? _product.Category?.ProductTypeId)" ProductTypeName="@_product.ProductType?.Name" />
             <label class="form-label">تعداد:</label>
             <div style="display:flex; align-items:center; margin-bottom: 24px">
                 <div class="qty-box">
@@ -119,8 +119,7 @@ else
             <div class="card-box" style="margin-top: 24px; font-size:0.9rem; line-height:2">
                 <strong>توضیحات:</strong>
                 <p style="color:var(--papey-muted)">@_product.Description</p>
-                <span>🚚 ارسال با پست پیشتاز</span><br />
-                <span>↩️ ۷ روز ضمانت بازگشت</span><br />
+                <span>🚚 ارسال با تیپاکس به سراسر ایران</span><br />
                 <span>🔒 پرداخت امن زرین‌پال</span>
             </div>
         </div>

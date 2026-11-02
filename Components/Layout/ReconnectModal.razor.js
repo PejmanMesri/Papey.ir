@@ -1,63 +1,19 @@
-// Set up event handlers
-const reconnectModal = document.getElementById("components-reconnect-modal");
-reconnectModal.addEventListener("components-reconnect-state-changed", handleReconnectStateChanged);
-
-const retryButton = document.getElementById("components-reconnect-button");
-retryButton.addEventListener("click", retry);
-
-const resumeButton = document.getElementById("components-resume-button");
-resumeButton.addEventListener("click", resume);
-
-function handleReconnectStateChanged(event) {
-    if (event.detail.state === "show") {
-        reconnectModal.showModal();
-    } else if (event.detail.state === "hide") {
-        reconnectModal.close();
-    } else if (event.detail.state === "failed") {
-        document.addEventListener("visibilitychange", retryWhenDocumentBecomesVisible);
-    } else if (event.detail.state === "rejected") {
-        location.reload();
-    }
+// Let Blazor reconnect normally, without an overlay interrupting browsing.
+const marker=document.getElementById('components-reconnect-modal');
+let timer, running=false, disconnected=false;
+function stop(){clearTimeout(timer);timer=undefined;}
+async function retry(){
+ if(!disconnected||running||document.hidden||!navigator.onLine)return;
+ running=true;
+ try { const ok=await Blazor.reconnect(); if(!ok){const resumed=await Blazor.resumeCircuit();if(!resumed)location.reload();}else stop(); }
+ catch { stop();timer=setTimeout(retry,5000); }
+ finally {running=false;}
 }
-
-async function retry() {
-    document.removeEventListener("visibilitychange", retryWhenDocumentBecomesVisible);
-
-    try {
-        // Reconnect will asynchronously return:
-        // - true to mean success
-        // - false to mean we reached the server, but it rejected the connection (e.g., unknown circuit ID)
-        // - exception to mean we didn't reach the server (this can be sync or async)
-        const successful = await Blazor.reconnect();
-        if (!successful) {
-            // We have been able to reach the server, but the circuit is no longer available.
-            // We'll reload the page so the user can continue using the app as quickly as possible.
-            const resumeSuccessful = await Blazor.resumeCircuit();
-            if (!resumeSuccessful) {
-                location.reload();
-            } else {
-                reconnectModal.close();
-            }
-        }
-    } catch (err) {
-        // We got an exception, server is currently unavailable
-        document.addEventListener("visibilitychange", retryWhenDocumentBecomesVisible);
-    }
-}
-
-async function resume() {
-    try {
-        const successful = await Blazor.resumeCircuit();
-        if (!successful) {
-            location.reload();
-        }
-    } catch {
-        reconnectModal.classList.replace("components-reconnect-paused", "components-reconnect-resume-failed");
-    }
-}
-
-async function retryWhenDocumentBecomesVisible() {
-    if (document.visibilityState === "visible") {
-        await retry();
-    }
-}
+marker?.addEventListener('components-reconnect-state-changed',event=>{
+ if(event.detail.state==='hide'){disconnected=false;stop();}
+ else if(event.detail.state==='show')disconnected=true;
+ else if(event.detail.state==='rejected')location.reload();
+ else if(event.detail.state==='failed'||event.detail.state==='paused'){disconnected=true;stop();timer=setTimeout(retry,1000);}
+});
+window.addEventListener('online',retry);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)retry();});

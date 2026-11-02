@@ -14,7 +14,7 @@
     {
         if (string.IsNullOrWhiteSpace(Q)) return;
         await using var db = await DbFactory.CreateDbContextAsync();
-        _products = await db.Products
+        _products = await db.Products.Include(p => p.Media)
             .Where(p => p.IsActive && (p.Name.Contains(Q) || (p.Description ?? "").Contains(Q)))
             .ToListAsync();
     }

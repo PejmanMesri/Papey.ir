@@ -14,6 +14,8 @@ public static class CustomDesignCatalog
     public static bool Valid(string garment, string colour, string size) =>
         Garments.Any(g => g.Id == garment && g.Colours.Any(c => c.Id == colour)) && Sizes.Contains(size);
     public static string Image(string garment, string colour, string side) => $"/img/custom-studio/{garment}-{colour}-{side}.webp";
+    public static string WhatsAppUrl(Models.CustomDesignRequest request) => "https://wa.me/989036421161?text=" + Uri.EscapeDataString(
+        $"سلام، وقت بخیر! درخواست لباس با طرح اختصاصی را در سایت پاپی ثبت کردم.\nکد درخواست: {request.Number}\n{GarmentName(request.Garment)}، {ColourName(request.Garment, request.Colour)}، سایز {request.Size}، تعداد {request.Quantity}\nبرای هماهنگی قیمت و جزئیات چاپ پیام می‌دهم. ممنون!");
     // Older requests used coordinates inside a chest-only rectangle. Preserve their original layouts.
     public static Models.DesignLayer StagePlacement(string garment, Models.DesignLayer layer)
     {

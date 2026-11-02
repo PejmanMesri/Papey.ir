@@ -2,9 +2,18 @@
 @attribute [Authorize(Roles = "Admin")]
 @layout AdminLayout
 @inject IDbContextFactory<AppDbContext> DbFactory
+@inject AuthService Auth
 
 <PageTitle>داشبورد | پنل مدیریت پاپی</PageTitle>
 
+@if (_seller)
+{
+    <h1>میز کار فروشنده</h1><p>سفارش‌ها را پیگیری کنید، درخواست‌های اختصاصی را بررسی کنید و به مشتریان پاسخ دهید.</p>
+    <div class="stat-grid"><a class="stat-card" href="/admin/sales">آماده‌سازی و ارسال<div class="num">@Fa(_toShip)</div></a><a class="stat-card" href="/admin/custom-designs">درخواست اختصاصی جدید<div class="num">@Fa(_custom)</div></a><a class="stat-card" href="/admin/reviews">نظرهای بدون پاسخ<div class="num">@Fa(_reviews)</div></a></div>
+    <div class="seller-shortcuts"><a class="btn-papey" href="/admin/products">مدیریت محصولات</a><a class="btn-papey btn-outline" href="/admin/custom-designs">بررسی طرح‌های اختصاصی</a><a class="btn-papey btn-outline" href="/admin/reviews">پاسخ به مشتریان</a></div>
+}
+else
+{
 <h1 style="margin-top:0">📊 داشبورد</h1>
 
 <div class="stat-grid">
@@ -53,6 +62,8 @@
     </div>
 </div>
 
+
+}
 <h3>آخرین سفارش‌ها</h3>
 <table class="table-papey mobile-card-table">
     <thead><tr><th>شماره</th><th>مشتری</th><th>مبلغ</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
@@ -71,6 +82,8 @@
 </table>
 
 @code {
+    private bool _seller;
+    private int _toShip, _custom, _reviews;
     private int _totalUsers, _todayOrders, _todayViews, _maxViews;
     private decimal _todaySales, _monthSales, _maxDaily;
     private List<(DateTime Date, decimal Amount)> _daily = new();
@@ -80,6 +93,15 @@
     protected override async Task OnInitializedAsync()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
+        _seller = Auth.CurrentPrincipal?.IsInRole("Owner") != true;
+        if (_seller)
+        {
+            _toShip = await db.Orders.CountAsync(o => o.PaidAt != null && (o.Status == OrderStatus.Paid || o.Status == OrderStatus.Processing));
+            _custom = await db.CustomDesignRequests.CountAsync(r => r.Status == CustomDesignStatus.New);
+            _reviews = await db.ProductReviews.CountAsync(r => !r.IsHidden && (r.AdminReply == null || r.AdminReply == ""));
+            _latest = await db.Orders.Where(o => o.PaidAt != null && o.Status != OrderStatus.Cancelled).OrderByDescending(o => o.CreatedAt).Take(8).ToListAsync();
+            return;
+        }
         _totalUsers = await db.Users.CountAsync();
 
         var today = DateTime.UtcNow.Date;

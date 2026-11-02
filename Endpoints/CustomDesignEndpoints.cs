@@ -16,7 +16,7 @@ public static class CustomDesignEndpoints
                 if (!http.Request.HasFormContentType) return Results.BadRequest(new { error = "فرمت درخواست معتبر نیست." });
                 var form = await http.Request.ReadFormAsync(http.RequestAborted);
                 var request = await designs.SubmitAsync(http.User, form, http.RequestAborted);
-                return Results.Ok(new { number = request.Number, url = "/account/custom-designs" });
+                return Results.Ok(new { number = request.Number, url = "/account/custom-designs", whatsappUrl = CustomDesignCatalog.WhatsAppUrl(request) });
             }
             catch (AntiforgeryValidationException) { return Results.BadRequest(new { error = "نشست منقضی شده است؛ صفحه را تازه کنید." }); }
             catch (UnauthorizedAccessException) { return Results.Unauthorized(); }

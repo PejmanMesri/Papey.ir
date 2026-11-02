@@ -19,7 +19,7 @@ public sealed class ProductRecommendations(IDbContextFactory<AppDbContext> facto
     public async Task<RelatedSelection> ReadAsync(int productId)
     {
         await using var db = await factory.CreateDbContextAsync();
-        var products = await db.Products.AsNoTracking().Where(p => p.IsActive).Include(p => p.Category).Include(p => p.ProductType).ToListAsync();
+        var products = await db.Products.AsNoTracking().Include(p => p.Media).Where(p => p.IsActive).Include(p => p.Category).Include(p => p.ProductType).ToListAsync();
         var current = products.FirstOrDefault(p => p.Id == productId);
         if (current is null) return new(new(), new());
         var types = await db.ProductTypes.AsNoTracking().Select(t => t.Name).ToListAsync();

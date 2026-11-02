@@ -161,7 +161,7 @@
             ? null
             : _categories.FirstOrDefault(category => string.Equals(category.Slug, CategorySlug, StringComparison.OrdinalIgnoreCase));
 
-        _products = await db.Products
+        _products = await db.Products.Include(p => p.Media)
             .Where(product => product.IsActive && product.Category.IsActive)
             .Include(product => product.Category)
             .Include(product => product.Variants)

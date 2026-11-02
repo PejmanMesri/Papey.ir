@@ -27,6 +27,7 @@
                 <meta name="twitter:image" content="@info.Image" />
             }
             @if (info.ProductJson is not null) { <script type="application/ld+json">@((MarkupString)info.ProductJson)</script> }
+            @if (info.SiteJson is not null) { <script type="application/ld+json">@((MarkupString)info.SiteJson)</script> }
         }
     </HeadContent>
 }

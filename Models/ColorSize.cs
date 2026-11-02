@@ -30,6 +30,7 @@ public class Size
 /// <summary>Product type lookup (تیشرت, هودی, شلوار, ...) — editable in the admin panel.</summary>
 public class ProductTypeEntity
 {
+    [MaxLength(500)] public string? SizeGuideImageUrl { get; set; }
     public int Id { get; set; }
 
     [Required, MaxLength(50)]

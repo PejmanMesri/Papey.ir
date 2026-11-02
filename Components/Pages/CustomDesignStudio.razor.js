@@ -179,7 +179,8 @@ export function init(root, catalog, dotnet) {
             if(r.status===401)throw Error('نشست شما منقضی شده؛ دوباره وارد حساب شوید.');
             const result=await r.json().catch(()=>({}));if(!r.ok)throw Error(result.error || (r.status===429?'کمی صبر کن و دوباره تلاش کن.':'ارسال انجام نشد؛ اتصال و حجم فایل‌ها را بررسی کن.'));
             submitted=true;notice(`درخواست ${result.number} ثبت شد. پاپی برای بررسی قیمت و جزئیات با شما تماس می‌گیرد.`,true);
-            const link=document.createElement('a');link.href=result.url;link.textContent='مشاهده درخواست‌های من ←';feedback.append(document.createElement('br'),link);button.textContent='درخواست ثبت شد ✓';q('form').querySelectorAll('input,textarea').forEach(el=>el.disabled=true);feedback.focus();feedback.scrollIntoView({behavior:'smooth',block:'center'});
+            const link=document.createElement('a');link.href=result.url;link.textContent='مشاهده درخواست‌های من ←';feedback.append(document.createElement('br'),link);
+            if (result.whatsappUrl?.startsWith('https://wa.me/989036421161?text=')) { const whatsapp=document.createElement('a'); whatsapp.href=result.whatsappUrl; whatsapp.textContent='ادامه هماهنگی در واتساپ ←'; feedback.append(document.createElement('br'),whatsapp); window.location.assign(result.whatsappUrl); }button.textContent='درخواست ثبت شد ✓';q('form').querySelectorAll('input,textarea').forEach(el=>el.disabled=true);feedback.focus();feedback.scrollIntoView({behavior:'smooth',block:'center'});
         } catch(error){if(error.name!=='AbortError'){notice(error.message);feedback.focus();button.textContent='تلاش دوباره برای ثبت درخواست ←';button.disabled=false;}}
         finally{busy=false;root.classList.remove('is-busy');}
     },{signal});

@@ -50,9 +50,9 @@
     {
         await using var db = await DbFactory.CreateDbContextAsync();
         _types = await db.ProductTypes.Where(t => t.IsActive).OrderBy(t => t.DisplayOrder).ToListAsync();
-        _newProducts = await db.Products.Where(p => p.IsActive).OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.Id).Take(8).ToListAsync();
-        _featured = await db.Products.Where(p => p.IsActive && p.IsFeatured).OrderByDescending(p => p.CreatedAt).Take(4).ToListAsync();
-        _heroProducts = await db.Products.Where(p => p.IsActive && p.HomeHeroSlot != null)
+        _newProducts = await db.Products.Include(p => p.Media).Where(p => p.IsActive).OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.Id).Take(8).ToListAsync();
+        _featured = await db.Products.Include(p => p.Media).Where(p => p.IsActive && p.IsFeatured).OrderByDescending(p => p.CreatedAt).Take(4).ToListAsync();
+        _heroProducts = await db.Products.Include(p => p.Media).Where(p => p.IsActive && p.HomeHeroSlot != null)
             .OrderBy(p => p.HomeHeroSlot).Take(2).ToListAsync();
     }
     private static string ProductTypeIcon(ProductTypeEntity type)

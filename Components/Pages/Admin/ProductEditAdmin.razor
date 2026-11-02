@@ -24,7 +24,7 @@ else
             <h1>@(IsNew ? "افزودن محصول جدید" : "ویرایش محصول")</h1>
             <p>@(IsNew ? "مشخصات محصول را تکمیل کنید." : _product.Name)</p>
         </div>
-        <button type="button" class="btn-papey editor-save" disabled="@(_saving || _uploading || _designUploading || _guideUploading)" @onclick="SaveInfo">@(_saving ? "در حال ذخیره…" : IsNew ? "ذخیره و ادامه" : "ذخیره تغییرات")</button>
+        <button type="button" class="btn-papey editor-save" disabled="@(_saving || _uploading || _designUploading)" @onclick="SaveInfo">@(_saving ? "در حال ذخیره…" : IsNew ? "ذخیره و ادامه" : "ذخیره تغییرات")</button>
     </header>
     @if (IsNew)
     {
@@ -173,15 +173,7 @@ else
         }
     </section>
 
-    <section class="editor-card editor-assets" aria-labelledby="guide-title">
-        <div class="editor-section-title"><span>۰۵</span><div><h2 id="guide-title">تصویر راهنمای سایز</h2><p>اختیاری؛ در صورت انتخاب نکردن تصویر، راهنمای پیش‌فرض پاپی نمایش داده می‌شود.</p></div></div>
-        <label class="editor-upload"><strong>انتخاب تصویر راهنمای سایز</strong><span>JPG، PNG، WebP، GIF یا AVIF تا ۱۵ مگابایت؛ با ذخیره محصول ثبت می‌شود.</span><InputFile OnChange="UploadSizeGuide" accept=".jpg,.jpeg,.png,.webp,.gif,.avif" disabled="@(_saving || _guideUploading)" /></label>
-        @if (_guideUploading) { <p role="status">در حال آپلود راهنمای سایز…</p> }
-        @if (_guideError is not null) { <div class="alert-papey alert-danger" role="alert">@_guideError</div> }
-        <div class="editor-guide-preview"><img src="@ProductSizeGuides.Resolve(_guideUpload?.PreviewUrl ?? _product.SizeGuideImageUrl, _types.FirstOrDefault(t => t.Id == _product.ProductTypeId)?.Name ?? _product.ProductType?.Name)" alt="پیش‌نمایش راهنمای سایز" />
-        <div><p>@(_guideUpload is not null || _product.SizeGuideImageUrl is not null ? "راهنمای اختصاصی این محصول" : "راهنمای پیش‌فرض پاپی")</p>
-        @if (_guideUpload is not null || _product.SizeGuideImageUrl is not null) { <button type="button" class="btn-papey btn-sm btn-outline" disabled="@_saving" @onclick="ResetSizeGuide">استفاده از راهنمای پیش‌فرض</button> }</div></div>
-    </section>
+    <section class="editor-card"><h2>راهنمای سایز</h2><p>راهنمای سایز بر اساس نوع لباس از تنظیمات فروشگاه انتخاب می‌شود.</p><AuthorizeView Roles="Owner"><a href="/admin/settings">مدیریت راهنمای سایز انواع لباس ←</a></AuthorizeView></section>
 
     <section class="editor-card editor-stock">
         <div class="editor-section-title"><span>۰۶</span><div><h2>رنگ، سایز و موجودی</h2><p>ترکیب‌های قابل سفارش را فعال کنید.</p></div></div>
@@ -251,9 +243,7 @@ else
     private HashSet<int> _selectedCatIds = new();
     private string? _variantMsg, _uploadError, _designUploadError;
     private bool _uploading, _designUploading, _saving;
-    private string? _infoError, _guideError;
-    private bool _guideUploading;
-    private ProductDraftUploads.Upload? _guideUpload;
+    private string? _infoError;
     private static readonly Dictionary<string, string> DesignContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         [".jpg"] = "image/jpeg",
@@ -266,8 +256,6 @@ else
     {
         _infoError = null;
         _variantMsg = null;
-        _guideUpload = null;
-        _guideError = null;
         await Reload();
     }
 
@@ -311,7 +299,7 @@ else
 
     private async Task SaveInfo()
     {
-        if (_saving || _uploading || _designUploading || _guideUploading || _product is null) return;
+        if (_saving || _uploading || _designUploading || _product is null) return;
         _infoError = null;
         if (string.IsNullOrWhiteSpace(_product.Name) || _product.Name.Length > 200)
         { _infoError = "نام محصول را وارد کنید (حداکثر ۲۰۰ کاراکتر)."; return; }
@@ -337,7 +325,6 @@ else
         t.Description = _product.Description; t.IsNew = _product.IsNew;
         t.IsFeatured = _product.IsFeatured; t.IsActive = _product.IsActive;
         t.HasUnlimitedStock = _product.HasUnlimitedStock;
-        t.SizeGuideImageUrl = _product.SizeGuideImageUrl;
         t.ImageUrl = _media.OrderBy(m => m.DisplayOrder).FirstOrDefault(m => m.Type == MediaType.Image)?.Url ?? t.ImageUrl;
 
         var validCategoryIds = _categories
@@ -388,12 +375,6 @@ else
         var copiedFiles = new List<string>();
         try
         {
-            if (_guideUpload is not null)
-            {
-                var path = DraftUploads.CopyToPermanent(_guideUpload, false);
-                copiedFiles.Add(path);
-                t.SizeGuideImageUrl = "/uploads/images/" + Path.GetFileName(path);
-            }
             if (creating)
             {
                 foreach (var media in _media.OrderBy(m => m.DisplayOrder))
@@ -428,7 +409,6 @@ else
         foreach (var upload in _draftMedia.Values.Concat(_draftDesigns.Values))
         { try { DraftUploads.Delete(upload); } catch { } }
         _draftMedia.Clear(); _draftDesigns.Clear();
-        if (_guideUpload is not null) { try { DraftUploads.Delete(_guideUpload); } catch { } _guideUpload = null; }
         Nav.NavigateTo(creating ? $"/admin/products/{t.Id}" : "/admin/products");
     }
 
@@ -618,32 +598,6 @@ else
         }
         catch { }
         await Reload(true);
-    }
-
-    private async Task UploadSizeGuide(InputFileChangeEventArgs e)
-    {
-        if (_saving || _guideUploading) return;
-        _guideUploading = true; _guideError = null;
-        try
-        {
-            var file = e.File;
-            var ext = Path.GetExtension(file.Name).ToLowerInvariant();
-            if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp" or ".gif" or ".avif"))
-                throw new InvalidOperationException("فقط تصویر راهنمای سایز را انتخاب کنید.");
-            await using var input = file.OpenReadStream(15 * 1024 * 1024);
-            var upload = await DraftUploads.StageAsync(input, file.Name);
-            if (_guideUpload is not null) DraftUploads.Delete(_guideUpload);
-            _guideUpload = upload;
-        }
-        catch { _guideError = "آپلود انجام نشد؛ یک تصویر معتبر تا ۱۵ مگابایت انتخاب کنید."; }
-        finally { _guideUploading = false; }
-    }
-
-    private void ResetSizeGuide()
-    {
-        if (_saving) return;
-        if (_guideUpload is not null) DraftUploads.Delete(_guideUpload);
-        _guideUpload = null; _product!.SizeGuideImageUrl = null;
     }
 
     private async Task SetUnlimitedStock(ChangeEventArgs e)

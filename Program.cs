@@ -83,6 +83,7 @@ builder.Services.AddScoped<StoreSeo>();
 builder.Services.AddScoped<ProductRecommendations>();
 builder.Services.AddScoped<ProductReviewService>();
 builder.Services.AddScoped<StaffAccounts>();
+builder.Services.AddScoped<SizeGuideSettings>();
 builder.Services.AddScoped<CustomDesignService>();
 builder.Services.AddScoped<CustomDesignSmsQueue>();
 builder.Services.AddHostedService<CustomDesignSmsWorker>();
@@ -147,6 +148,15 @@ app.Use(async (context, next) =>
 });
 
 // Serve user-uploaded files (uploads, favicon, images) via classic static files.
+app.Use(async (context, next) =>
+{
+    if (string.Equals(context.Request.Host.Host, "www.papey.ir", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.Redirect("https://papey.ir" + context.Request.PathBase + context.Request.Path + context.Request.QueryString, permanent: true, preserveMethod: true);
+        return;
+    }
+    await next(context);
+});
 app.UseStaticFiles();
 app.Use(async (context, next) =>
 {

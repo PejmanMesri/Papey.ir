@@ -26,7 +26,7 @@
     </div>
     <form class="studio-submit-card" @onsubmit:preventDefault>
         <AntiforgeryToken />
-        <div><span class="studio-eyebrow">آخرین قدم</span><h2>ایده‌ات را برایمان بفرست.</h2><p>پس از بررسی طرح با شما تماس می‌گیریم. این مرحله پرداختی ندارد و ثبت خرید نهایی نیست.</p></div>
+        <div><span class="studio-eyebrow">آخرین قدم</span><h2>ایده‌ات را برایمان بفرست.</h2><p>پس از ثبت درخواست به واتساپ پاپی می‌روید تا قیمت و جزئیات چاپ را هماهنگ کنید. این مرحله پرداختی ندارد.</p></div>
         <div class="studio-contact-grid"><label>نام و نام خانوادگی<input class="form-input" name="name" autocomplete="name" required minlength="2" maxlength="100" value="@_name" /></label><label>شماره تماس<input class="form-input" name="phone" type="tel" autocomplete="tel" inputmode="tel" required maxlength="20" value="@_phone" placeholder="09…" dir="ltr" /></label><label class="studio-notes">توضیحات برای طراح <small>(اختیاری)</small><textarea class="form-input" name="notes" rows="3" maxlength="2000" placeholder="مثلاً اندازه چاپ، محل دقیق طرح یا نکته‌ای درباره سفارش…"></textarea></label></div>
         <div class="studio-submit-footer"><span>بدون پرداخت آنلاین · قیمت پس از بررسی و توافق</span>@if (_userId is not null) { <button type="submit" class="btn-papey" data-submit>ثبت درخواست طرح اختصاصی ←</button> } else { <a href="/login?returnUrl=%2Fcustom-design" class="btn-papey">ورود و شروع طراحی ←</a> }</div>
     </form>
@@ -47,7 +47,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
-        _module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/CustomDesignStudio.razor.js?v=3");
+        _module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/CustomDesignStudio.razor.js?v=4");
         _reference = DotNetObjectReference.Create(this);
         await _module.InvokeVoidAsync("init", _root, CustomDesignCatalog.Garments, _reference);
     }

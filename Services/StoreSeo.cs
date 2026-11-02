@@ -8,7 +8,7 @@ using Papey.Models;
 
 namespace Papey.Services;
 
-public sealed record SeoPage(string? Title, string Description, string Canonical, string? Image, string? ProductJson, bool Indexable);
+public sealed record SeoPage(string? Title, string Description, string Canonical, string? Image, string? ProductJson, bool Indexable, string? SiteJson = null);
 
 public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfiguration configuration)
 {
@@ -50,7 +50,7 @@ public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfigura
         string? title = null, image = null, json = null;
         var description = "خرید تیشرت، هودی و لانگ اسلیو با طرح‌های خاص از پاپی؛ انتخاب رنگ و سایز و پرداخت امن.";
         await using var db = await factory.CreateDbContextAsync();
-        if (path == "") title = "پاپی | تیشرت، هودی و لانگ اسلیو با طرح‌های خاص";
+        if (path == "") title = "پاپی Papey | تیشرت، هودی و لانگ اسلیو با طرح‌های خاص";
         else if (path == "/custom-design") { title = "طراحی لباس اختصاصی | استودیوی پاپی"; description = "طرح PNG خودتان را روی تیشرت، هودی یا لانگ اسلیو بچینید و رایگان برای بررسی قیمت و هماهنگی چاپ به پاپی بفرستید."; image = Url("/img/custom-studio/tshirt-white-front.webp"); }
         else if (path == "/products")
         {
@@ -87,7 +87,13 @@ public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfigura
         var indexable = title is not null;
         if (indexable && image is null)
             image = ImageUrl(await db.Products.AsNoTracking().Where(p => p.IsActive && p.ImageUrl != null).OrderByDescending(p => p.HomeHeroSlot != null).ThenBy(p => p.Id).Select(p => p.ImageUrl).FirstOrDefaultAsync());
-        return new(title, description, canonical, image, json, indexable);
+        var siteJson = path == "" ? JsonSerializer.Serialize(new Dictionary<string, object?> {
+            ["@context"] = "https://schema.org", ["@graph"] = new object[] {
+                new Dictionary<string, object?> { ["@type"] = "Organization", ["@id"] = Url("/#organization"), ["name"] = "پاپی", ["alternateName"] = "Papey", ["url"] = Url("/"), ["sameAs"] = new[] { "https://www.instagram.com/papey.ir" } },
+                new Dictionary<string, object?> { ["@type"] = "WebSite", ["@id"] = Url("/#website"), ["name"] = "پاپی", ["alternateName"] = "Papey", ["url"] = Url("/"), ["inLanguage"] = "fa-IR" }
+            }
+        }) : null;
+        return new(title, description, canonical, image, json, indexable, siteJson);
     }
     public async Task<string> SitemapAsync()
     {

@@ -1,8 +1,12 @@
 @page "/admin/settings"
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Roles = "Owner")]
 @layout AdminLayout
 @rendermode InteractiveServer
 @inject TaxSettingsService TaxSettings
+@inject SizeGuideSettings Guides
+@inject ProductDraftUploads Uploads
+@inject AuthService Auth
+@inject IDbContextFactory<AppDbContext> Factory
 
 <PageTitle>تنظیمات فروشگاه | پاپی</PageTitle>
 <div class="section-title"><h1>تنظیمات فروشگاه</h1></div>
@@ -15,14 +19,47 @@
     @if (_message is not null) { <div class="alert-papey @(_failed ? "alert-danger" : "alert-success")" role="status">@_message</div> }
     <button class="btn-papey" type="button" disabled="@(!_loaded || _saving)" @onclick="Save">@(_saving ? "در حال ذخیره…" : "ذخیره تنظیمات")</button>
 </section>
+<section class="card-box guide-settings" aria-labelledby="guide-settings-title">
+    <h2 id="guide-settings-title">راهنمای سایز انواع لباس</h2>
+    <p>تصویر هر نوع لباس برای همه محصولات آن نوع و استودیوی طرح اختصاصی استفاده می‌شود.</p>
+    <div class="guide-settings-grid">
+    @foreach (var type in _types)
+    {
+        <article @key="type.Id"><h3>@type.Name</h3><a href="@ProductSizeGuides.Resolve(type.SizeGuideImageUrl, type.Name)" target="_blank" rel="noopener"><img src="@ProductSizeGuides.Resolve(type.SizeGuideImageUrl, type.Name)" alt="راهنمای سایز @type.Name" /></a>
+            <label class="guide-settings-upload">انتخاب و ذخیره تصویر جدید<InputFile OnChange="e => UploadGuide(type.Id, e)" accept=".jpg,.jpeg,.png,.webp,.gif,.avif" disabled="@_uploading" /></label>
+            <small>تصویر تا ۱۵ مگابایت؛ با انتخاب فایل ذخیره می‌شود.</small>
+        </article>
+    }
+    </div>
+    @if (_guideMessage is not null) { <p role="status">@_guideMessage</p> }
+</section>
 
 @code {
     private bool _enabled, _loaded, _saving, _failed;
     private string? _message;
-    protected override async Task OnInitializedAsync() { _enabled = await TaxSettings.ReadAsync(); _loaded = true; }
+    private List<ProductTypeEntity> _types = [];
+    private bool _uploading;
+    private string? _guideMessage;
+    protected override async Task OnInitializedAsync() { _enabled = await TaxSettings.ReadAsync(); await LoadTypes(); _loaded = true; }
+    private async Task LoadTypes() { await using var db = await Factory.CreateDbContextAsync(); _types = await db.ProductTypes.AsNoTracking().OrderBy(t => t.DisplayOrder).ToListAsync(); }
+    private async Task UploadGuide(int id, InputFileChangeEventArgs e)
+    {
+        if (_uploading || !await Guides.CanManageAsync(Auth.CurrentPrincipal)) return;
+        _uploading = true; ProductDraftUploads.Upload? staged = null;
+        try
+        {
+            var file = e.File; var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+            if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp" or ".gif" or ".avif")) throw new InvalidOperationException();
+            await using var input = file.OpenReadStream(15 * 1024 * 1024); staged = await Uploads.StageAsync(input, file.Name);
+            _guideMessage = await Guides.SaveAsync(Auth.CurrentPrincipal, id, staged) ? "راهنمای سایز ذخیره شد." : "ذخیره انجام نشد.";
+            await LoadTypes();
+        }
+        catch { _guideMessage = "یک تصویر معتبر تا ۱۵ مگابایت انتخاب کنید."; }
+        finally { if (staged is not null) Uploads.Delete(staged); _uploading = false; }
+    }
     private async Task Save()
     {
-        if (_saving || !_loaded) return;
+        if (_saving || !_loaded || !await Guides.CanManageAsync(Auth.CurrentPrincipal)) return;
         _saving = true; _message = null; _failed = false;
         try { await TaxSettings.UpdateAsync(_enabled); _message = "تنظیمات ذخیره شد. سفارش‌های قبلی تغییر نکردند."; }
         catch { _failed = true; _message = "ذخیره انجام نشد؛ دوباره تلاش کنید."; }

@@ -965,3 +965,8 @@ button, input, select, textarea { font-family: inherit; }
 .admin-storefront-return { background: #f2ebd9; color: #433b27; border-bottom: 1px solid #e7dcc0; }
 .admin-storefront-return > div { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-top: 10px; padding-bottom: 10px; font-size: .8rem; }
 .admin-storefront-return a { font-weight: 800; text-decoration: underline; text-underline-offset: 4px; }
+
+.product-card .img-wrap{position:relative;overflow:hidden}.product-card .img-wrap .product-image-primary{transition:opacity .45s ease,transform .6s ease}.product-card .img-wrap .product-image-secondary{position:absolute;inset:0;opacity:0;transform:scale(1.035);transition:opacity .45s ease,transform .6s ease;pointer-events:none}
+@media(hover:hover) and (pointer:fine){.product-card .has-second-image:hover .product-image-secondary{opacity:1;transform:scale(1)}.product-card .has-second-image:hover .product-image-primary{opacity:0;transform:scale(.985)}}
+.product-card .has-second-image:focus-visible .product-image-secondary{opacity:1;transform:scale(1)}.product-card .has-second-image:focus-visible .product-image-primary{opacity:0}
+@media(prefers-reduced-motion:reduce){.product-card .img-wrap img{transition:none!important;transform:none!important}}
