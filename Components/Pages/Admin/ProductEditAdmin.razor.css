@@ -18,7 +18,7 @@
 .editor-field textarea { resize: vertical; line-height: 1.9; }
 .editor-number { direction: ltr; text-align: right; }
 .editor-unit { color: var(--papey-muted); font-size: .72rem; font-weight: 400; margin-inline-start: 6px; }
-.required-mark { color: #a16b37; }
+.required-mark { color: #8c582b; }
 .editor-categories { border: 0; margin: 0; padding: 0; min-width: 0; }
 .editor-category-options { display: flex; flex-wrap: wrap; gap: 10px; }
 .product-editor .editor-category { display: inline-flex; align-items: center; gap: 8px; padding: 9px 13px; border: 1px solid var(--papey-border); border-radius: 10px; cursor: pointer; font-size: .82rem; background: #fff; }

@@ -8,14 +8,14 @@
     var desktopCloseTimers = new WeakMap();
     document.addEventListener('pointerover', function (event) {
         if (event.pointerType !== 'mouse') return;
-        var menu = event.target.closest('.desktop-type-menu');
+        var menu = event.target.closest('.desktop-type-menu, .account-menu');
         if (!menu) return;
         clearTimeout(desktopCloseTimers.get(menu));
-        if (event.target.closest('.desktop-type-menu > summary')) menu.open = true;
+        if (event.target.closest('.desktop-type-menu > summary, .account-menu > summary')) menu.open = true;
     });
     document.addEventListener('pointerout', function (event) {
         if (event.pointerType !== 'mouse') return;
-        var menu = event.target.closest('.desktop-type-menu');
+        var menu = event.target.closest('.desktop-type-menu, .account-menu');
         if (!menu || (event.relatedTarget && menu.contains(event.relatedTarget))) return;
         clearTimeout(desktopCloseTimers.get(menu));
         desktopCloseTimers.set(menu, setTimeout(function () {
@@ -63,7 +63,7 @@
             event.preventDefault();
             openDesktopType(typeSummary.parentElement);
         }
-        var menuSummary = event.target.closest('.desktop-type-menu > summary');
+        var menuSummary = event.target.closest('.desktop-type-menu > summary, .account-menu > summary');
         if (menuSummary && event.pointerType === 'mouse') {
             event.preventDefault();
             menuSummary.parentElement.open = true;

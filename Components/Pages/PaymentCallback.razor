@@ -24,17 +24,17 @@
             {
                 <div style="text-align:right; margin:16px 0">
                     <h3 style="font-size:0.95rem; margin:0 0 8px">🛒 محصولات خریداری‌شده</h3>
-                    <table class="table-papey">
+                    <table class="table-papey mobile-card-table">
                         <thead><tr><th>محصول</th><th>رنگ</th><th>سایز</th><th>تعداد</th><th>جمع</th></tr></thead>
                         <tbody>
                             @foreach (var i in _order.Items)
                             {
                                 <tr>
-                                    <td>@i.ProductName</td>
-                                    <td>@i.Color</td>
-                                    <td>@i.Size</td>
-                                    <td>@PersianHelpers.ToPersianDigits(i.Quantity.ToString())</td>
-                                    <td>@i.LineTotal.ToToman()</td>
+                                    <td data-label="محصول">@i.ProductName</td>
+                                    <td data-label="رنگ">@i.Color</td>
+                                    <td data-label="سایز">@i.Size</td>
+                                    <td data-label="تعداد">@PersianHelpers.ToPersianDigits(i.Quantity.ToString())</td>
+                                    <td data-label="جمع">@i.LineTotal.ToToman()</td>
                                 </tr>
                             }
                         </tbody>

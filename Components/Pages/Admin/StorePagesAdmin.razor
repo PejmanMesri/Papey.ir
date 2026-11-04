@@ -22,7 +22,7 @@
                 else { <input class="form-input" maxlength="@field.Limit" required @bind="_values[field.Key]" @bind:event="oninput" /> }
             </label>
         }
-        <p style="font-size:.8rem;color:#777">برای عنوان چندخطی یا بند جدید، Enter بزنید. متن ساده نمایش داده می‌شود؛ نیازی به کد HTML نیست.</p>
+        <p style="font-size:.8rem;color:#666">برای عنوان چندخطی یا بند جدید، Enter بزنید. متن ساده نمایش داده می‌شود؛ نیازی به کد HTML نیست.</p>
         <button class="btn-papey" type="submit" disabled="@_busy">@(_busy ? "در حال ذخیره…" : "ذخیره متن صفحه")</button>
         @if (_notice is not null) { <p role="status" class="alert-papey @(_success ? "alert-success" : "alert-danger")">@_notice</p> }
     </form>

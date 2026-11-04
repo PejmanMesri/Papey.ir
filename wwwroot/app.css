@@ -5,7 +5,7 @@
     --papey-light: #f7f5f2;
     --papey-cream: #faf8f5;
     --papey-accent: #c8a96a;
-    --papey-accent-dark: #a8894e;
+    --papey-accent-dark: #795f32;
     --papey-muted: #6b6b6b;
     --papey-border: #e5e0d8;
     --papey-success: #2e7d32;
@@ -211,7 +211,7 @@ img { max-width: 100%; }
 /* ---- Buttons / forms ---- */
 .btn-papey { display: inline-block; background: var(--papey-dark); color: #fff; border: 0; padding: 12px 28px; border-radius: 10px; font-family: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; text-align: center; }
 .btn-papey:hover { background: var(--papey-accent-dark); color: #fff; }
-.btn-papey:disabled { background: #999; cursor: not-allowed; }
+.btn-papey:disabled { background: #666; color: #fff; cursor: not-allowed; }
 .btn-outline { background: transparent; color: var(--papey-dark); border: 1.5px solid var(--papey-dark); }
 .btn-outline:hover { background: var(--papey-dark); color: #fff; }
 .btn-danger-papey { background: var(--papey-danger); }
@@ -308,7 +308,7 @@ label.form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-
 .table-papey tr:last-child td { border-bottom: 0; }
 .status-chip { font-size: 0.75rem; padding: 4px 10px; border-radius: 12px; font-weight: 700; display: inline-block; }
 .status-Paid, .status-Delivered { background: #e8f5e9; color: var(--papey-success); }
-.status-Pending, .status-Processing { background: #fff8e1; color: #f57f17; }
+.status-Pending, .status-Processing { background: #fff8e1; color: #8a4b00; }
 .status-PaymentFailed, .status-Cancelled { background: #ffebee; color: var(--papey-danger); }
 .status-Shipped { background: #e3f2fd; color: #1565c0; }
 
@@ -320,8 +320,8 @@ label.form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-
 
 /* ---- Jalali date picker ---- */
 .jdp-wrap { position: relative; display: flex; gap: 4px; align-items: center; }
-.jdp-input { cursor: pointer; }
-.jdp-popup { position: absolute; top: calc(100% + 6px); inset-inline-start: 0; z-index: 60; width: 270px;
+.jdp-input { cursor: pointer; min-width: 0; }
+.jdp-popup { position: absolute; top: calc(100% + 6px); inset-inline-start: 0; z-index: 60; width: min(270px, 100%);
              background: #fff; border: 1px solid var(--papey-border); border-radius: 12px; padding: 12px;
              box-shadow: 0 8px 24px rgba(0,0,0,0.15); direction: rtl; }
 .jdp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
@@ -331,9 +331,9 @@ label.form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-
 .jdp-week span { text-align: center; font-size: 0.7rem; color: var(--papey-muted); padding: 4px 0; font-weight: 700; }
 .jdp-day { border: 0; background: transparent; border-radius: 8px; height: 32px; cursor: pointer; font-size: 0.85rem; }
 .jdp-day:hover { background: var(--papey-light); }
-.jdp-day.today { border: 1px solid var(--papey-accent); color: var(--papey-accent); font-weight: 700; }
-.jdp-day.selected { background: var(--papey-accent); color: #fff; font-weight: 700; }
-.jdp-foot { display: flex; gap: 6px; justify-content: space-between; margin-top: 10px; }
+.jdp-day.today { border: 1px solid var(--papey-accent-dark); color: var(--papey-accent-dark); font-weight: 700; }
+.jdp-day.selected { background: var(--papey-accent-dark); color: #fff; font-weight: 700; }
+.jdp-foot { display: flex; flex-wrap: wrap; gap: 6px; justify-content: space-between; margin-top: 10px; }
 
 .card-box { background: #fff; border: 1px solid var(--papey-border); border-radius: var(--radius); padding: 24px; }
 
@@ -567,7 +567,7 @@ label.form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-
 .order-updates strong { font-size: .88rem; }
 .order-updates p { margin: 3px 0 0; color: var(--papey-muted); font-size: .78rem; line-height: 1.8; }
 .order-items-card .table-papey { min-width: 700px; }
-.order-items-card tfoot th, .order-items-card tfoot td { background: var(--papey-light); }
+.order-items-card tfoot th, .order-items-card tfoot td { background: var(--papey-light); color: var(--papey-dark); }
 .order-items-card .order-grand-total th, .order-items-card .order-grand-total td { background: var(--papey-dark); color: #fff; font-size: .95rem; }
 .order-addresses-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 18px; }
 .order-addresses-grid address { color: var(--papey-muted); font-size: .88rem; font-style: normal; line-height: 2; }
@@ -682,6 +682,7 @@ a.account-stat:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(
    than forcing the customer to scroll the page horizontally. */
 @media (max-width: 700px) {
     .account-orders-card { padding: 12px; }
+    .order-items-card .table-papey { min-width: 0; }
     .account-orders-table,
     .account-orders-table tbody,
     .account-orders-table tr,

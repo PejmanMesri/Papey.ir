@@ -10,6 +10,7 @@
   <ItemGroup>
     <Compile Remove="tests/**" />
     <Compile Remove="tools/**" />
+    <Compile Remove="deploy-artifacts/**" />
     <Content Remove="tools/**" />
     <None Remove="tools/**" />
     <Content Remove="tests/**" />
