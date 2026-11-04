@@ -30,6 +30,20 @@ try{
  db.Products.AddRange(new Product{Name="Real photo",Slug="real-photo",CategoryId=category.Id,ProductTypeId=types[1].Id,ImageUrl="/uploads/images/real-photo.jpg",Price=100,HomeHeroSlot=1},new Product{Name="Hidden photo",Slug="hidden-photo",CategoryId=category.Id,ProductTypeId=types[1].Id,ImageUrl="/uploads/images/hidden.jpg",Price=100,IsActive=false});await db.SaveChangesAsync();
  var photos=new ProductTypePhotos(factory);Check(await photos.ReadAsync(types[1].Id)=="/uploads/images/real-photo.jpg","Type selector uses an active product photograph and ignores hidden products");
  Check(await photos.ReadAsync(999999)==null,"Empty product types allow the icon fallback");
+
+ var pages=new StorePageTexts(factory);var about=await pages.ReadAsync("about");var contact=await pages.ReadAsync("contact");
+ Check(about["body"]==StorePageTexts.About.First(f=>f.Key=="body").Default,"Existing About copy is the default before the first edit");
+ about["heading"]="Changed heading";about["body"]="First paragraph\nSecond paragraph";
+ Check(await pages.SaveAsync(AccountAccess.Principal(customer),"about",about)!=null,"Customer cannot edit store page text");
+ Check(await pages.SaveAsync(null,"about",about)!=null,"Anonymous user cannot edit store page text");
+ Check(await pages.SaveAsync(AccountAccess.Principal(owner),"about",about)==null,"Owner can save About content");
+ Check((await pages.ReadAsync("about"))["body"]==about["body"],"Page text and paragraph breaks survive a fresh database read");
+ contact["intro"]="New contact introduction";Check(await pages.SaveAsync(AccountAccess.Principal(seller),"contact",contact)==null,"Active seller can edit public pages without access to owner settings");
+ Check((await pages.ReadAsync("about"))["heading"]=="Changed heading","Editing Contact preserves About content");
+ var stale=AccountAccess.Principal(seller);seller.IsDisabled=true;seller.AuthVersion++;await db.SaveChangesAsync();
+ Check(await pages.SaveAsync(stale,"contact",contact)!=null,"Disabled seller cannot use an old principal to change page text");
+ about["heading"]=" ";Check(await pages.SaveAsync(AccountAccess.Principal(owner),"about",about)!=null,"Empty page headings are rejected");
+ about["heading"]=new string('x',301);Check(await pages.SaveAsync(AccountAccess.Principal(owner),"about",about)!=null,"Oversized text is rejected");
  Check(!db.Database.HasPendingModelChanges(),"Size guide migration matches model");Console.WriteLine($"{count} store settings and handoff checks passed.");
 }finally{await new NpgsqlCommand($"DROP DATABASE \"{database}\" WITH (FORCE)",admin).ExecuteNonQueryAsync();if(Path.GetDirectoryName(root)==Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar)&&Path.GetFileName(root).StartsWith("papey-guide-tests-"))Directory.Delete(root,true);}
 sealed class Factory(DbContextOptions<AppDbContext> options):IDbContextFactory<AppDbContext>{public AppDbContext CreateDbContext()=>new(options);}

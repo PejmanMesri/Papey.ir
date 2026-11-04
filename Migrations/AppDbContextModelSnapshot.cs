@@ -1110,6 +1110,24 @@ namespace Papey.Migrations
                     b.ToTable("Sizes");
                 });
 
+            modelBuilder.Entity("Papey.Models.StorePageContent", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ContentJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("StorePageContents");
+                });
+
             modelBuilder.Entity("Papey.Models.StoreSettings", b =>
                 {
                     b.Property<int>("Id")

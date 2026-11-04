@@ -20,6 +20,7 @@ public class AppDbContext : DbContext
     public DbSet<Address> Addresses => Set<Address>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<StoreSettings> StoreSettings => Set<StoreSettings>();
+    public DbSet<StorePageContent> StorePageContents => Set<StorePageContent>();
     public DbSet<OrderAdminSmsJob> OrderAdminSmsJobs => Set<OrderAdminSmsJob>();
     public DbSet<ShippingSmsJob> ShippingSmsJobs => Set<ShippingSmsJob>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();

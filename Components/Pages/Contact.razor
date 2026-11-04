@@ -1,5 +1,12 @@
 @page "/contact"
+@inject StorePageTexts Pages
 <PageTitle>تماس با ما | پاپی</PageTitle>
-<section class="contact-page"><span class="editorial-eyebrow">تماس با ما / LET’S TALK</span><h1>یک گفت‌وگو تا<br />انتخاب بعدی تو.</h1><p>برای راهنمای خرید، پیگیری سفارش یا صحبت درباره طرح اختصاصی، از این راه‌ها با پاپی در ارتباط باش.</p>
-<div class="contact-cards"><a href="https://wa.me/989036421161" target="_blank" rel="noopener"><span>۰۱ / WHATSAPP</span><h2>در واتساپ پیام بده</h2><p>عکس طرح یا پرسشت را برایمان بفرست.</p><strong>شروع گفت‌وگو ↗</strong></a><a href="tel:09036421161"><span>۰۲ / PHONE</span><h2>با پاپی تماس بگیر</h2><p>شنبه تا پنجشنبه، ۹ صبح تا ۹ شب</p><strong dir="ltr">۰۹۰۳۶۴۲۱۱۶۱ ↗</strong></a><a href="https://www.instagram.com/papey.ir" target="_blank" rel="noopener"><span>۰۳ / INSTAGRAM</span><h2>پاپی در اینستاگرام</h2><p>طرح‌ها و تازه‌های فروشگاه را ببین.</p><strong dir="ltr">@@papey.ir ↗</strong></a></div>
-<div class="contact-footnote"><h2>لباس با طرح خودت را می‌خواهی؟</h2><p>شماره‌ات را در صفحه سفارش اختصاصی ثبت کن تا با تو تماس بگیریم.</p><a class="btn-papey" href="/custom-design">درخواست تماس ←</a></div></section>
+<section class="contact-page"><span class="editorial-eyebrow">@Text("eyebrow")</span><h1 class="page-text-lines">@Text("heading")</h1><p>@Text("intro")</p>
+<div class="contact-cards"><a href="https://wa.me/989036421161" target="_blank" rel="noopener"><span>@Text("whatsappLabel")</span><h2>@Text("whatsappTitle")</h2><p>@Text("whatsappBody")</p><strong>@Text("whatsappButton")</strong></a><a href="tel:09036421161"><span>@Text("phoneLabel")</span><h2>@Text("phoneTitle")</h2><p>@Text("phoneBody")</p><strong dir="ltr">۰۹۰۳۶۴۲۱۱۶۱ ↗</strong></a><a href="https://www.instagram.com/papey.ir" target="_blank" rel="noopener"><span>@Text("instagramLabel")</span><h2>@Text("instagramTitle")</h2><p>@Text("instagramBody")</p><strong dir="ltr">@@papey.ir ↗</strong></a></div>
+<div class="contact-footnote"><h2>@Text("customTitle")</h2><p>@Text("customBody")</p><a class="btn-papey" href="/custom-design">@Text("customButton")</a></div></section>
+
+@code {
+    private Dictionary<string,string>? _texts;
+    private string Text(string key) => _texts?.GetValueOrDefault(key) ?? StorePageTexts.Contact.First(f => f.Key == key).Default;
+    protected override async Task OnInitializedAsync() => _texts = await Pages.ReadAsync("contact");
+}

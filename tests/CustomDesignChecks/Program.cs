@@ -95,6 +95,15 @@ try{
  Check(adminPage.Contains(callback.Number)&&adminPage.Contains("09120000022"),"Admin sees callback references and phone numbers");
  Check((await guest.GetStringAsync("/about")).Contains("story-page")&&(await guest.GetStringAsync("/contact")).Contains("contact-cards"),"About and contact pages render");
  Check((await guest.GetStringAsync("/sitemap.xml")).Contains("/about"),"About page is included in sitemap");
+
+ var pageTexts=new StorePageTexts(factory);var aboutContent=await pageTexts.ReadAsync("about");aboutContent["heading"]="Custom about heading";aboutContent["body"]="First paragraph\n<script>alert('x')</script>";
+ Check(await pageTexts.SaveAsync(AccountAccess.Principal(owner),"about",aboutContent)==null,"Admin can persist custom About text");
+ var editedAbout=await guest.GetStringAsync("/about");Check(editedAbout.Contains("Custom about heading")&&editedAbout.Contains("&lt;script&gt;")&&!editedAbout.Contains("<script>alert('x')</script>"),"Public About page renders saved content and escapes embedded HTML");
+ var contactContent=await pageTexts.ReadAsync("contact");contactContent["phoneBody"]="Updated support hours";await pageTexts.SaveAsync(AccountAccess.Principal(owner),"contact",contactContent);
+ Check((await guest.GetStringAsync("/contact")).Contains("Updated support hours"),"Public Contact page renders saved admin edits");
+ Check((await manager.GetStringAsync("/admin/pages")).Contains("maxlength=\"10000\""),"Admin can open the page text editor");
+ Check(!(await guest.GetAsync("/admin/pages")).IsSuccessStatusCode,"Anonymous visitors cannot open the page editor");
+ Check(!(await client.GetAsync("/admin/pages")).IsSuccessStatusCode,"Customers cannot open the page editor");
  Console.WriteLine($"{checks} custom design checks passed; no real SMS or orders sent.");
 }finally{if(server is {HasExited:false}){server.Kill(true);await server.WaitForExitAsync();}await new NpgsqlCommand($"DROP DATABASE \"{database}\" WITH (FORCE)",connection).ExecuteNonQueryAsync();if(Path.GetDirectoryName(root)==Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar)&&Path.GetFileName(root).StartsWith("papey-custom-test-"))Directory.Delete(root,true);}
 sealed class Factory(DbContextOptions<AppDbContext> options):IDbContextFactory<AppDbContext>{public AppDbContext CreateDbContext()=>new(options);}

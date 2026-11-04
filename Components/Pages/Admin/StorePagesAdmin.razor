@@ -1,0 +1,45 @@
+@page "/admin/pages"
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+@rendermode InteractiveServer
+@inject StorePageTexts Pages
+@inject AuthService Auth
+<PageTitle>متن صفحات | مدیریت پاپی</PageTitle>
+<h1>متن صفحات فروشگاه</h1>
+<p>عنوان‌ها، توضیحات و متن دکمه‌های درباره ما و تماس با ما را ویرایش کنید. تغییرات پس از ذخیره در فروشگاه نمایش داده می‌شود.</p>
+<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">
+    <button class="btn-papey @(_page == "about" ? "" : "btn-outline")" disabled="@_busy" @onclick='() => SelectPage("about")'>درباره ما</button>
+    <button class="btn-papey @(_page == "contact" ? "" : "btn-outline")" disabled="@_busy" @onclick='() => SelectPage("contact")'>تماس با ما</button>
+    <a class="btn-papey btn-outline" href="/@_page" target="_blank" rel="noopener">مشاهده صفحه ↗</a>
+</div>
+@if (_values is not null)
+{
+    <form class="card-box" style="max-width:850px" @onsubmit="Save" @onsubmit:preventDefault>
+        @foreach (var field in StorePageTexts.Fields(_page))
+        {
+            <label style="display:block;margin-bottom:20px">@field.Label
+                @if (field.Multiline) { <textarea class="form-input" rows="@(field.Key == "body" ? 8 : 3)" maxlength="@field.Limit" required @bind="_values[field.Key]" @bind:event="oninput"></textarea> }
+                else { <input class="form-input" maxlength="@field.Limit" required @bind="_values[field.Key]" @bind:event="oninput" /> }
+            </label>
+        }
+        <p style="font-size:.8rem;color:#777">برای عنوان چندخطی یا بند جدید، Enter بزنید. متن ساده نمایش داده می‌شود؛ نیازی به کد HTML نیست.</p>
+        <button class="btn-papey" type="submit" disabled="@_busy">@(_busy ? "در حال ذخیره…" : "ذخیره متن صفحه")</button>
+        @if (_notice is not null) { <p role="status" class="alert-papey @(_success ? "alert-success" : "alert-danger")">@_notice</p> }
+    </form>
+}
+@code {
+    private string _page = "about";
+    private Dictionary<string, string>? _values;
+    private string? _notice;
+    private bool _busy, _success;
+    protected override async Task OnInitializedAsync() => _values = await Pages.ReadAsync(_page);
+    private async Task SelectPage(string page) { if (_busy) return; _page = page; _notice = null; _values = await Pages.ReadAsync(page); }
+    private async Task Save()
+    {
+        if (_busy || _values is null) return;
+        _busy = true;
+        try { var error = await Pages.SaveAsync(Auth.CurrentPrincipal, _page, _values); _success = error is null; _notice = error ?? "متن صفحه ذخیره شد."; }
+        catch { _success = false; _notice = "ذخیره انجام نشد؛ دوباره تلاش کنید."; }
+        finally { _busy = false; }
+    }
+}

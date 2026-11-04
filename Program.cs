@@ -92,6 +92,7 @@ builder.Services.AddHostedService<ProductTypeIconCleanupWorker>();
 builder.Services.AddScoped<CustomDesignService>();
 builder.Services.AddScoped<CustomCallbackService>();
 builder.Services.AddScoped<ProductTypePhotos>();
+builder.Services.AddScoped<StorePageTexts>();
 builder.Services.AddScoped<CustomDesignSmsQueue>();
 builder.Services.AddHostedService<CustomDesignSmsWorker>();
 builder.Services.AddSingleton<TaxSettingsService>();
