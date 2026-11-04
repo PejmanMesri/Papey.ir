@@ -14,7 +14,7 @@
 </div>
 @if (_values is not null)
 {
-    <form class="card-box" style="max-width:850px" @onsubmit="Save" @onsubmit:preventDefault>
+    <form class="card-box" style="max-width:850px" @key="_page" @onsubmit="Save" @onsubmit:preventDefault>
         @foreach (var field in StorePageTexts.Fields(_page))
         {
             <label style="display:block;margin-bottom:20px">@field.Label
@@ -33,7 +33,13 @@
     private string? _notice;
     private bool _busy, _success;
     protected override async Task OnInitializedAsync() => _values = await Pages.ReadAsync(_page);
-    private async Task SelectPage(string page) { if (_busy) return; _page = page; _notice = null; _values = await Pages.ReadAsync(page); }
+    private async Task SelectPage(string page)
+    {
+        if (_busy) return;
+        _busy = true; _values = null; _page = page; _notice = null;
+        try { _values = await Pages.ReadAsync(page); }
+        finally { _busy = false; }
+    }
     private async Task Save()
     {
         if (_busy || _values is null) return;
