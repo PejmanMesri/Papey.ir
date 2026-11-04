@@ -61,6 +61,9 @@ builder.Services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
 builder.Services.AddPapeyDataProtection(builder.Configuration, builder.Environment);
 builder.Services.AddRateLimiter(options =>
 {
+    options.AddPolicy("custom-callbacks", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromHours(1), QueueLimit = 0 }));
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddPolicy("custom-designs", context => RateLimitPartition.GetFixedWindowLimiter(
         context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -87,6 +90,8 @@ builder.Services.AddScoped<SizeGuideSettings>();
 builder.Services.AddScoped<ProductTypeIconUploads>();
 builder.Services.AddHostedService<ProductTypeIconCleanupWorker>();
 builder.Services.AddScoped<CustomDesignService>();
+builder.Services.AddScoped<CustomCallbackService>();
+builder.Services.AddScoped<ProductTypePhotos>();
 builder.Services.AddScoped<CustomDesignSmsQueue>();
 builder.Services.AddHostedService<CustomDesignSmsWorker>();
 builder.Services.AddSingleton<TaxSettingsService>();

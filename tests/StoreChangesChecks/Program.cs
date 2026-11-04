@@ -25,6 +25,11 @@ try{
  Check(await guides.ReadAsync(null,"هودی")==saved,"Custom clothing studio uses the same configured guide");Check(await guides.ReadAsync(types[0].Id,null)==ProductSizeGuides.ShirtImage,"Changing a hoodie guide preserves other clothing guides");
  var request=new CustomDesignRequest{Garment="hoodie",Colour="white",Size="XL",Quantity=2};var url=CustomDesignCatalog.WhatsAppUrl(request);var text=Uri.UnescapeDataString(new Uri(url).Query[6..]);
  Check(url.StartsWith("https://wa.me/989036421161?text=")&&text.Contains(request.Number)&&text.Contains("سلام")&&text.Contains("XL"),"WhatsApp handoff pre-fills greeting, request reference and garment details");
+
+ var category=new Category{Name="Photo category",Slug="photo-test",ProductTypeId=types[1].Id};db.Categories.Add(category);await db.SaveChangesAsync();
+ db.Products.AddRange(new Product{Name="Real photo",Slug="real-photo",CategoryId=category.Id,ProductTypeId=types[1].Id,ImageUrl="/uploads/images/real-photo.jpg",Price=100,HomeHeroSlot=1},new Product{Name="Hidden photo",Slug="hidden-photo",CategoryId=category.Id,ProductTypeId=types[1].Id,ImageUrl="/uploads/images/hidden.jpg",Price=100,IsActive=false});await db.SaveChangesAsync();
+ var photos=new ProductTypePhotos(factory);Check(await photos.ReadAsync(types[1].Id)=="/uploads/images/real-photo.jpg","Type selector uses an active product photograph and ignores hidden products");
+ Check(await photos.ReadAsync(999999)==null,"Empty product types allow the icon fallback");
  Check(!db.Database.HasPendingModelChanges(),"Size guide migration matches model");Console.WriteLine($"{count} store settings and handoff checks passed.");
 }finally{await new NpgsqlCommand($"DROP DATABASE \"{database}\" WITH (FORCE)",admin).ExecuteNonQueryAsync();if(Path.GetDirectoryName(root)==Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar)&&Path.GetFileName(root).StartsWith("papey-guide-tests-"))Directory.Delete(root,true);}
 sealed class Factory(DbContextOptions<AppDbContext> options):IDbContextFactory<AppDbContext>{public AppDbContext CreateDbContext()=>new(options);}

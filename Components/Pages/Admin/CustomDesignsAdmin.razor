@@ -8,6 +8,7 @@
 @inject CustomDesignService Designs
 
 <PageTitle>درخواست‌های طرح اختصاصی | مدیریت پاپی</PageTitle>
+<CustomCallbackInbox />
 <div class="custom-admin-header"><div><h1>درخواست‌های طرح اختصاصی</h1><p>این درخواست‌ها پرداخت نشده‌اند؛ برای قیمت و جزئیات با مشتری هماهنگ کنید.</p></div><button type="button" class="btn-papey btn-outline" @onclick="Load">تازه‌سازی</button></div>
 <div class="custom-admin-filter"><label>وضعیت<select class="form-input" @bind="_filter" @bind:after="Reset"> <option value="">همه درخواست‌ها</option>@foreach (var status in Enum.GetValues<CustomDesignStatus>()) { <option value="@((int)status)">@CustomDesignCatalog.StatusName(status)</option> }</select></label></div>
 @if (!Sms.CanSendCustomDesign || Sms.OrderNotificationPhones.Length == 0) { <div class="alert-papey alert-info">ارسال پیامک درخواست اختصاصی تنظیم نشده است؛ خط ارسال یا قالب و گیرندگان را بررسی کنید. درخواست‌ها در این صفحه محفوظ هستند.</div> }

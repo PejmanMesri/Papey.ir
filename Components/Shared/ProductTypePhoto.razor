@@ -1,0 +1,16 @@
+@inject ProductTypePhotos Photos
+@if (_photo is not null)
+{
+    <img class="product-type-photo" src="@_photo" alt="" aria-hidden="true" loading="lazy" />
+}
+else
+{
+    <ProductTypeSymbol TypeName="@TypeName" Value="@Value" />
+}
+@code {
+    [Parameter] public int Id { get; set; }
+    [Parameter] public string? TypeName { get; set; }
+    [Parameter] public string? Value { get; set; }
+    private string? _photo;
+    protected override async Task OnParametersSetAsync() => _photo = await Photos.ReadAsync(Id);
+}

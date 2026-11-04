@@ -28,11 +28,17 @@ public class AppDbContext : DbContext
     public DbSet<ProductReview> ProductReviews => Set<ProductReview>();
     public DbSet<CustomDesignRequest> CustomDesignRequests => Set<CustomDesignRequest>();
     public DbSet<CustomDesignSmsJob> CustomDesignSmsJobs => Set<CustomDesignSmsJob>();
+    public DbSet<CustomCallbackRequest> CustomCallbackRequests => Set<CustomCallbackRequest>();
     public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
     public DbSet<PageView> PageViews => Set<PageView>();
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
+        mb.Entity<CustomCallbackRequest>().HasIndex(r => new { r.Phone, r.CreatedAt });
+        mb.Entity<CustomCallbackRequest>().HasIndex(r => new { r.Status, r.CreatedAt });
+        mb.Entity<CustomDesignSmsJob>().HasOne(j => j.CallbackRequest).WithMany(r => r.SmsJobs).HasForeignKey(j => j.CallbackRequestId).OnDelete(DeleteBehavior.Cascade);
+        mb.Entity<CustomDesignSmsJob>().HasIndex(j => new { j.CallbackRequestId, j.Phone }).IsUnique();
+        mb.Entity<CustomDesignSmsJob>().ToTable(t => t.HasCheckConstraint("CK_CustomDesignSmsJobs_Request", "(\"RequestId\" IS NOT NULL) <> (\"CallbackRequestId\" IS NOT NULL)"));
         mb.Entity<CustomDesignRequest>().HasIndex(r => new { r.UserId, r.SubmissionKey }).IsUnique();
         mb.Entity<CustomDesignRequest>().HasIndex(r => new { r.Status, r.CreatedAt });
         mb.Entity<CustomDesignRequest>().HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Restrict);

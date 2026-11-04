@@ -1,59 +1,36 @@
 @page "/"
 @inject IDbContextFactory<AppDbContext> DbFactory
-<section class="home-hero">
-    <div class="home-hero-copy">
-        <span class="home-eyebrow">پاپی • برای سلیقه‌ی تو</span>
-        <h1>طرح تو<br /><span>استایل تو</span></h1>
-        <p>از انیمه و گیم تا هنر و موسیقی؛ تیشرت و هودی‌ای پیدا کن که از علاقه‌های تو حرف می‌زند.</p>
-        <div class="home-hero-actions"><a class="btn-papey" href="/products">پیدا کردن طرح من ←</a></div>
-    </div>
-    <div class="home-hero-gallery">
-        @foreach (var product in _heroProducts)
-        {
-            <a class="home-hero-product" href="/product/@product.Slug"><img src="@product.ImageUrl" alt="@product.Name" fetchpriority="high" /><span>@product.Name <span aria-hidden="true">↗</span></span></a>
-        }
-        @if (_heroProducts.Count == 0) { <div class="home-hero-empty">پاپی<span>طرح‌های خاص برای روزهای تو</span></div> }
+
+<section class="editorial-hero" aria-label="کالکشن پاپی">
+    @if (_heroProducts.Count > 0)
+    {
+        var hero = _heroProducts[_heroIndex % _heroProducts.Count];
+        <a class="editorial-hero-photo" href="/product/@hero.Slug"><img src="@hero.ImageUrl" alt="@hero.Name" fetchpriority="high" @key="hero.Id" /><span>@hero.Name <span aria-hidden="true">↗</span></span></a>
+    }
+    <div class="editorial-hero-copy"><span class="editorial-eyebrow">PAPEY / WEAR YOUR STORY</span><h1>سلیقه‌ات را<br />زندگی کن.</h1><p>طرح‌هایی از دنیای تو.<br />روی لباسی برای هر روز تو.</p><a class="editorial-hero-cta" href="/products">کشف کالکشن پاپی <span>←</span></a><span class="hero-outline-word" aria-hidden="true">YOUR<br />STORY.</span>
+    @if (_heroProducts.Count > 1) { <div class="hero-slide-controls" aria-label="تصاویر کالکشن">@for (var i = 0; i < _heroProducts.Count; i++) { var index = i; <button type="button" class="@(_heroIndex == index ? "active" : "")" aria-label="@($"نمایش محصول {i + 1}")" aria-pressed="@(_heroIndex == index)" @onclick="() => _heroIndex = index">@PersianHelpers.ToPersianDigits((i + 1).ToString("00"))</button> }</div> }
     </div>
 </section>
-<section class="home-category-section" aria-label="انتخاب مدل لباس">
-    <div class="home-section-heading"><div><span class="home-eyebrow">از اینجا شروع کن</span><h2>کدام مدل برای توست؟</h2></div></div>
-    <div class="home-categories">
-        @foreach (var type in _types)
-        {
-            <a class="home-category" href="/products?type=@type.Id"><span class="home-category-icon" aria-hidden="true"><ProductTypeSymbol TypeName="@type.Name" Value="@type.FilterIcon" /></span><div><h3>@type.Name</h3><span>دیدن همه طرح‌ها ←</span></div></a>
-        }
-    </div>
+<section class="photo-types-section"><div class="editorial-section-heading"><div><span class="editorial-eyebrow">انتخاب تو / THE COLLECTION</span><h2>از مدل لباس شروع کن.</h2></div><a href="/products">همه محصولات ↗</a></div>
+    <div class="photo-type-grid">@foreach (var type in _types) { <a class="photo-type-card" href="/products?type=@type.Id"><ProductTypePhoto Id="@type.Id" TypeName="@type.Name" Value="@type.FilterIcon" /><div><h3>@type.Name</h3><span>مشاهده محصولات <b aria-hidden="true">↗</b></span></div></a> }</div>
 </section>
-<section class="home-custom-design"><div><span>استودیوی پاپی ✦</span><h2>طرحی که فقط مال توست.</h2><p>تصویرت را روی لباس بچین؛ ما برای چاپ و قیمت با تو هماهنگ می‌کنیم.</p><a class="btn-papey" href="/custom-design">لباس خودم را طراحی می‌کنم ←</a><small>ثبت درخواست رایگان · بدون پرداخت آنلاین</small></div><img src="/img/custom-studio/hoodie-white-front.webp" alt="بوم سفید برای طرح اختصاصی شما" loading="lazy" /></section>
-<section class="home-products-section">
-    <div class="home-section-heading"><div><span class="home-eyebrow">تازه رسیده</span><h2>جدیدترین طرح‌ها</h2></div><a href="/products">همه محصولات ←</a></div>
-    <ProductGrid Products="_newProducts" />
-</section>
-@if (_featured.Count > 0)
-{
-    <section class="home-products-section"><div class="home-section-heading"><div><span class="home-eyebrow">انتخاب‌های پاپی</span><h2>طرح‌های منتخب</h2></div><a href="/products">گشتن در فروشگاه ←</a></div><ProductGrid Products="_featured" /></section>
-}
-<section class="home-help">
-    <div><span class="home-eyebrow">با خیال راحت انتخاب کن</span><h2>برای خرید کمک می‌خواهی؟</h2><p>سایزت را پیدا کن یا برای انتخاب طرح با ما در ارتباط باش.</p><a class="btn-papey btn-outline" href="/contact">ارتباط با پاپی</a></div>
-    <div>
-        <details class="faq-item"><summary>چطور سایز مناسب را انتخاب کنم؟</summary><div class="faq-body">در صفحه هر محصول، زیر گزینه‌های سایز روی «راهنمای انتخاب سایز» بزن و اندازه‌ها را با لباس خودت مقایسه کن.</div></details>
-        <details class="faq-item"><summary>سفارش چطور ارسال می‌شود؟</summary><div class="faq-body">ارسال با تیپاکس انجام می‌شود و هزینه ارسال هنگام تحویل از گیرنده دریافت می‌شود. آماده‌سازی سفارش ۷ تا ۱۰ روز کاری زمان می‌برد.</div></details>
-        <details class="faq-item"><summary>چطور خرید و سفارشم را پیگیری کنم؟</summary><div class="faq-body">وارد حساب شو، محصولات را به سبد اضافه کن و پس از ثبت نشانی، پرداخت را انجام بده. وضعیت خرید در بخش <a href="/account/orders">سفارش‌های من</a> نمایش داده می‌شود.</div></details>
-    </div>
-</section>
+<section class="editorial-products"><div class="editorial-section-heading"><div><span class="editorial-eyebrow">NEW ARRIVALS</span><h2>تازه‌های پاپی</h2></div><a href="/products">مشاهده همه ↗</a></div><ProductGrid Products="_newProducts" /></section>
+<section class="editorial-custom"><div><span class="editorial-eyebrow">PAPEY CUSTOM / ایده از تو</span><h2>قرار نیست طرح تو<br />شبیه بقیه باشد.</h2><p>ایده‌ات را با ما در میان بگذار. برای انتخاب لباس، بررسی طرح و هماهنگی قیمت کنارت هستیم.</p><a class="editorial-hero-cta" href="/custom-design">درباره طرح من صحبت کنیم ↗</a><small>ثبت شماره تماس یا گفت‌وگو در واتساپ</small></div><img src="/img/custom-studio/hoodie-white-front.webp" alt="هودی برای سفارش با طرح اختصاصی" loading="lazy" /></section>
+@if (_featured.Count > 0) { <section class="editorial-products"><div class="editorial-section-heading"><div><span class="editorial-eyebrow">PAPEY PICKS</span><h2>منتخب‌های پاپی</h2></div><a href="/products">گشتن در فروشگاه ↗</a></div><ProductGrid Products="_featured" /></section> }
+<section class="editorial-values"><div><span>۰۱ / انتخاب</span><h3>علاقه‌هایت را بپوش</h3><p>از انیمه و گیم تا موسیقی و هنر؛ انتخاب از دنیای تو.</p></div><div><span>۰۲ / اندازه</span><h3>با اطمینان انتخاب کن</h3><p>راهنمای اندازه هر مدل، کنار سایزهای محصول در دسترس است.</p></div><div><span>۰۳ / ارتباط</span><h3>در کنارت هستیم</h3><p>برای راهنمایی و پیگیری سفارش با پاپی در ارتباط باش.</p></div></section>
+<section class="editorial-faq"><div><span class="editorial-eyebrow">GOOD TO KNOW</span><h2>قبل از انتخاب بعدی.</h2><a href="/contact">تماس با ما ↗</a></div><div><details class="faq-item"><summary>سفارش چطور ارسال می‌شود؟</summary><p>ارسال با تیپاکس به سراسر ایران است. هزینه ارسال هنگام تحویل از گیرنده دریافت می‌شود. آماده‌سازی سفارش ۷ تا ۱۰ روز کاری زمان می‌برد.</p></details><details class="faq-item"><summary>چطور سایزم را پیدا کنم؟</summary><p>زیر سایزهای هر محصول، راهنمای انتخاب سایز را باز کن و اندازه‌ها را با لباس خودت مقایسه کن.</p></details><details class="faq-item"><summary>طرح خودم را چطور سفارش بدهم؟</summary><p>در <a href="/custom-design">سفارش اختصاصی</a> شماره‌ات را ثبت کن یا در واتساپ پیام بده؛ جزئیات و قیمت را با تو هماهنگ می‌کنیم.</p></details></div></section>
+
 @code {
-    private List<ProductTypeEntity> _types = new();
-    private List<Product> _newProducts = new();
-    private List<Product> _featured = new();
-    private List<Product> _heroProducts = new();
+    private int _heroIndex;
+    private List<ProductTypeEntity> _types = [];
+    private List<Product> _newProducts = [], _featured = [], _heroProducts = [];
     protected override async Task OnInitializedAsync()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
         _types = await db.ProductTypes.Where(t => t.IsActive).OrderBy(t => t.DisplayOrder).ToListAsync();
         _newProducts = await db.Products.Include(p => p.Media).Where(p => p.IsActive).OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.Id).Take(8).ToListAsync();
         _featured = await db.Products.Include(p => p.Media).Where(p => p.IsActive && p.IsFeatured).OrderByDescending(p => p.CreatedAt).Take(4).ToListAsync();
-        _heroProducts = await db.Products.Include(p => p.Media).Where(p => p.IsActive && p.HomeHeroSlot != null)
-            .OrderBy(p => p.HomeHeroSlot).Take(2).ToListAsync();
+        _heroProducts = await db.Products.Where(p => p.IsActive && p.HomeHeroSlot != null).OrderBy(p => p.HomeHeroSlot).Take(2).ToListAsync();
+        if (_heroProducts.Count == 0) _heroProducts = _newProducts.Take(2).ToList();
     }
-
 }

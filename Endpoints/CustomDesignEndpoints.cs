@@ -8,6 +8,22 @@ public static class CustomDesignEndpoints
 {
     public static void MapCustomDesignEndpoints(this WebApplication app)
     {
+        app.MapPost("/custom-design/request-call", async (HttpContext http, IAntiforgery antiforgery, CustomCallbackService callbacks) =>
+        {
+            http.Response.Headers.CacheControl = "no-store";
+            try
+            {
+                await antiforgery.ValidateRequestAsync(http);
+                if (!http.Request.HasFormContentType) return Results.BadRequest();
+                var form = await http.Request.ReadFormAsync(http.RequestAborted);
+                if (!string.IsNullOrWhiteSpace(form["website"])) return Results.LocalRedirect("/custom-design?sent=1");
+                await callbacks.SubmitAsync(form["phone"], http.RequestAborted);
+                return Results.LocalRedirect("/custom-design?sent=1");
+            }
+            catch (AntiforgeryValidationException) { return Results.BadRequest("نشست منقضی شده است؛ صفحه را تازه کنید."); }
+            catch (ArgumentException) { return Results.LocalRedirect("/custom-design?invalid=1"); }
+        }).RequireRateLimiting("custom-callbacks").WithMetadata(new RequestSizeLimitAttribute(4096));
+
         app.MapPost("/api/custom-designs", async (HttpContext http, IAntiforgery antiforgery, CustomDesignService designs) =>
         {
             try

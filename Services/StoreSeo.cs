@@ -51,7 +51,8 @@ public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfigura
         var description = "خرید تیشرت، هودی و لانگ اسلیو با طرح‌های خاص از پاپی؛ انتخاب رنگ و سایز و پرداخت امن.";
         await using var db = await factory.CreateDbContextAsync();
         if (path == "") title = "پاپی Papey | تیشرت، هودی و لانگ اسلیو با طرح‌های خاص";
-        else if (path == "/custom-design") { title = "طراحی لباس اختصاصی | استودیوی پاپی"; description = "طرح PNG خودتان را روی تیشرت، هودی یا لانگ اسلیو بچینید و رایگان برای بررسی قیمت و هماهنگی چاپ به پاپی بفرستید."; image = Url("/img/custom-studio/tshirt-white-front.webp"); }
+        else if (path == "/custom-design") { title = "سفارش لباس اختصاصی | پاپی"; description = "برای چاپ طرح دلخواه روی لباس، شماره تماس خود را ثبت کنید یا در واتساپ با پاپی گفت‌وگو کنید. قیمت و جزئیات پیش از ثبت سفارش هماهنگ می‌شود."; image = Url("/img/custom-studio/hoodie-white-front.webp"); }
+        else if (path == "/about") { title = "درباره ما | پاپی"; description = "با پاپی آشنا شوید؛ فروشگاه تیشرت، هودی و لانگ اسلیو با طرح‌های خاص و امکان سفارش لباس با طرح دلخواه."; }
         else if (path == "/products")
         {
             title = "همه محصولات | پاپی";
@@ -104,7 +105,7 @@ public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfigura
         var categories = await db.Categories.Where(c => c.IsActive && categoryIds.Contains(c.Id)).Select(c => c.Slug).ToListAsync();
         var typeIds = products.Where(p => p.ProductTypeId != null).Select(p => p.ProductTypeId!.Value).ToHashSet();
         var types = await db.ProductTypes.Where(t => t.IsActive && typeIds.Contains(t.Id)).Select(t => t.Id).ToListAsync();
-        var paths = new[] { "/", "/products", "/contact", "/custom-design" }.Concat(products.Select(p => "/product/" + Uri.EscapeDataString(p.Slug)))
+        var paths = new[] { "/", "/products", "/contact", "/about", "/custom-design" }.Concat(products.Select(p => "/product/" + Uri.EscapeDataString(p.Slug)))
             .Concat(categories.Select(c => "/category/" + Uri.EscapeDataString(c))).Concat(types.Select(t => $"/products?type={t}"));
         XNamespace ns = "http://www.sitemaps.org/schemas/sitemap/0.9";
         return new XDocument(new XElement(ns + "urlset", paths.Distinct().Select(path => new XElement(ns + "url", new XElement(ns + "loc", Url(path)))))).ToString();

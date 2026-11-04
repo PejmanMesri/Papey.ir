@@ -1,0 +1,29 @@
+@page "/custom-design"
+<PageTitle>سفارش لباس اختصاصی | پاپی</PageTitle>
+<section class="custom-contact-page">
+    <div class="custom-contact-art"><img src="/img/custom-studio/hoodie-white-front.webp" alt="هودی برای چاپ طرح اختصاصی" /><span>YOUR IDEA.<br />YOUR PAPEY.</span></div>
+    <div class="custom-contact-copy"><span class="editorial-eyebrow">سفارش اختصاصی / PAPEY CUSTOM</span><h1>تو ایده‌اش را داری.<br />ما کنارت هستیم.</h1>
+        <p>طرح مورد علاقه‌ات را روی تیشرت، هودی یا لانگ اسلیو می‌خواهی؟ برای بررسی طرح، انتخاب لباس و هماهنگی قیمت با ما در ارتباط باش.</p>
+        @if (SentValue == "1") { <div class="callback-success" role="status"><strong>شماره‌ات ثبت شد.</strong><p>تیم پاپی برای بررسی ایده و هماهنگی جزئیات با تو تماس می‌گیرد.</p></div> }
+        else
+        {
+            <form class="callback-form" action="/custom-design/request-call" method="post">
+                <AntiforgeryToken />
+                <label for="callback-phone">شماره‌ات را بگذار، با تو تماس می‌گیریم.</label>
+                <div><input id="callback-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" required maxlength="30" placeholder="09xxxxxxxxx" dir="ltr" aria-describedby="callback-hint" /><button class="btn-papey" type="submit">درخواست تماس ←</button></div>
+                <label class="callback-trap" aria-hidden="true">وب‌سایت<input name="website" tabindex="-1" autocomplete="off" /></label>
+                <small id="callback-hint">فقط برای پیگیری درخواستت تماس می‌گیریم. ثبت درخواست رایگان است.</small>
+                @if (InvalidValue == "1") { <p class="callback-error" role="alert">لطفاً یک شماره موبایل معتبر وارد کن.</p> }
+            </form>
+        }
+        <div class="contact-divider"><span>یا همین حالا گفت‌وگو کنیم</span></div>
+        <a class="whatsapp-cta" href="@WhatsAppUrl" target="_blank" rel="noopener">گفت‌وگو درباره طرح من در واتساپ <span aria-hidden="true">↗</span></a>
+        <p class="custom-contact-note">عکس طرح و جزئیاتش را در واتساپ بفرست. قیمت، زمان آماده‌سازی و محل چاپ پیش از نهایی شدن سفارش با تو هماهنگ می‌شود.</p>
+    </div>
+</section>
+<section class="custom-contact-steps"><article><b>۰۱</b><h2>در ارتباط باشیم</h2><p>شماره‌ات را ثبت کن یا در واتساپ پیام بده.</p></article><article><b>۰۲</b><h2>جزئیات را هماهنگ کنیم</h2><p>طرح، مدل لباس، اندازه چاپ و قیمت را با هم بررسی می‌کنیم.</p></article><article><b>۰۳</b><h2>لباس تو، با ایده تو</h2><p>بعد از تأیید تو، مراحل ثبت سفارش و آماده‌سازی هماهنگ می‌شود.</p></article></section>
+@code {
+    [SupplyParameterFromQuery(Name = "sent")] public string? SentValue { get; set; }
+    [SupplyParameterFromQuery(Name = "invalid")] public string? InvalidValue { get; set; }
+    private static string WhatsAppUrl => "https://wa.me/989036421161?text=" + Uri.EscapeDataString("سلام پاپی، برای سفارش لباس با طرح اختصاصی پیام می‌دهم. می‌خواهم درباره طرح، مدل لباس و قیمت با شما هماهنگ کنم.");
+}

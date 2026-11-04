@@ -97,7 +97,7 @@ else
         if (_seller)
         {
             _toShip = await db.Orders.CountAsync(o => o.PaidAt != null && (o.Status == OrderStatus.Paid || o.Status == OrderStatus.Processing));
-            _custom = await db.CustomDesignRequests.CountAsync(r => r.Status == CustomDesignStatus.New);
+            _custom = await db.CustomDesignRequests.CountAsync(r => r.Status == CustomDesignStatus.New) + await db.CustomCallbackRequests.CountAsync(r => r.Status == CustomDesignStatus.New);
             _reviews = await db.ProductReviews.CountAsync(r => !r.IsHidden && (r.AdminReply == null || r.AdminReply == ""));
             _latest = await db.Orders.Where(o => o.PaidAt != null && o.Status != OrderStatus.Cancelled).OrderByDescending(o => o.CreatedAt).Take(8).ToListAsync();
             return;

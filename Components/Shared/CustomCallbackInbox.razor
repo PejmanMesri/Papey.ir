@@ -1,0 +1,55 @@
+@inject IDbContextFactory<AppDbContext> Factory
+@inject AuthService Auth
+<section class="card-box">
+    <h2>درخواست‌های تماس برای لباس اختصاصی</h2><p>شماره‌هایی که در صفحه سفارش اختصاصی ثبت شده‌اند.</p>
+    <button class="btn-papey btn-sm btn-outline" @onclick="Load">تازه‌سازی درخواست‌های تماس</button>
+    @if (_notice is not null) { <p role="status">@_notice</p> }
+    @foreach (var row in _rows)
+    {
+        <article style="padding:16px 0;border-bottom:1px solid #ddd" @key="row.Id">
+            <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><strong dir="ltr">@row.Number</strong><a href="tel:@row.Phone" dir="ltr">@row.Phone</a><small>@row.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm", new System.Globalization.CultureInfo("fa-IR"))</small><b>@CustomDesignCatalog.StatusName(row.Status)</b></div>
+            <details style="margin-top:12px"><summary>پیگیری و یادداشت</summary>
+                <label>وضعیت<select class="form-input" @bind="row.Status">@foreach (var status in Enum.GetValues<CustomDesignStatus>()) { <option value="@status">@CustomDesignCatalog.StatusName(status)</option> }</select></label>
+                <label>یادداشت داخلی<textarea class="form-input" rows="2" maxlength="2000" @bind="row.AdminNotes"></textarea></label>
+                <button class="btn-papey btn-sm" disabled="@_busy" @onclick="() => Save(row)">ذخیره پیگیری</button>
+                <small style="display:block">اعلان مدیران: @string.Join("، ", row.SmsJobs.Select(j => j.State.ToString()))</small>
+            </details>
+        </article>
+    }
+    @if (_rows.Count == 0) { <p>درخواست تماسی ثبت نشده است.</p> }
+    <div style="display:flex;gap:12px;margin-top:16px"><button class="btn-papey btn-sm btn-outline" disabled="@(_page == 0)" @onclick="() => Page(-1)">قبلی</button><button class="btn-papey btn-sm btn-outline" disabled="@(!_more)" @onclick="() => Page(1)">بعدی</button></div>
+</section>
+@code {
+    private List<CustomCallbackRequest> _rows = [];
+    private int _page;
+    private bool _more, _busy;
+    private string? _notice;
+    protected override Task OnInitializedAsync() => Load();
+    private async Task<bool> Allowed(AppDbContext db)
+    {
+        var user = Auth.CurrentUserId is int id ? await db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Id == id) : null;
+        return user?.CanManageStore == true && Auth.CurrentPrincipal is not null && AccountAccess.Valid(Auth.CurrentPrincipal, user, roles: true);
+    }
+    private async Task Load()
+    {
+        await using var db = await Factory.CreateDbContextAsync();
+        if (!await Allowed(db)) { _rows = []; return; }
+        var rows = await db.CustomCallbackRequests.AsNoTracking().Include(r => r.SmsJobs).OrderByDescending(r => r.CreatedAt).Skip(_page * 10).Take(11).ToListAsync();
+        _more = rows.Count > 10; _rows = rows.Take(10).ToList();
+    }
+    private async Task Page(int delta) { _page = Math.Max(0, _page + delta); await Load(); }
+    private async Task Save(CustomCallbackRequest row)
+    {
+        if (_busy || !Enum.IsDefined(row.Status) || row.AdminNotes.Length > 2000) return;
+        _busy = true;
+        try
+        {
+            await using var db = await Factory.CreateDbContextAsync();
+            if (!await Allowed(db)) return;
+            var item = await db.CustomCallbackRequests.FindAsync(row.Id);
+            if (item is null) return;
+            item.Status = row.Status; item.AdminNotes = row.AdminNotes.Trim(); await db.SaveChangesAsync(); _notice = "پیگیری ذخیره شد.";
+        }
+        finally { _busy = false; }
+    }
+}

@@ -28,8 +28,10 @@ public sealed class CustomDesignSmsQueue(IDbContextFactory<AppDbContext> factory
         if (!sms.OrderNotificationPhones.Contains(job.Phone)) job.State = ShippingSmsState.Cancelled;
         else
         {
-            var request = await db.CustomDesignRequests.AsNoTracking().SingleAsync(r => r.Id == job.RequestId, ct);
-            var result = await sms.SendCustomDesignAsync(job.Phone, request.Number, ct);
+            var number = job.CallbackRequestId is Guid callbackId
+                ? (await db.CustomCallbackRequests.AsNoTracking().SingleAsync(r => r.Id == callbackId, ct)).Number
+                : (await db.CustomDesignRequests.AsNoTracking().SingleAsync(r => r.Id == job.RequestId, ct)).Number;
+            var result = await sms.SendCustomDesignAsync(job.Phone, number, ct);
             job.MessageId = result.MessageId; job.Error = result.Error;
             job.State = result.Success ? ShippingSmsState.Accepted : result.Uncertain ? ShippingSmsState.Unknown
                 : job.Attempts >= 3 ? ShippingSmsState.Failed : ShippingSmsState.Pending;

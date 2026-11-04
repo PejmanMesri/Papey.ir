@@ -40,7 +40,7 @@
                     {
                         <button type="button" class="clothing-type-option @GetClothingTypeClass(type) @(_selectedProductTypeId == type.Id ? "is-selected" : "")"
                                 @onclick="() => NavigateToProductType(type)">
-                            <span class="clothing-type-icon"><ProductTypeSymbol TypeName="@type.Name" Value="@type.FilterIcon" /></span>
+                            <span class="clothing-type-icon"><ProductTypePhoto Id="@type.Id" TypeName="@type.Name" Value="@type.FilterIcon" /></span>
                             <span>@type.Name</span>
                         </button>
                     }

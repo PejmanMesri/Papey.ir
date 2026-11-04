@@ -1,6 +1,6 @@
 <nav class="main-nav" aria-label="ناوبری اصلی">
     <NavLink href="/" Match="NavLinkMatch.All">خانه</NavLink>
-    @if (Types.Count > 3)
+    @if (Types.Count > 0)
     {
         <details class="desktop-type-menu" data-navigation-menu>
             <summary>نوع لباس <span class="type-menu-count">@PersianHelpers.ToPersianDigits(Types.Count.ToString())</span><svg class="type-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></summary>
@@ -12,7 +12,7 @@
                     @if (type.Categories.Count > 0)
                     {
                         <details class="desktop-type-group" name="desktop-clothing-types" open="@(type.Id == Types.FirstOrDefault(t => t.Categories.Count > 0)?.Id)">
-                            <summary><span class="type-rail-label"><span aria-hidden="true"><ProductTypeSymbol TypeName="@type.Name" Value="@type.FilterIcon" /></span><strong>@type.Name</strong></span><svg class="type-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg></summary>
+                            <summary><span class="type-rail-label"><span aria-hidden="true"><ProductTypePhoto Id="@type.Id" TypeName="@type.Name" Value="@type.FilterIcon" /></span><strong>@type.Name</strong></span><svg class="type-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg></summary>
                             <div class="desktop-type-categories">
                                 <a class="type-view-all" href="/products?type=@type.Id">همه @type.Name ←</a>
                                 <div class="type-category-grid">
@@ -24,32 +24,16 @@
                             </div>
                         </details>
                     }
-                    else { <a class="desktop-type-direct" href="/products?type=@type.Id"><span class="type-rail-label"><span aria-hidden="true"><ProductTypeSymbol TypeName="@type.Name" Value="@type.FilterIcon" /></span>@type.Name</span><span aria-hidden="true">←</span></a> }
+                    else { <a class="desktop-type-direct" href="/products?type=@type.Id"><span class="type-rail-label"><span aria-hidden="true"><ProductTypePhoto Id="@type.Id" TypeName="@type.Name" Value="@type.FilterIcon" /></span>@type.Name</span><span aria-hidden="true">←</span></a> }
                 }
                 </div>
             </div>
         </details>
     }
-    else
-    {
-        @foreach (var type in Types)
-        {
-            <div class="nav-category">
-                <a href="/products?type=@type.Id">@type.Name</a>
-                @if (type.Categories.Count > 0)
-                {
-                    <div class="nav-submenu">
-                        @foreach (var category in type.Categories.OrderBy(c => c.DisplayOrder))
-                        {
-                            <NavLink href="@($"/category/{category.Slug}")">@category.Name</NavLink>
-                        }
-                    </div>
-                }
-            </div>
-        }
-    }
     <NavLink class="catalog-all-link" href="/products">کل محصولات</NavLink>
-    <NavLink href="/custom-design">طرح اختصاصی ✦</NavLink>
+    <NavLink href="/custom-design">سفارش اختصاصی</NavLink>
+    <NavLink href="/about">درباره ما</NavLink>
+    <NavLink href="/contact">تماس با ما</NavLink>
 </nav>
 
 @code {

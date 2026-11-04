@@ -207,6 +207,37 @@ namespace Papey.Migrations
                     b.ToTable("Colors");
                 });
 
+            modelBuilder.Entity("Papey.Models.CustomCallbackRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AdminNotes")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Phone", "CreatedAt");
+
+                    b.HasIndex("Status", "CreatedAt");
+
+                    b.ToTable("CustomCallbackRequests");
+                });
+
             modelBuilder.Entity("Papey.Models.CustomDesignRequest", b =>
                 {
                     b.Property<Guid>("Id")
@@ -297,6 +328,9 @@ namespace Papey.Migrations
                     b.Property<DateTime>("AvailableAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("CallbackRequestId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Error")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -312,7 +346,7 @@ namespace Papey.Migrations
                         .HasMaxLength(11)
                         .HasColumnType("character varying(11)");
 
-                    b.Property<Guid>("RequestId")
+                    b.Property<Guid?>("RequestId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("StartedAt")
@@ -323,12 +357,18 @@ namespace Papey.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CallbackRequestId", "Phone")
+                        .IsUnique();
+
                     b.HasIndex("RequestId", "Phone")
                         .IsUnique();
 
                     b.HasIndex("State", "AvailableAt");
 
-                    b.ToTable("CustomDesignSmsJobs");
+                    b.ToTable("CustomDesignSmsJobs", t =>
+                        {
+                            t.HasCheckConstraint("CK_CustomDesignSmsJobs_Request", "(\"RequestId\" IS NOT NULL) <> (\"CallbackRequestId\" IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("Papey.Models.Order", b =>
@@ -1130,11 +1170,17 @@ namespace Papey.Migrations
 
             modelBuilder.Entity("Papey.Models.CustomDesignSmsJob", b =>
                 {
+                    b.HasOne("Papey.Models.CustomCallbackRequest", "CallbackRequest")
+                        .WithMany("SmsJobs")
+                        .HasForeignKey("CallbackRequestId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("Papey.Models.CustomDesignRequest", "Request")
                         .WithMany("SmsJobs")
                         .HasForeignKey("RequestId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("CallbackRequest");
 
                     b.Navigation("Request");
                 });
@@ -1347,6 +1393,11 @@ namespace Papey.Migrations
             modelBuilder.Entity("Papey.Models.Category", b =>
                 {
                     b.Navigation("Products");
+                });
+
+            modelBuilder.Entity("Papey.Models.CustomCallbackRequest", b =>
+                {
+                    b.Navigation("SmsJobs");
                 });
 
             modelBuilder.Entity("Papey.Models.CustomDesignRequest", b =>

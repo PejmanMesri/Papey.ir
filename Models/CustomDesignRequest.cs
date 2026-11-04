@@ -31,8 +31,10 @@ public sealed class CustomDesignRequest
 public sealed class CustomDesignSmsJob
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public Guid RequestId { get; set; }
-    public CustomDesignRequest Request { get; set; } = null!;
+    public Guid? RequestId { get; set; }
+    public CustomDesignRequest? Request { get; set; }
+    public Guid? CallbackRequestId { get; set; }
+    public CustomCallbackRequest? CallbackRequest { get; set; }
     [MaxLength(11)] public string Phone { get; set; } = "";
     public ShippingSmsState State { get; set; }
     public bool IsSandbox { get; set; }
