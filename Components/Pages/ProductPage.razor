@@ -15,7 +15,7 @@ else
         <div class="gallery">
             @if (_media.Count == 0)
             {
-                <img src="@_product.ImageUrl" alt="@_product.Name" />
+                <button class="product-photo-open" type="button" aria-label="نمایش و بزرگ‌نمایی تصویر محصول" aria-haspopup="dialog" @onclick="() => OpenPicture(_product.ImageUrl)"><img src="@_product.ImageUrl" alt="@_product.Name" /><span>بزرگ‌نمایی تصویر ⤢</span></button>
             }
             else
             {
@@ -27,7 +27,7 @@ else
                     }
                     else
                     {
-                        <img src="@current.Url" alt="@(current.Alt ?? _product.Name)" />
+                        <button class="product-photo-open" type="button" aria-label="نمایش و بزرگ‌نمایی تصویر محصول" aria-haspopup="dialog" @onclick="() => OpenPicture(current.Url)"><img src="@current.Url" alt="@(current.Alt ?? _product.Name)" /><span>بزرگ‌نمایی تصویر ⤢</span></button>
                     }
                 </div>
                 @if (_media.Count > 1)
@@ -128,10 +128,13 @@ else
     <ProductReviews @key='("reviews", _product.Id)' ProductId="_product.Id" Slug="@_product.Slug" />
 }
 
+<ProductImageLightbox @ref="_imageViewer" />
 @code {
     [Parameter] public string Slug { get; set; } = "";
 
     private Product? _product;
+    private ProductImageLightbox? _imageViewer;
+    private Task OpenPicture(string? selected) => _imageViewer?.ShowAsync(new[] { _product!.ImageUrl }.Concat(_media.Where(m => m.Type == MediaType.Image).Select(m => m.Url)).OfType<string>(), _product.Name, selectedImage: selected) ?? Task.CompletedTask;
     private List<ProductMedia> _media = new();
     private int _activeMedia;
     private List<(string Name, string Hex)> _colors = new();

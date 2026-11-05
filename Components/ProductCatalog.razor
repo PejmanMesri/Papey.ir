@@ -75,20 +75,21 @@
         </aside>
 
         <section class="catalog-results">
-            <div class="catalog-toolbar">
-                <p><strong>@PersianHelpers.ToPersianDigits(FilteredProducts.Count.ToString())</strong> محصول</p>
-                <label>
-                    <span>مرتب‌سازی:</span>
-                    <select class="form-input" @bind="_sort">
-                        <option value="newest">جدیدترین</option>
-                        <option value="price-asc">ارزان‌ترین</option>
-                        <option value="price-desc">گران‌ترین</option>
-                        <option value="popularity">محبوب‌ترین</option>
-                        <option value="purchased">پرفروش‌ترین</option>
-                    </select>
-                </label>
-            </div>
-            <ProductGrid ShowViewOptions="true" Products="FilteredProducts" />
+            <ProductGrid ShowViewOptions="true" Products="FilteredProducts">
+                <ToolbarStart>
+                    <p class="catalog-product-count"><strong>@PersianHelpers.ToPersianDigits(FilteredProducts.Count.ToString())</strong> محصول</p>
+                    <label class="catalog-sort-control">
+                        <span>مرتب‌سازی</span>
+                        <select class="form-input" aria-label="مرتب‌سازی محصولات" @bind="_sort">
+                            <option value="newest">جدیدترین</option>
+                            <option value="price-asc">ارزان‌ترین</option>
+                            <option value="price-desc">گران‌ترین</option>
+                            <option value="popularity">محبوب‌ترین</option>
+                            <option value="purchased">پرفروش‌ترین</option>
+                        </select>
+                    </label>
+                </ToolbarStart>
+            </ProductGrid>
         </section>
     </div>
 </div>

@@ -10,6 +10,9 @@ try
 {
     Check(ThermalReceipt.WidthFor("BIXOLON SRP-330II") == 512 && ThermalReceipt.WidthFor("BIXOLON SRP-332II") == 576,
         "Raster width matches the 180 dpi / 203 dpi BIXOLON model");
+    Check(DriverReceipt.Is80mmPaper(315) && !DriverReceipt.Is80mmPaper(827), "Driver compatibility mode accepts 80mm roll forms and rejects A4-width forms");
+    var defaultSettings = new Settings("https://papey.ir/", "BIXOLON SRP-330II", "Test", "unused", "test");
+    Check(defaultSettings.PrintMode == "driver", "External app uses the same driver-compatible default as browser printing");
     var paper = DriverReceipt.PaperFor(512, 512);
     Check(paper.Width == 315 && paper.Height is >= 299 and <= 300, "Driver mode requests an 80mm roll and content-sized height instead of A4");
     var area = new System.Drawing.RectangleF(14, 4, 280, 100);

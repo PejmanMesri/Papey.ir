@@ -184,7 +184,7 @@ internal sealed class PrinterForm : Form
     }
 
     private Task SubmitReceipt(ThermalReceipt receipt) => Task.Run(() => {
-        Store.Write("render-diagnostics.json", new { version = "1.2.0", mode = _settings.PrintMode, receipt.Width, receipt.Height, paperWidthMm = 80, contentWidthMm = 72, contentHeightMm = Math.Round(receipt.Height * 72d / receipt.Width, 1) });
+        Store.Write("render-diagnostics.json", new { version = "1.2.1", mode = _settings.PrintMode, receipt.Width, receipt.Height, paperWidthMm = 80, contentWidthMm = 72, contentHeightMm = Math.Round(receipt.Height * 72d / receipt.Width, 1) });
         if (_settings.PrintMode == "driver") DriverReceipt.Submit(_settings.Printer, receipt);
         else RawPrinter.Submit(_settings.Printer, receipt.Commands);
     });

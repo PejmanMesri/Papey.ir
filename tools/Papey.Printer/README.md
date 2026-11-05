@@ -107,3 +107,10 @@ If the printer's own self-test is also blank, website page dimensions cannot
 explain that result: check the thermal paper and device with the customer. If
 the self-test prints but the app's test does not, try the other print method and
 check the driver/queue name. Do not mark a blank order as successfully printed.
+
+Version 1.2.1 aligns the default with browser-compatible printing: Windows driver,
+80mm driver-supported paper, maximum 72mm content, 100% scale, zero application
+margins and no browser headers. It no longer invents a custom paper form in
+normal driver mode. Legacy configurations without an explicit method use driver
+mode; an explicitly selected RAW mode remains available. A long receipt paginates
+within the driver's printable area without shrinking or losing the remaining rows.

@@ -94,6 +94,7 @@ builder.Services.AddScoped<CustomCallbackService>();
 builder.Services.AddScoped<ProductTypePhotos>();
 builder.Services.AddScoped<StorePageTexts>();
 builder.Services.AddScoped<HomepageSettings>();
+builder.Services.AddSingleton<HomepageChanges>();
 builder.Services.AddScoped<CustomDesignSmsQueue>();
 builder.Services.AddHostedService<CustomDesignSmsWorker>();
 builder.Services.AddSingleton<TaxSettingsService>();

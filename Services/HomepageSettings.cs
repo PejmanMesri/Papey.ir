@@ -14,6 +14,7 @@ public sealed class HomeSlide
     public string Description { get; set; } = "طرح‌هایی از دنیای تو، روی لباسی برای هر روز تو.";
     public string Link { get; set; } = "/products";
     public bool Active { get; set; } = true;
+    public bool IsCampaign { get; set; }
 }
 public sealed class HomepageContent
 {
@@ -22,7 +23,7 @@ public sealed class HomepageContent
     public Dictionary<int, string> TypePhotos { get; set; } = [];
 }
 
-public sealed class HomepageSettings(IDbContextFactory<AppDbContext> factory, ProductDraftUploads uploads)
+public sealed class HomepageSettings(IDbContextFactory<AppDbContext> factory, ProductDraftUploads uploads, HomepageChanges? changes = null)
 {
     public long Revision { get; private set; }
     public static string? DefaultPhoto(string name) => name.Contains("هودی") ? "/img/custom-studio/hoodie-black-front.webp"
@@ -53,6 +54,8 @@ public sealed class HomepageSettings(IDbContextFactory<AppDbContext> factory, Pr
             if (!pending.ContainsKey(slide.Id) && !ImageUrl(slide.Image)) return "برای هر اسلاید یک تصویر انتخاب کنید.";
         }
         if (content.TypePhotos.Values.Any(v => !ImageUrl(v))) return "آدرس تصویر معتبر نیست.";
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(701127)");
         var copy = JsonSerializer.Deserialize<HomepageContent>(JsonSerializer.Serialize(content))!;
         var paths = new List<string>();
         try
@@ -71,11 +74,33 @@ public sealed class HomepageSettings(IDbContextFactory<AppDbContext> factory, Pr
             if (row is null) { row = new() { Id = "homepage" }; db.StorePageContents.Add(row); }
             row.ContentJson = JsonSerializer.Serialize(copy); row.UpdatedAt = DateTime.UtcNow;
             await db.SaveChangesAsync();
+            await transaction.CommitAsync();
             Revision++;
-            foreach (var upload in pending.Values) uploads.Delete(upload);
+            changes?.Notify();
+            foreach (var upload in pending.Values) { try { uploads.Delete(upload); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* Daily cleanup can remove the staging file. */ } }
             return null;
         }
         catch { foreach (var path in paths) File.Delete(path); throw; }
+    }
+    public async Task<string?> SaveIntervalAsync(ClaimsPrincipal? principal, int seconds)
+    {
+        if (seconds is < 3 or > 30) return "زمان نمایش باید بین ۳ تا ۳۰ ثانیه باشد.";
+        await using var db = await factory.CreateDbContextAsync();
+        var user = int.TryParse(principal?.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? await db.Users.SingleOrDefaultAsync(u => u.Id == id) : null;
+        if (principal is null || user?.CanManageStore != true || !AccountAccess.Valid(principal, user, roles: true)) return "اجازه ویرایش ندارید.";
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(701127)");
+        var row = await db.StorePageContents.FindAsync("homepage");
+        var json = (row is null ? JsonSerializer.SerializeToNode(await ReadAsync()) : System.Text.Json.Nodes.JsonNode.Parse(row.ContentJson))?.AsObject();
+        if (json is null) return "تنظیمات بنر قابل خواندن نیست.";
+        json["IntervalSeconds"] = seconds;
+        if (row is null) { row = new() { Id = "homepage" }; db.StorePageContents.Add(row); }
+        row.ContentJson = json.ToJsonString(); row.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        Revision++;
+        changes?.Notify();
+        return null;
     }
     private static bool LocalUrl(string value) => value.Length <= 500 && value.StartsWith('/') && !value.StartsWith("//") && !value.Contains('\\') && !value.Any(char.IsControl);
     private static bool ImageUrl(string value) => LocalUrl(value) && (value.StartsWith("/img/") || value.StartsWith("/uploads/"));

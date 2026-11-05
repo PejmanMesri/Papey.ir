@@ -32,7 +32,7 @@ internal static class Store
     }
 }
 
-internal sealed record Settings(string Server, string Printer, string Username, string ProtectedPassword, string ClientId, string PrintMode = "raw");
+internal sealed record Settings(string Server, string Printer, string Username, string ProtectedPassword, string ClientId, string PrintMode = "driver");
 internal sealed record Lease(Guid JobId, int OrderId, string OrderNumber, string ReceiptUrl, Guid LeaseToken);
 internal sealed record Journal(Lease Lease, string State);
 

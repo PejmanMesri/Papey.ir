@@ -47,7 +47,7 @@ try
     var staff = new AppUser { Username = "staff", IsStaff = true, PasswordHash = "unused" };
     var customer = new AppUser { Username = "customer", PasswordHash = "unused" };
     var type = new ProductTypeEntity { Name = "هودی" }; db.Users.AddRange(owner, staff, customer); db.ProductTypes.Add(type); await db.SaveChangesAsync();
-    var uploads = new ProductDraftUploads(environment, TimeProvider.System); var settings = new HomepageSettings(factory, uploads);
+    var uploads = new ProductDraftUploads(environment, TimeProvider.System); var changes = new HomepageChanges(NullLogger<HomepageChanges>.Instance); var refreshes = 0; changes.Changed += () => refreshes++; var settings = new HomepageSettings(factory, uploads, changes);
     var content = new HomepageContent { Slides = [new() { Title = "First", Image = "/img/custom-studio/tshirt-black-front.webp" }, new() { Title = "Second", Active = false, Image = "/img/custom-studio/hoodie-black-front.webp" }] };
     Check(await settings.SaveAsync(AccountAccess.Principal(customer), content, new Dictionary<string,ProductDraftUploads.Upload>()) is not null, "Customers cannot change banners");
     Check(await settings.SaveAsync(AccountAccess.Principal(owner), content, new Dictionary<string,ProductDraftUploads.Upload>()) is null, "Owner can create and save banners");
@@ -62,6 +62,15 @@ try
     Check(await settings.SaveAsync(AccountAccess.Principal(owner), content, new Dictionary<string,ProductDraftUploads.Upload> { ["type-" + type.Id] = draft }) is null, "Type photo is promoted from private staging only at Save");
     saved = await settings.ReadAsync();
     Check(saved.TypePhotos[type.Id].StartsWith("/uploads/images/") && File.Exists(Path.Combine(environment.WebRootPath, saved.TypePhotos[type.Id].TrimStart('/'))), "Saved type photo points to permanent storage");
+    var beforeTiming = refreshes;
+    var unchangedSlides = System.Text.Json.JsonSerializer.Serialize(saved.Slides);
+    var unchangedPhotos = System.Text.Json.JsonSerializer.Serialize(saved.TypePhotos);
+    Check(await settings.SaveIntervalAsync(AccountAccess.Principal(customer), 8) is not null, "Customers cannot change carousel timing");
+    Check(await settings.SaveIntervalAsync(AccountAccess.Principal(owner), 2) is not null, "Invalid carousel intervals are rejected");
+    Check(await settings.SaveIntervalAsync(AccountAccess.Principal(owner), 9) is null, "Carousel timing can be saved independently of the banner editor");
+    Check(refreshes == beforeTiming + 1, "Saving a valid interval notifies already-open storefronts immediately");
+    var timed = await settings.ReadAsync();
+    Check(timed.IntervalSeconds == 9 && System.Text.Json.JsonSerializer.Serialize(timed.Slides) == unchangedSlides && System.Text.Json.JsonSerializer.Serialize(timed.TypePhotos) == unchangedPhotos, "Timing updates preserve every banner, order, active flag and uploaded type photo");
     Check(uploads.OpenPreview(draft.Name) is null, "Successful save clears the corresponding temporary file");
     Check(await new ProductTypePhotos(factory, settings).ReadAsync(type.Id) == saved.TypePhotos[type.Id], "Administrator photo overrides the default across the store");
     Check(HomepageSettings.DefaultPhoto("تیشرت")!.Contains("tshirt-black") && HomepageSettings.DefaultPhoto("لانگ اسلیو")!.Contains("long-sleeve-black") && HomepageSettings.DefaultPhoto("هودی")!.Contains("hoodie-black"), "All three product types use the supplied plain black garment defaults");

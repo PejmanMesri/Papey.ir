@@ -1,6 +1,8 @@
 @page "/"
 @inject IDbContextFactory<AppDbContext> DbFactory
 @inject HomepageSettings Homepage
+@inject HomepageChanges Changes
+@implements IDisposable
 
 @if (_banners.Slides.Any(s => s.Active)) { <HomeBanner Slides="_banners.Slides.Where(s => s.Active).ToList()" IntervalSeconds="_banners.IntervalSeconds" /> }
 <div class="homepage-content">
@@ -16,11 +18,15 @@
 
 </div>
 @code {
+    private bool _disposed;
+    private void RefreshBanners() { if (!_disposed) _ = InvokeAsync(async () => { if (_disposed) return; _banners = await Homepage.ReadAsync(); StateHasChanged(); }); }
+    public void Dispose() { _disposed = true; Changes.Changed -= RefreshBanners; }
     private HomepageContent _banners = new();
     private List<ProductTypeEntity> _types = [];
     private List<Product> _newProducts = [], _featured = [];
     protected override async Task OnInitializedAsync()
     {
+        Changes.Changed += RefreshBanners;
         _banners = await Homepage.ReadAsync();
         await using var db = await DbFactory.CreateDbContextAsync();
         _types = await db.ProductTypes.Where(t => t.IsActive).OrderBy(t => t.DisplayOrder).ToListAsync();

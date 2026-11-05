@@ -3,9 +3,9 @@
     @for (var i = 0; i < Slides.Count; i++)
     {
         var slide = Slides[i];
-        <div class="home-slide @(i == _index ? "is-active" : "")" aria-hidden="@(i != _index)" inert="@(i != _index)">
+        <div class="home-slide @(i == _index ? "is-active" : "") @(slide.IsCampaign ? "is-campaign" : "")" aria-hidden="@(i != _index)" inert="@(i != _index)">
             <img src="@slide.Image" alt="@slide.Title" loading="@(i == 0 ? "eager" : "lazy")" fetchpriority="@(i == 0 ? "high" : "auto")" />
-            <div class="home-slide-copy"><span>PAPEY / WEAR YOUR STORY</span><h1>@slide.Title</h1><p>@slide.Description</p><a href="@slide.Link">مشاهده کالکشن ←</a></div>
+            <div class="home-slide-copy"><span>PAPEY / WEAR YOUR STORY</span><h1>@slide.Title</h1><p>@slide.Description</p><a href="@slide.Link">@(slide.Link.StartsWith("/product/", StringComparison.Ordinal) ? "دیدن این طرح" : "مشاهده کالکشن") ←</a></div>
         </div>
     }
     @if (Slides.Count > 1)

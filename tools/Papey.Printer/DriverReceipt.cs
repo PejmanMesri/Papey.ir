@@ -25,7 +25,8 @@ internal static class DriverReceipt
         var target = Destination(printableArea, sourceWidth, remainingRows);
         return Math.Max(1, Math.Min(remainingRows, (int)Math.Floor(printableArea.Height * sourceWidth / target.Width)));
     }
-    public static void Submit(string printer, ThermalReceipt receipt)
+    public static bool Is80mmPaper(int hundredthsOfInch) => hundredthsOfInch is >= 310 and <= 320;
+    public static void Submit(string printer, ThermalReceipt receipt, bool contentHeight = false)
     {
         using var stream = new MemoryStream(receipt.PreviewPng);
         using var image = new Bitmap(stream);
@@ -34,8 +35,14 @@ internal static class DriverReceipt
         if (!document.PrinterSettings.IsValid) throw new InvalidOperationException("Configured printer is not installed.");
         document.PrinterSettings.Copies = 1;
         document.PrinterSettings.PrintToFile = false;
+        document.DefaultPageSettings = document.PrinterSettings.DefaultPageSettings;
         document.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
-        document.DefaultPageSettings.PaperSize = PaperFor(image.Width, image.Height);
+        if (contentHeight) document.DefaultPageSettings.PaperSize = PaperFor(image.Width, image.Height);
+        else if (!Is80mmPaper(document.DefaultPageSettings.PaperSize.Width)) {
+            var paper = document.PrinterSettings.PaperSizes.Cast<PaperSize>().FirstOrDefault(p => Is80mmPaper(p.Width));
+            if (paper is null) throw new InvalidOperationException("Select 80 mm paper in the BIXOLON Windows printer preferences before printing.");
+            document.DefaultPageSettings.PaperSize = paper;
+        }
         var offset = 0;
         document.PrintPage += (_, e) =>
         {

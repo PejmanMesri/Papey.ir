@@ -8,10 +8,14 @@
 <PageTitle>بنرها و تصاویر مدل لباس | مدیریت</PageTitle>
 <h1>صفحه اصلی و بنرها</h1>
 <p>بنرها تمام عرض صفحه نمایش داده می‌شوند. ترتیب کارت‌ها همان ترتیب نمایش است؛ تصویر افقی با کیفیت، ترجیحاً ۱۹۲۰ × ۷۲۰ پیکسل انتخاب کنید. برای تصویر مدل لباس از عکس عمودی استفاده کنید. فرمت‌های PNG، JPG و WebP تا ۲ مگابایت مجاز هستند.</p>
+@if (_notice is not null) { <p role="status" class="alert-papey">@_notice</p> }
 @if (_content is not null)
 {
     <fieldset disabled="@_busy" class="homepage-editor">
-    <label>زمان نمایش هر اسلاید (ثانیه)<input class="form-input" type="number" min="3" max="30" @bind="_content.IntervalSeconds" /></label>
+    <form class="homepage-timing" @onsubmit="SaveInterval" @onsubmit:preventDefault>
+        <label for="banner-interval"><strong>زمان نمایش هر بنر</strong><small>بین ۳ تا ۳۰ ثانیه</small></label>
+        <div><input id="banner-interval" aria-label="زمان نمایش هر بنر به ثانیه" class="form-input" type="number" min="3" max="30" required @bind="_interval" @bind:event="oninput" /><span>ثانیه</span><button type="submit" class="btn-papey" disabled="@_busy">ذخیره زمان</button></div>
+    </form>
     <div class="editorial-actions"><button class="btn-papey" @onclick="Add" disabled="@(_content.Slides.Count >= 20)">+ افزودن بنر</button><button class="btn-papey" @onclick="Save">ذخیره تغییرات</button><a href="/" target="_blank" rel="noopener">مشاهده فروشگاه ↗</a></div>
     @foreach (var slide in _content.Slides)
     {
@@ -22,6 +26,7 @@
                 <label>توضیح<textarea class="form-input" maxlength="500" @bind="slide.Description"></textarea></label>
                 <label>لینک دکمه<input class="form-input" dir="ltr" placeholder="/products" @bind="slide.Link" /></label>
                 <label><input type="checkbox" @bind="slide.Active" /> بنر فعال است</label>
+                <label><input type="checkbox" @bind="slide.IsCampaign" /> تصویر عریض طراحی‌شده (نمایش تمام‌عرض)</label>
                 <div class="editorial-actions"><button class="btn-papey btn-outline" disabled="@(_content.Slides.IndexOf(slide) == 0)" @onclick="() => Move(slide, -1)">↑ قبل‌تر</button><button class="btn-papey btn-outline" disabled="@(_content.Slides.IndexOf(slide) == _content.Slides.Count - 1)" @onclick="() => Move(slide, 1)">↓ بعدتر</button><button class="btn-papey btn-outline" @onclick="() => Remove(slide)">حذف بنر</button></div>
             </div>
         </section>
@@ -31,14 +36,14 @@
     <button class="btn-papey" @onclick="Save">ذخیره تغییرات</button>
     </fieldset>
 }
-@if (_notice is not null) { <p role="status" class="alert-papey">@_notice</p> }
 @code {
     private HomepageContent? _content;
     private List<ProductTypeEntity> _types = [];
     private readonly Dictionary<string, ProductDraftUploads.Upload> _pending = [];
     private bool _busy;
+    private int _interval = 6;
     private string? _notice;
-    protected override async Task OnInitializedAsync() { _content = await Settings.ReadAsync(); await using var db = await DbFactory.CreateDbContextAsync(); _types = await db.ProductTypes.OrderBy(t => t.DisplayOrder).ToListAsync(); }
+    protected override async Task OnInitializedAsync() { _content = await Settings.ReadAsync(); _interval = _content.IntervalSeconds; await using var db = await DbFactory.CreateDbContextAsync(); _types = await db.ProductTypes.OrderBy(t => t.DisplayOrder).ToListAsync(); }
     private string Preview(string id, string fallback) => _pending.TryGetValue(id, out var file) ? file.PreviewUrl : fallback;
     private void Add() { if (_content!.Slides.Count < 20) _content.Slides.Add(new()); }
     private void Move(HomeSlide slide, int delta) { var index = _content!.Slides.IndexOf(slide); var next = index + delta; if (next < 0 || next >= _content.Slides.Count) return; _content.Slides.RemoveAt(index); _content.Slides.Insert(next, slide); }
@@ -58,9 +63,16 @@
         } catch (Exception ex) when (ex is IOException or InvalidOperationException) { _notice = ex.Message; }
         finally { _busy = false; }
     }
+    private async Task SaveInterval()
+    {
+        if (_busy) return; _busy = true;
+        try { var error = await Settings.SaveIntervalAsync(Auth.CurrentPrincipal, _interval); _notice = error ?? $"زمان نمایش هر بنر روی {_interval} ثانیه ذخیره شد."; if (error is null && _content is not null) _content.IntervalSeconds = _interval; }
+        finally { _busy = false; }
+    }
     private async Task Save()
     {
         if (_busy || _content is null) return; _busy = true;
+        _content.IntervalSeconds = _interval;
         try { var error = await Settings.SaveAsync(Auth.CurrentPrincipal, _content, _pending); _notice = error ?? "تغییرات ذخیره شد."; if (error is null) { _pending.Clear(); _content = await Settings.ReadAsync(); } }
         catch (Exception ex) when (ex is IOException or InvalidOperationException) { _notice = ex.Message; }
         finally { _busy = false; }
