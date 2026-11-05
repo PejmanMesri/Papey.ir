@@ -1,0 +1,31 @@
+@page "/admin/users"
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+@rendermode InteractiveServer
+@inject IDbContextFactory<AppDbContext> DbFactory
+<PageTitle>کاربران | مدیریت پاپی</PageTitle>
+<h1>کاربران</h1>
+<div class="card-box">
+<label class="form-label" for="user-search">جستجوی نام، شماره تماس، ایمیل یا نام کاربری</label>
+<input id="user-search" class="form-input" value="@_search" @oninput="Search" placeholder="جستجوی کاربران…" />
+<p role="status">@Fa(_total) کاربر</p>
+</div>
+<table class="table-papey mobile-card-table"><thead><tr><th>نام</th><th>نام کاربری</th><th>تلفن</th><th>ایمیل</th><th>نقش</th><th>وضعیت</th><th>عضویت</th><th>سفارش‌ها</th></tr></thead><tbody>
+@foreach(var u in _users) {
+<tr><td data-label="نام">@(u.FullName ?? "—")</td><td data-label="نام کاربری">@u.Username</td><td data-label="تلفن"><span dir="ltr">@(u.Phone ?? "—")</span></td><td data-label="ایمیل">@(u.Email ?? "—")</td><td data-label="نقش">@(u.IsAdmin ? "مدیر" : u.IsStaff ? "فروشنده" : "مشتری")</td><td data-label="وضعیت">@(u.IsDisabled ? "غیرفعال" : "فعال")</td><td data-label="عضویت">@PersianHelpers.ToPersianDateTime(u.CreatedAt)</td><td data-label="سفارش‌ها">@Fa(u.Orders)</td></tr>
+}
+@if (_users.Count == 0) { <tr><td colspan="8">کاربری یافت نشد.</td></tr> }
+</tbody></table>
+<div style="display:flex;gap:16px;align-items:center;margin-top:20px"><button class="btn-papey btn-outline" disabled="@(_page==0)" @onclick="Previous">قبلی</button><span>صفحه @Fa(_page+1) از @Fa(Math.Max(1,(_total+24)/25))</span><button class="btn-papey btn-outline" disabled="@((_page+1)*25>=_total)" @onclick="Next">بعدی</button></div>
+@code {
+ private sealed record UserRow(string Username,string? FullName,string? Phone,string? Email,bool IsAdmin,bool IsStaff,bool IsDisabled,DateTime CreatedAt,int Orders);
+ private List<UserRow> _users=[];
+ private string _search="";
+ private int _page,_total,_version;
+ protected override Task OnInitializedAsync()=>Load();
+ private async Task Search(ChangeEventArgs e){_search=PersianHelpers.ToEnglishDigits(e.Value?.ToString()??"").Trim();_page=0;await Load();}
+ private async Task Previous(){if(_page>0){_page--;await Load();}}
+ private async Task Next(){if((_page+1)*25<_total){_page++;await Load();}}
+ private async Task Load(){var version=++_version;await using var db=await DbFactory.CreateDbContextAsync();var q=db.Users.AsNoTracking();if(_search.Length>0)q=q.Where(u=>u.Username.Contains(_search)||(u.FullName!=null&&u.FullName.Contains(_search))||(u.Phone!=null&&u.Phone.Contains(_search))||(u.Email!=null&&u.Email.Contains(_search)));var total=await q.CountAsync();var rows=await q.OrderByDescending(u=>u.CreatedAt).ThenByDescending(u=>u.Id).Skip(_page*25).Take(25).Select(u=>new UserRow(u.Username,u.FullName,u.Phone,u.Email,u.IsAdmin,u.IsStaff,u.IsDisabled,u.CreatedAt,u.Orders.Count)).ToListAsync();if(version==_version){_total=total;_users=rows;}}
+ private static string Fa(int n)=>PersianHelpers.ToPersianDigits(n.ToString());
+}

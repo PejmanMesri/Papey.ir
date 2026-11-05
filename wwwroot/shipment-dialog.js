@@ -1,0 +1,1 @@
+window.papeyShipment={open:d=>{if(!d.open)d.showModal()},close:d=>d.close()};

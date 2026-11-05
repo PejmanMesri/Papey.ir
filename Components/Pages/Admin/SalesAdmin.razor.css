@@ -4,3 +4,5 @@
 .shipment-fields { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; }
 .shipment-fields label { display: grid; gap: 8px; font-size: .85rem; }
 @media(max-width: 800px) { .shipment-fields { grid-template-columns: 1fr; } }
+
+.shipment-dialog{width:min(720px,calc(100% - 32px));max-height:85dvh;overflow:auto;border:1px solid #ddd;border-radius:20px;padding:24px;color:#171717;background:#fff}.shipment-dialog::backdrop{background:#0008;backdrop-filter:blur(3px)}.shipment-editor{margin-bottom:0}.shipment-dialog h2{font-size:1.2rem}

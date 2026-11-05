@@ -84,10 +84,11 @@
                 <td data-label="کد پیگیری"><small>@PersianHelpers.ToPersianDigits(o.PaymentRefId ?? "—")</small></td>
                 <td data-label="تاریخ">@PersianHelpers.ToPersianDateTime(o.CreatedAt)</td>
                 <td data-label="عملیات">
-                    <div style="display:flex; gap:4px">
+                    <div style="display:flex; gap:4px; flex-wrap:wrap">
                         <button class="btn-papey btn-sm btn-outline" @onclick="() => ToggleDetail(o.Id)">
                             @(_expandedId == o.Id ? "▲ بستن" : "🔍 جزئیات")
                         </button>
+                        @if (o.PaidAt is not null && o.Status != OrderStatus.Cancelled) { <button class="btn-papey btn-sm btn-outline" @onclick="() => OpenShipment(o)">اطلاعات ارسال</button> }
                         <a class="btn-papey btn-sm btn-outline" href="/admin/print/order/@o.Id" target="_blank" title="چاپ فاکتور (پرینتر حرارتی)">🖨</a>
                     </div>
                 </td>
@@ -97,23 +98,6 @@
                 <tr>
                     <td colspan="8" style="padding:0">
                         <div class="card-box" style="margin:8px; border-radius:0">
-                            @if (o.PaidAt is not null && o.Status != OrderStatus.Cancelled)
-                            {
-                                var tracking = TrackingDraft(o);
-                                <section class="shipment-editor">
-                                    <h3>اطلاعات ارسال مرسوله</h3>
-                                    <p>با ذخیره شرکت ارسال و کد رهگیری، سفارش به‌صورت خودکار «ارسال شده» می‌شود و پیامک ارسال در صف قرار می‌گیرد.</p>
-                                    <form @onsubmit="() => SaveTracking(o)" @onsubmit:preventDefault>
-                                        <div class="shipment-fields">
-                                            <label>شرکت ارسال<input class="form-input" list="shipment-couriers" maxlength="25" required @bind="tracking.Courier" @bind:event="oninput" /></label>
-                                            <label>کد رهگیری مرسوله<input class="form-input" dir="ltr" maxlength="25" required @bind="tracking.Number" @bind:event="oninput" /></label>
-                                            <button type="submit" class="btn-papey" disabled="@_savingTracking">@(_savingTracking ? "در حال ذخیره…" : "ذخیره اطلاعات ارسال")</button>
-                                        </div>
-                                    </form>
-                                    <datalist id="shipment-couriers"><option value="تیپاکس" /><option value="پست" /><option value="چاپار" /></datalist>
-                                    @if (o.Status is OrderStatus.Shipped or OrderStatus.Delivered) { <small>ویرایش اطلاعات، پیامک قبلی را دوباره ارسال نمی‌کند.</small> }
-                                </section>
-                            }
                             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap:24px">
                                 <div>
                                     <h4 style="margin-top:0">👤 مشخصات مشتری</h4>
@@ -189,7 +173,37 @@
     </tbody>
 </table>
 
+<dialog @ref="_shipmentDialog" class="shipment-dialog" aria-label="اطلاعات ارسال مرسوله">
+@if (_shipmentOrder is { } shipment) {
+ var tracking = TrackingDraft(shipment);
+ <button type="button" class="btn-papey btn-outline" @onclick="CloseShipment" disabled="@_savingTracking">بستن ×</button>
+ <h2>ارسال سفارش @shipment.OrderNumber</h2>
+                                <section class="shipment-editor">
+                                    <h3>اطلاعات ارسال مرسوله</h3>
+                                    <p>با ذخیره شرکت ارسال و کد رهگیری، سفارش به‌صورت خودکار «ارسال شده» می‌شود و پیامک ارسال در صف قرار می‌گیرد.</p>
+                                    <form @onsubmit="() => SaveTracking(shipment)" @onsubmit:preventDefault>
+                                        <div class="shipment-fields">
+                                            <label>شرکت ارسال<input class="form-input" list="shipment-couriers" maxlength="25" required @bind="tracking.Courier" @bind:event="oninput" /></label>
+                                            <label>کد رهگیری مرسوله<input class="form-input" dir="ltr" maxlength="25" required @bind="tracking.Number" @bind:event="oninput" /></label>
+                                            <button type="submit" class="btn-papey" disabled="@_savingTracking">@(_savingTracking ? "در حال ذخیره…" : "ذخیره اطلاعات ارسال")</button>
+                                        </div>
+                                    </form>
+                                    <datalist id="shipment-couriers"><option value="تیپاکس" /><option value="پست" /><option value="چاپار" /></datalist>
+                                    @if (shipment.Status is OrderStatus.Shipped or OrderStatus.Delivered) { <small>ویرایش اطلاعات، پیامک قبلی را دوباره ارسال نمی‌کند.</small> }
+                                </section>
+
+ @if (_trackingNotice is not null) { <p role="status">@_trackingNotice</p> }
+}
+</dialog>
 @code {
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+    private ElementReference _shipmentDialog;
+    private Order? _shipmentOrder;
+    private bool _openShipment;
+    private async Task OpenShipment(Order order) { _shipmentOrder = order; _trackingNotice = null; _openShipment = true; await Task.CompletedTask; }
+    protected override async Task OnAfterRenderAsync(bool firstRender) { if (_openShipment) { _openShipment = false; await JS.InvokeVoidAsync("papeyShipment.open", _shipmentDialog); } }
+    private async Task CloseShipment() { await JS.InvokeVoidAsync("papeyShipment.close", _shipmentDialog); _shipmentOrder = null; }
+
     private List<Order> _orders = new();
     private decimal _totalRevenue;
     private int _paidCount, _pendingCount, _failedCount;
@@ -289,7 +303,7 @@
         if (!await ShippingSms.SetOrderStatusAsync(o.Id, s))
         {
             _statusVersion++;
-            _expandedId = o.Id;
+            _shipmentOrder = o; _openShipment = true;
             _trackingNotice = "تغییر وضعیت انجام نشد. پیش از ارسال، شرکت ارسال و کد رهگیری معتبر را ذخیره کنید.";
             return;
         }
