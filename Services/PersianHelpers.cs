@@ -6,6 +6,29 @@ namespace Papey.Services;
 public static class PersianHelpers
 {
     private static readonly CultureInfo Fa = new("fa-IR");
+    private static readonly PersianCalendar Calendar = new();
+    private static readonly TimeZoneInfo Iran = FindIranTimeZone();
+
+    private static TimeZoneInfo FindIranTimeZone()
+    {
+        try { return TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran"); }
+        catch (TimeZoneNotFoundException) { return TimeZoneInfo.FindSystemTimeZoneById("Iran Standard Time"); }
+    }
+
+    // Database timestamps are UTC, including legacy values with no Kind marker.
+    public static DateTime ToIranTime(DateTime value) => TimeZoneInfo.ConvertTimeFromUtc(
+        value.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(value, DateTimeKind.Utc) : value.ToUniversalTime(), Iran);
+
+    public static string ToPersianDate(DateTime value) => PersianDatePart(ToIranTime(value), true);
+    public static string ToPersianMonthDay(DateTime value) => PersianDatePart(ToIranTime(value), false);
+    public static string ToPersianDateTime(DateTime value)
+    {
+        var local = ToIranTime(value);
+        return PersianDatePart(local, true) + " " + ToPersianDigits(local.ToString("HH:mm", CultureInfo.InvariantCulture));
+    }
+    private static string PersianDatePart(DateTime value, bool year) => ToPersianDigits(
+        (year ? Calendar.GetYear(value).ToString("0000", CultureInfo.InvariantCulture) + "/" : "") +
+        Calendar.GetMonth(value).ToString("00", CultureInfo.InvariantCulture) + "/" + Calendar.GetDayOfMonth(value).ToString("00", CultureInfo.InvariantCulture));
 
     /// <summary>Formats a Toman amount like ۱٬۶۵۰٬۰۰۰ تومان</summary>
     public static string ToToman(this decimal amount)

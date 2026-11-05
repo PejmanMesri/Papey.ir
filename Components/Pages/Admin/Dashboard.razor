@@ -30,15 +30,15 @@ else
         @foreach (var d in _daily)
         {
             var h = _maxDaily > 0 ? (int)(d.Amount / _maxDaily * 140) : 0;
-            <div title="@PersianHelpers.ToPersianDigits(d.Date.ToString("MM/dd")): @d.Amount.ToToman()"
+            <div title="@PersianHelpers.ToPersianMonthDay(d.Date): @d.Amount.ToToman()"
                  style="flex:1; background:var(--papey-accent); border-radius:4px 4px 0 0; height:@(Math.Max(h, 2))px; min-width:0"></div>
         }
     </div>
     <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--papey-muted); margin-top:6px">
         @if (_daily.Count > 0)
         {
-            <span>@PersianHelpers.ToPersianDigits(_daily.First().Date.ToString("yyyy/MM/dd"))</span>
-            <span>@PersianHelpers.ToPersianDigits(_daily.Last().Date.ToString("yyyy/MM/dd"))</span>
+            <span>@PersianHelpers.ToPersianDate(_daily.First().Date)</span>
+            <span>@PersianHelpers.ToPersianDate(_daily.Last().Date)</span>
         }
     </div>
 </div>
@@ -49,15 +49,15 @@ else
         @foreach (var d in _dailyViews)
         {
             var h = _maxViews > 0 ? (int)((double)d.Count / _maxViews * 140) : 0;
-            <div title="@PersianHelpers.ToPersianDigits(d.Date.ToString("MM/dd")): @Fa(d.Count) بازدید"
+            <div title="@PersianHelpers.ToPersianMonthDay(d.Date): @Fa(d.Count) بازدید"
                  style="flex:1; background:#1565c0; border-radius:4px 4px 0 0; height:@(Math.Max(h, 2))px; min-width:0"></div>
         }
     </div>
     <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--papey-muted); margin-top:6px">
         @if (_dailyViews.Count > 0)
         {
-            <span>@PersianHelpers.ToPersianDigits(_dailyViews.First().Date.ToString("yyyy/MM/dd"))</span>
-            <span>@PersianHelpers.ToPersianDigits(_dailyViews.Last().Date.ToString("yyyy/MM/dd"))</span>
+            <span>@PersianHelpers.ToPersianDate(_dailyViews.First().Date)</span>
+            <span>@PersianHelpers.ToPersianDate(_dailyViews.Last().Date)</span>
         }
     </div>
 </div>
@@ -75,7 +75,7 @@ else
                 <td data-label="مشتری">@o.CustomerName<br /><small style="color:var(--papey-muted)">@o.CustomerPhone</small></td>
                 <td data-label="مبلغ">@o.GrandTotal.ToToman()</td>
                 <td data-label="وضعیت"><span class="status-chip status-@o.Status">@PersianHelpers.StatusLabel(o.Status)</span></td>
-                <td data-label="تاریخ">@PersianHelpers.ToPersianDigits(o.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))</td>
+                <td data-label="تاریخ">@PersianHelpers.ToPersianDateTime(o.CreatedAt)</td>
             </tr>
         }
     </tbody>

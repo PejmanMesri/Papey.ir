@@ -82,7 +82,7 @@
                     }
                 </td>
                 <td data-label="کد پیگیری"><small>@PersianHelpers.ToPersianDigits(o.PaymentRefId ?? "—")</small></td>
-                <td data-label="تاریخ">@PersianHelpers.ToPersianDigits(o.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))</td>
+                <td data-label="تاریخ">@PersianHelpers.ToPersianDateTime(o.CreatedAt)</td>
                 <td data-label="عملیات">
                     <div style="display:flex; gap:4px">
                         <button class="btn-papey btn-sm btn-outline" @onclick="() => ToggleDetail(o.Id)">
@@ -236,7 +236,7 @@
     private bool MatchesFilters(Order o)
     {
         if (_statusFilter is not null && o.Status != _statusFilter) return false;
-        var created = o.CreatedAt.ToLocalTime().Date;
+        var created = PersianHelpers.ToIranTime(o.CreatedAt).Date;
         if (_from is not null && created < _from.Value.Date) return false;
         if (_to is not null && created > _to.Value.Date) return false;
         if (!string.IsNullOrWhiteSpace(_search)) return MatchesSearch(o);
@@ -333,7 +333,7 @@
         ("نام کامل", o.User.FullName ?? "—"),
         ("ایمیل", o.User.Email ?? "—"),
         ("شماره تماس حساب", PersianHelpers.ToPersianDigits(o.User.Phone ?? "—")),
-        ("تاریخ عضویت", PersianHelpers.ToPersianDigits(o.User.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd"))),
+        ("تاریخ عضویت", PersianHelpers.ToPersianDateTime(o.User.CreatedAt)),
     };
 
     private static IEnumerable<(string Label, string Value)> PaymentRows(Order o) => new[]
@@ -341,7 +341,7 @@
         ("وضعیت", PersianHelpers.StatusLabel(o.Status)),
         ("کد پیگیری", PersianHelpers.ToPersianDigits(o.PaymentRefId ?? "—")),
         ("شناسه تراکنش", PersianHelpers.ToPersianDigits(o.PaymentAuthority ?? "—")),
-        ("تاریخ ثبت سفارش", PersianHelpers.ToPersianDigits(o.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))),
-        ("تاریخ پرداخت", o.PaidAt is null ? "—" : PersianHelpers.ToPersianDigits(o.PaidAt.Value.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))),
+        ("تاریخ ثبت سفارش", PersianHelpers.ToPersianDateTime(o.CreatedAt)),
+        ("تاریخ پرداخت", o.PaidAt is null ? "—" : PersianHelpers.ToPersianDateTime(o.PaidAt.Value)),
     };
 }

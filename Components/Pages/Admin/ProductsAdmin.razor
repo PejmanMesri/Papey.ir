@@ -125,7 +125,7 @@
                         @(p.IsActive ? "فعال" : "غیرفعال")
                     </button>
                 </td>
-                <td data-label="تاریخ ثبت"><time datetime="@p.CreatedAt.ToString("O")">@PersianHelpers.ToPersianDigits(p.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))</time></td>
+                <td data-label="تاریخ ثبت"><time datetime="@p.CreatedAt.ToString("O")">@PersianHelpers.ToPersianDateTime(p.CreatedAt)</time></td>
                 <td data-label="عملیات">
                     <a class="btn-papey btn-sm" href="/admin/products/@p.Id">✏️ ویرایش</a>
                     <button class="btn-papey btn-sm btn-danger-papey" @onclick="() => Delete(p)">🗑</button>
@@ -167,8 +167,8 @@
             if (_activeFilter != "") products = products.Where(p => p.IsActive == (_activeFilter == "active"));
             if (_stockFilter != "") products = products.Where(p => p.Variants.Any(v => v.IsEnabled && (p.HasUnlimitedStock || v.Stock > 0)) == (_stockFilter == "in-stock"));
             if (_designFilter != "") products = products.Where(p => p.DesignMedia.Count > 0 == (_designFilter == "with-design"));
-            if (_from is { } from) products = products.Where(p => p.CreatedAt.ToLocalTime().Date >= from.Date);
-            if (_to is { } to) products = products.Where(p => p.CreatedAt.ToLocalTime().Date <= to.Date);
+            if (_from is { } from) products = products.Where(p => PersianHelpers.ToIranTime(p.CreatedAt).Date >= from.Date);
+            if (_to is { } to) products = products.Where(p => PersianHelpers.ToIranTime(p.CreatedAt).Date <= to.Date);
 
             var sorted = _sort switch
             {

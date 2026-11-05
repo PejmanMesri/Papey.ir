@@ -11,7 +11,7 @@
 @foreach (var review in _rows.Take(20))
 {
     <article class="card-box admin-review" @key="review.Id">
-        <header><div><a href="/product/@review.Product.Slug#reviews" target="_blank" rel="noopener">@review.Product.Name ↗</a><span>@ProductReviewService.PublicName(review.User.FullName) · @PersianHelpers.ToPersianDigits(review.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd", new System.Globalization.CultureInfo("fa-IR")))</span></div><strong class="@(review.IsHidden ? "review-hidden" : "review-visible")">@(review.IsHidden ? "پنهان" : "نمایش عمومی")</strong></header>
+        <header><div><a href="/product/@review.Product.Slug#reviews" target="_blank" rel="noopener">@review.Product.Name ↗</a><span>@ProductReviewService.PublicName(review.User.FullName) · @PersianHelpers.ToPersianDateTime(review.CreatedAt)</span></div><strong class="@(review.IsHidden ? "review-hidden" : "review-visible")">@(review.IsHidden ? "پنهان" : "نمایش عمومی")</strong></header>
         <div class="admin-review-scores">چاپ: @Fa(review.PrintQuality) از ۵ · پارچه: @Fa(review.FabricQuality) از ۵ · سایز: @ProductReviewService.FitLabel(review.Fit)</div>
         <p class="admin-review-text">@review.Comment</p>
         <form @onsubmit="() => SaveReply(review)" @onsubmit:preventDefault>

@@ -7,7 +7,7 @@
     @foreach (var row in _rows)
     {
         <article style="padding:16px 0;border-bottom:1px solid #ddd" @key="row.Id">
-            <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><strong dir="ltr">@row.Number</strong><a href="tel:@row.Phone" dir="ltr">@row.Phone</a><small>@row.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm", new System.Globalization.CultureInfo("fa-IR"))</small><b>@CustomDesignCatalog.StatusName(row.Status)</b></div>
+            <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><strong dir="ltr">@row.Number</strong><a href="tel:@row.Phone" dir="ltr">@row.Phone</a><small>@PersianHelpers.ToPersianDateTime(row.CreatedAt)</small><b>@CustomDesignCatalog.StatusName(row.Status)</b></div>
             <details style="margin-top:12px"><summary>پیگیری و یادداشت</summary>
                 <label>وضعیت<select class="form-input" @bind="row.Status">@foreach (var status in Enum.GetValues<CustomDesignStatus>()) { <option value="@status">@CustomDesignCatalog.StatusName(status)</option> }</select></label>
                 <label>یادداشت داخلی<textarea class="form-input" rows="2" maxlength="2000" @bind="row.AdminNotes"></textarea></label>

@@ -31,7 +31,7 @@ else
 
         <div class="rcpt-meta">
             <div><span>سفارش:</span> <strong>@_order.OrderNumber</strong></div>
-            <div><span>تاریخ:</span> @FaDate(_order.CreatedAt.ToLocalTime())</div>
+            <div><span>تاریخ:</span> @PersianHelpers.ToPersianDateTime(_order.CreatedAt)</div>
             <div><span>مشتری:</span> @_order.CustomerName</div>
             <div><span>تلفن:</span> @PersianHelpers.ToPersianDigits(_order.CustomerPhone)</div>
             <div class="rcpt-addr">
@@ -130,7 +130,6 @@ else
 
     private Order? _order;
     private int? _autoPrintedOrderId;
-    private static readonly PersianCalendar Pc = new();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -154,5 +153,4 @@ else
 
     private static string Money(decimal v) => PersianHelpers.ToPersianDigits(v.ToString("N0", CultureInfo.InvariantCulture));
     private static string Fa(int n) => PersianHelpers.ToPersianDigits(n.ToString());
-    private static string FaDate(DateTime d) => PersianHelpers.ToPersianDigits($"{Pc.GetYear(d):0000}/{Pc.GetMonth(d):00}/{Pc.GetDayOfMonth(d):00} {d:HH:mm}");
 }

@@ -16,7 +16,7 @@
 @if (_rows.Count == 0) { <div class="card-box">درخواستی با این وضعیت وجود ندارد.</div> }
 @foreach (var request in _rows.Take(15))
 {
-    <article class="card-box custom-admin-request" @key="request.Id"><header><div><strong dir="ltr">@request.Number</strong><span>@request.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm", new System.Globalization.CultureInfo("fa-IR"))</span></div><b>@CustomDesignCatalog.StatusName(request.Status)</b></header>
+    <article class="card-box custom-admin-request" @key="request.Id"><header><div><strong dir="ltr">@request.Number</strong><span>@PersianHelpers.ToPersianDateTime(request.CreatedAt)</span></div><b>@CustomDesignCatalog.StatusName(request.Status)</b></header>
         <div class="custom-admin-summary"><strong>@request.Name</strong><a href="tel:@request.Phone" dir="ltr">@request.Phone</a><span>@CustomDesignCatalog.GarmentName(request.Garment) · @CustomDesignCatalog.ColourName(request.Garment, request.Colour) · @request.Size · @PersianHelpers.ToPersianDigits(request.Quantity.ToString()) عدد</span></div>
         <details class="custom-admin-details custom-request-manage"><summary>بررسی طرح و پاسخ به مشتری <small>@(request.AdminReply.Length > 0 ? "پاسخ داده شده" : "بدون پاسخ")</small></summary>
         @if (!string.IsNullOrEmpty(request.Notes)) { <p class="custom-request-notes">@request.Notes</p> }
