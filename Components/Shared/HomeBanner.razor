@@ -1,0 +1,25 @@
+@implements IDisposable
+<section class="home-slideshow" aria-label="کالکشن پاپی" aria-roledescription="اسلایدشو" @onmouseenter="() => _hovered = true" @onmouseleave="() => _hovered = false" @onfocusin="() => _focused = true" @onfocusout="() => _focused = false">
+    @for (var i = 0; i < Slides.Count; i++)
+    {
+        var slide = Slides[i];
+        <div class="home-slide @(i == _index ? "is-active" : "")" aria-hidden="@(i != _index)" inert="@(i != _index)">
+            <img src="@slide.Image" alt="@slide.Title" loading="@(i == 0 ? "eager" : "lazy")" fetchpriority="@(i == 0 ? "high" : "auto")" />
+            <div class="home-slide-copy"><span>PAPEY / WEAR YOUR STORY</span><h1>@slide.Title</h1><p>@slide.Description</p><a href="@slide.Link">مشاهده کالکشن ←</a></div>
+        </div>
+    }
+    @if (Slides.Count > 1) { <div class="home-slide-controls"><button type="button" aria-label="اسلاید قبلی" @onclick="() => Select(_index - 1)">→</button>@if (Slides.Count <= 8) { @for (var i = 0; i < Slides.Count; i++) { var index = i; <button type="button" class="@(_index == i ? "active" : "")" aria-label="@($"نمایش بنر {i + 1}")" aria-pressed="@(_index == i)" @onclick="() => Select(index)">@PersianHelpers.ToPersianDigits((i + 1).ToString())</button> } } else { <span>@PersianHelpers.ToPersianDigits($"{_index + 1} / {Slides.Count}")</span> }<button type="button" aria-label="اسلاید بعدی" @onclick="() => Select(_index + 1)">←</button><button type="button" aria-label="@(_paused ? "ادامه نمایش خودکار" : "توقف نمایش خودکار")" aria-pressed="@_paused" @onclick="() => _paused = !_paused">@(_paused ? "▶" : "Ⅱ")</button></div> }
+</section>
+@code {
+    [Parameter] public List<HomeSlide> Slides { get; set; } = [];
+    [Parameter] public int IntervalSeconds { get; set; } = 6;
+    private int _index;
+    private bool _hovered, _focused, _paused;
+    private DateTime _last = DateTime.UtcNow;
+    private readonly CancellationTokenSource _stop = new();
+    protected override void OnParametersSet() { if (_index >= Slides.Count) _index = 0; }
+    protected override Task OnAfterRenderAsync(bool firstRender) { if (firstRender) _ = Run(); return Task.CompletedTask; }
+    private void Select(int index) { _index = (index + Slides.Count) % Slides.Count; _last = DateTime.UtcNow; }
+    private async Task Run() { using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1)); try { while (await timer.WaitForNextTickAsync(_stop.Token)) await InvokeAsync(() => { if (_hovered || _focused || _paused) _last = DateTime.UtcNow; else if (Slides.Count > 1 && DateTime.UtcNow - _last >= TimeSpan.FromSeconds(Math.Clamp(IntervalSeconds, 3, 30))) { Select(_index + 1); StateHasChanged(); } }); } catch (OperationCanceledException) { } }
+    public void Dispose() { _stop.Cancel(); _stop.Dispose(); }
+}

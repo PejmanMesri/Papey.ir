@@ -1,6 +1,7 @@
 @page "/login"
 @page "/register"
 @rendermode InteractiveServer
+@implements IDisposable
 @inject AuthService Auth
 @inject NavigationManager Nav
 @inject OtpSignInTickets SignInTickets
@@ -63,8 +64,8 @@
                 {
                     <div class="alert-papey alert-danger">@_forgotError</div>
                 }
-                <button class="btn-papey" style="width:100%" type="submit" disabled="@_sending">
-                    @(_sending ? "در حال ارسال..." : "ارسال کد بازیابی")
+                <button class="btn-papey" style="width:100%" type="submit" disabled="@(_sending || Remaining(_forgotPhone) > 0)">
+                    @(Remaining(_forgotPhone) > 0 ? $"ارسال مجدد پس از {Remaining(_forgotPhone)} ثانیه" : _sending ? "در حال ارسال..." : "ارسال کد بازیابی")
                 </button>
             }
             else
@@ -107,8 +108,8 @@
                 {
                     <div class="alert-papey alert-danger">@_otpError</div>
                 }
-                <button class="btn-papey" style="width:100%" type="submit" disabled="@_sending">
-                    @(_sending ? "در حال ارسال..." : "ارسال کد یکبارمصرف")
+                <button class="btn-papey" style="width:100%" type="submit" disabled="@(_sending || Remaining(_phone) > 0)">
+                    @(Remaining(_phone) > 0 ? $"ارسال مجدد پس از {Remaining(_phone)} ثانیه" : _sending ? "در حال ارسال..." : "ارسال کد یکبارمصرف")
                 </button>
             }
             else
@@ -127,7 +128,8 @@
                     <div class="alert-papey alert-danger">@_otpError</div>
                 }
                 <button class="btn-papey" style="width:100%" type="submit" disabled="@_sending">تایید و ادامه</button>
-                <button class="btn-papey btn-outline" style="width:100%; margin-top:8px" type="button" @onclick="ResetOtp">ویرایش شماره</button>
+                <button class="btn-papey btn-outline" style="width:100%; margin-top:8px" type="button" @onclick="ResetOtp">ویرایش شماره / ارسال مجدد</button>
+                @if (Remaining(_phone) > 0) { <p role="status">امکان ارسال مجدد پس از @Remaining(_phone) ثانیه</p> }
             }
             </form>
         }
@@ -142,6 +144,13 @@
 </div>
 
 @code {
+    private readonly Dictionary<string, DateTime> _cooldowns = [];
+    private readonly CancellationTokenSource _stop = new();
+    private int Remaining(string phone) => _cooldowns.TryGetValue(SmsService.NormalizePhone(phone) ?? "", out var until) ? Math.Max(0, (int)Math.Ceiling((until - DateTime.UtcNow).TotalSeconds)) : 0;
+    private async Task RememberCooldown(string phone) { var key = SmsService.NormalizePhone(phone); if (key is not null) _cooldowns[key] = DateTime.UtcNow.AddSeconds(await Auth.OtpCooldownSecondsAsync(phone)); }
+    protected override Task OnAfterRenderAsync(bool firstRender) { if (firstRender) _ = Tick(); return Task.CompletedTask; }
+    private async Task Tick() { using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1)); try { while (await timer.WaitForNextTickAsync(_stop.Token)) if (_cooldowns.Count > 0) await InvokeAsync(StateHasChanged); } catch (OperationCanceledException) { } }
+    public void Dispose() { _stop.Cancel(); _stop.Dispose(); }
     [SupplyParameterFromQuery] public string? Error { get; set; }
     [SupplyParameterFromQuery(Name = "returnUrl")] public string? ReturnUrl { get; set; }
 
@@ -178,6 +187,7 @@
         if (_sending) return;
         _sending = true; _otpError = null;
         var (ok, devCode, error) = await Auth.RequestOtpAsync(_phone);
+        await RememberCooldown(_phone);
         _sending = false;
         if (!ok) { _otpError = error; return; }
         _devCode = devCode;
@@ -208,6 +218,7 @@
         if (_sending) return;
         _sending = true; _forgotError = null;
         var (ok, devCode, error) = await Auth.RequestOtpAsync(_forgotPhone, requireExistingUser: true);
+        await RememberCooldown(_forgotPhone);
         _sending = false;
         if (!ok) { _forgotError = error; return; }
         _forgotDevCode = devCode;

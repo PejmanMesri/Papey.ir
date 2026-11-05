@@ -19,7 +19,7 @@ else
 {
     <div class="document-toolbar no-print">
         <a class="btn-papey btn-outline" href="/account/orders/@_order.Id">← جزئیات سفارش</a>
-        <a class="btn-papey btn-outline" href="/account/orders/@_order.Id/invoice">فاکتور</a>
+        <a class="btn-papey btn-outline" href="/account/orders/@_order.Id/invoice/standard">فاکتور A4</a>
         <a class="btn-papey btn-outline" href="/account/orders/@_order.Id/invoice/official">فاکتور رسمی</a>
         <a class="btn-papey btn-outline" href="/account/orders/@_order.Id/invoice/thermal">پرینت حرارتی</a>
         <button class="btn-papey" type="button" @onclick="Print">🖨 چاپ @_format.Label()</button>
@@ -290,7 +290,7 @@ else
     .official-grand th, .official-grand td { font-weight: 900; background: #e7e7e7; }
     .official-footer { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 14px; font-size: .71rem; }
 
-    .thermal-receipt { width: 72mm; margin: 16px auto 28px; padding: 4mm; border: 1px solid #111; font-family: Tahoma, sans-serif; font-size: 10px; line-height: 1.7; }
+    .thermal-receipt { width: 72mm; max-width:100%; margin: 16px auto 28px; padding: 1mm; overflow-wrap:anywhere; border: 1px solid #111; font-family: Tahoma, sans-serif; font-size: 10px; line-height: 1.7; }
     .thermal-head { display: flex; flex-direction: column; align-items: center; text-align: center; }
     .thermal-head strong { font-size: 18px; }
     .thermal-head span { font-size: 10px; }
@@ -313,7 +313,7 @@ else
         .standard-invoice, .official-invoice, .thermal-receipt { margin: 0; box-shadow: none; }
         .standard-invoice { width: 100%; min-height: 0; }
         .official-invoice { width: 100%; min-height: 0; }
-        .thermal-receipt { width: 72mm; }
+        .thermal-receipt { width:72mm; margin:0 auto; padding:1mm; overflow-wrap:anywhere; }
     }
 
     @@media (max-width: 700px) {
@@ -343,14 +343,14 @@ else
 
     private string PageSizeCss => _format switch
     {
-        InvoiceFormat.Thermal => "@page { size: 80mm auto; margin: 4mm; }",
+        InvoiceFormat.Thermal => "@page { size: 80mm auto; margin: 0; }",
         InvoiceFormat.Official => "@page { size: A4 landscape; margin: 10mm; }",
         _ => "@page { size: A4 portrait; margin: 12mm; }"
     };
 
     protected override async Task OnParametersSetAsync()
     {
-        _format = InvoiceFormatExtensions.Parse(Format);
+        _format = string.IsNullOrWhiteSpace(Format) ? InvoiceFormat.Thermal : InvoiceFormatExtensions.Parse(Format);
         _order = null;
 
         if (Auth.CurrentUserId is not { } userId) return;

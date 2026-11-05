@@ -1,0 +1,68 @@
+@page "/admin/homepage"
+@attribute [Authorize(Roles = "Admin")]
+@layout AdminLayout
+@inject HomepageSettings Settings
+@inject ProductDraftUploads Uploads
+@inject AuthService Auth
+@inject IDbContextFactory<AppDbContext> DbFactory
+<PageTitle>بنرها و تصاویر مدل لباس | مدیریت</PageTitle>
+<h1>صفحه اصلی و بنرها</h1>
+<p>بنرها تمام عرض صفحه نمایش داده می‌شوند. ترتیب کارت‌ها همان ترتیب نمایش است؛ تصویر افقی با کیفیت، ترجیحاً ۱۹۲۰ × ۷۲۰ پیکسل انتخاب کنید. برای تصویر مدل لباس از عکس عمودی استفاده کنید. فرمت‌های PNG، JPG و WebP تا ۲ مگابایت مجاز هستند.</p>
+@if (_content is not null)
+{
+    <fieldset disabled="@_busy" class="homepage-editor">
+    <label>زمان نمایش هر اسلاید (ثانیه)<input class="form-input" type="number" min="3" max="30" @bind="_content.IntervalSeconds" /></label>
+    <div class="editorial-actions"><button class="btn-papey" @onclick="Add" disabled="@(_content.Slides.Count >= 20)">+ افزودن بنر</button><button class="btn-papey" @onclick="Save">ذخیره تغییرات</button><a href="/" target="_blank" rel="noopener">مشاهده فروشگاه ↗</a></div>
+    @foreach (var slide in _content.Slides)
+    {
+        <section class="card-box banner-editor" @key="slide.Id">
+            <div class="banner-editor-image">@if (!string.IsNullOrEmpty(Preview(slide.Id, slide.Image))) { <img src="@Preview(slide.Id, slide.Image)" alt="پیش‌نمایش بنر" /> }<label>تصویر بنر<InputFile accept="image/png,image/jpeg,image/webp" OnChange="e => Upload(e, slide.Id)" /></label></div>
+            <div class="banner-editor-fields">
+                <label>عنوان<input class="form-input" maxlength="120" @bind="slide.Title" /></label>
+                <label>توضیح<textarea class="form-input" maxlength="500" @bind="slide.Description"></textarea></label>
+                <label>لینک دکمه<input class="form-input" dir="ltr" placeholder="/products" @bind="slide.Link" /></label>
+                <label><input type="checkbox" @bind="slide.Active" /> بنر فعال است</label>
+                <div class="editorial-actions"><button class="btn-papey btn-outline" disabled="@(_content.Slides.IndexOf(slide) == 0)" @onclick="() => Move(slide, -1)">↑ قبل‌تر</button><button class="btn-papey btn-outline" disabled="@(_content.Slides.IndexOf(slide) == _content.Slides.Count - 1)" @onclick="() => Move(slide, 1)">↓ بعدتر</button><button class="btn-papey btn-outline" @onclick="() => Remove(slide)">حذف بنر</button></div>
+            </div>
+        </section>
+    }
+    <h2>تصاویر انتخاب مدل لباس</h2><p>این تصاویر در صفحه اصلی، منو و فیلتر محصولات استفاده می‌شوند. تصویر دلخواه انتخاب کنید و سپس ذخیره کنید.</p>
+    <div class="type-photo-editor">@foreach (var type in _types) { <section class="card-box"><h3>@type.Name</h3><img src="@Preview("type-" + type.Id, _content.TypePhotos.GetValueOrDefault(type.Id) ?? HomepageSettings.DefaultPhoto(type.Name) ?? "/img/custom-studio/tshirt-black-front.webp")" alt="@type.Name" /><label>تغییر تصویر<InputFile accept="image/png,image/jpeg,image/webp" OnChange='e => Upload(e, "type-" + type.Id)'  /></label></section> }</div>
+    <button class="btn-papey" @onclick="Save">ذخیره تغییرات</button>
+    </fieldset>
+}
+@if (_notice is not null) { <p role="status" class="alert-papey">@_notice</p> }
+@code {
+    private HomepageContent? _content;
+    private List<ProductTypeEntity> _types = [];
+    private readonly Dictionary<string, ProductDraftUploads.Upload> _pending = [];
+    private bool _busy;
+    private string? _notice;
+    protected override async Task OnInitializedAsync() { _content = await Settings.ReadAsync(); await using var db = await DbFactory.CreateDbContextAsync(); _types = await db.ProductTypes.OrderBy(t => t.DisplayOrder).ToListAsync(); }
+    private string Preview(string id, string fallback) => _pending.TryGetValue(id, out var file) ? file.PreviewUrl : fallback;
+    private void Add() { if (_content!.Slides.Count < 20) _content.Slides.Add(new()); }
+    private void Move(HomeSlide slide, int delta) { var index = _content!.Slides.IndexOf(slide); var next = index + delta; if (next < 0 || next >= _content.Slides.Count) return; _content.Slides.RemoveAt(index); _content.Slides.Insert(next, slide); }
+    private void Remove(HomeSlide slide) { _content!.Slides.Remove(slide); if (_pending.Remove(slide.Id, out var file)) Uploads.Delete(file); }
+    private async Task Upload(InputFileChangeEventArgs e, string id)
+    {
+        _busy = true; _notice = null;
+        try {
+            var extension = Path.GetExtension(e.File.Name).ToLowerInvariant();
+            if (extension is not (".png" or ".jpg" or ".jpeg" or ".webp")) throw new InvalidOperationException("فرمت PNG، JPG یا WebP و حجم حداکثر ۲ مگابایت انتخاب کنید.");
+            await using var input = e.File.OpenReadStream(ProductTypeIconUploads.MaxBytes);
+            using var buffer = new MemoryStream(); await input.CopyToAsync(buffer);
+            ProductTypeIconUploads.Validate(buffer.ToArray(), extension); buffer.Position = 0;
+            var upload = await Uploads.StageAsync(buffer, e.File.Name);
+            if (_pending.Remove(id, out var old)) Uploads.Delete(old);
+            _pending[id] = upload;
+        } catch (Exception ex) when (ex is IOException or InvalidOperationException) { _notice = ex.Message; }
+        finally { _busy = false; }
+    }
+    private async Task Save()
+    {
+        if (_busy || _content is null) return; _busy = true;
+        try { var error = await Settings.SaveAsync(Auth.CurrentPrincipal, _content, _pending); _notice = error ?? "تغییرات ذخیره شد."; if (error is null) { _pending.Clear(); _content = await Settings.ReadAsync(); } }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException) { _notice = ex.Message; }
+        finally { _busy = false; }
+    }
+}

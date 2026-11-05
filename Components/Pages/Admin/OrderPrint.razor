@@ -83,8 +83,8 @@ else
 }
 
 <style>
-    /* ---- Bixolon SRP-330II: 80mm paper, 72mm (576-dot) printable width ---- */
-    @@page { size: 80mm auto; margin: 4mm; }
+    /* ---- Bixolon SRP-330II: 80mm paper, 72mm printable width (512 dots on SRP-330II) ---- */
+    @@page { size: 80mm auto; margin: 0; }
 
     .print-toolbar { display: flex; gap: 10px; align-items: center; justify-content: center; padding: 14px; flex-wrap: wrap; }
 
@@ -92,7 +92,7 @@ else
                border: 1px solid #000; box-sizing: border-box;
                direction: rtl; text-align: right;
                font-family: 'B Titr', 'B Titr Bold', 'Vazirmatn', 'Vazir', Tahoma, sans-serif;
-               font-size: 10.5px; line-height: 1.8; }
+               font-size: 10.5px; line-height: 1.8; overflow-wrap:anywhere; }
 
     .rcpt-head { text-align: center; }
     .rcpt-logo { font-size: 21px; font-weight: 800; letter-spacing: 1px; }
@@ -100,7 +100,7 @@ else
 
     .rcpt-sep { border-top: 1px dashed #000; margin: 6px 0; }
 
-    .rcpt-meta div { display: flex; justify-content: space-between; }
+    .rcpt-meta div { display:flex; justify-content:space-between; gap:2mm; min-width:0; }
     .rcpt-meta span { font-weight: 400; }
     .rcpt-addr { display: block !important; font-size: 10px; }
     .rcpt-addr div { display: block; text-align: right; }
@@ -119,7 +119,7 @@ else
     @@media print {
         .no-print { display: none !important; }
         body { background: #fff !important; margin: 0; }
-        .receipt { width: auto; margin: 0; padding: 0; }
+        .receipt { width:72mm; max-width:100%; margin:0 auto; padding:1mm; overflow-wrap:anywhere; }
     }
 </style>
 

@@ -64,7 +64,7 @@
             openDesktopType(typeSummary.parentElement);
         }
         var menuSummary = event.target.closest('.desktop-type-menu > summary, .account-menu > summary');
-        if (menuSummary && event.pointerType === 'mouse') {
+        if (menuSummary && event.pointerType === 'mouse' && !event.target.closest('a[href]')) {
             event.preventDefault();
             menuSummary.parentElement.open = true;
         }

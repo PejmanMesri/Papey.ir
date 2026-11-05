@@ -78,8 +78,8 @@ public class AuthService
         await using var transaction = await db.Database.BeginTransactionAsync();
         await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({long.Parse(phone)})");
         var now = DateTime.UtcNow;
-        if (await db.OtpCodes.AnyAsync(o => o.Phone == phone && o.ExpiresAt > now.AddMinutes(1)))
-            return (false, null, "برای درخواست کد جدید، یک دقیقه صبر کنید.");
+        if (await db.OtpCodes.AnyAsync(o => o.Phone == phone && o.ExpiresAt > now))
+            return (false, null, "برای درخواست کد جدید، دو دقیقه از ارسال قبلی صبر کنید.");
         if (await db.OtpCodes.CountAsync(o => o.Phone == phone && o.ExpiresAt > now.AddMinutes(-58)) >= 5)
             return (false, null, "تعداد درخواست‌ها بیش از حد مجاز است. بعداً دوباره تلاش کنید.");
 
@@ -106,6 +106,15 @@ public class AuthService
             return (false, null, sent.Error);
         }
         return (true, _environment.IsDevelopment() && _sms.IsSandbox ? code : null, null);
+    }
+
+    public async Task<int> OtpCooldownSecondsAsync(string phone)
+    {
+        phone = SmsService.NormalizePhone(phone) ?? "";
+        if (phone.Length == 0) return 0;
+        await using var db = await _dbFactory.CreateDbContextAsync();
+        var expiry = await db.OtpCodes.Where(o => o.Phone == phone).MaxAsync(o => (DateTime?)o.ExpiresAt);
+        return expiry is null ? 0 : Math.Max(0, (int)Math.Ceiling((expiry.Value - DateTime.UtcNow).TotalSeconds));
     }
 
     /// <summary>Verify OTP. Returns the matching user (created if needed). Sign-in is done separately via an HTTP endpoint.</summary>

@@ -1,12 +1,5 @@
 @page "/contact"
-@inject StorePageTexts Pages
-<PageTitle>تماس با ما | پاپی</PageTitle>
-<section class="contact-page"><span class="editorial-eyebrow">@Text("eyebrow")</span><h1 class="page-text-lines">@Text("heading")</h1><p>@Text("intro")</p>
-<div class="contact-cards"><a href="https://wa.me/989036421161" target="_blank" rel="noopener"><span>@Text("whatsappLabel")</span><h2>@Text("whatsappTitle")</h2><p>@Text("whatsappBody")</p><strong>@Text("whatsappButton")</strong></a><a href="tel:09036421161"><span>@Text("phoneLabel")</span><h2>@Text("phoneTitle")</h2><p>@Text("phoneBody")</p><strong dir="ltr">۰۹۰۳۶۴۲۱۱۶۱ ↗</strong></a><a href="https://www.instagram.com/papey.ir" target="_blank" rel="noopener"><span>@Text("instagramLabel")</span><h2>@Text("instagramTitle")</h2><p>@Text("instagramBody")</p><strong dir="ltr">@@papey.ir ↗</strong></a></div>
-<div class="contact-footnote"><h2>@Text("customTitle")</h2><p>@Text("customBody")</p><a class="btn-papey" href="/custom-design">@Text("customButton")</a></div></section>
-
-@code {
-    private Dictionary<string,string>? _texts;
-    private string Text(string key) => _texts?.GetValueOrDefault(key) ?? StorePageTexts.Contact.First(f => f.Key == key).Default;
-    protected override async Task OnInitializedAsync() => _texts = await Pages.ReadAsync("contact");
-}
+@inject NavigationManager Nav
+<PageTitle>ارتباط با پاپی</PageTitle>
+<ContactDetails />
+@code { protected override void OnAfterRender(bool firstRender) { if (firstRender) Nav.NavigateTo("/about#contact", replace: true); } }
