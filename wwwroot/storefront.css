@@ -297,7 +297,7 @@
 .product-photo-open>img{aspect-ratio:4/5;object-fit:contain}
 
 /* Three footer sections while the Enamad block is temporarily commented out. */
-.storefront-shell .footer-grid{grid-template-columns:1.5fr 1fr 1fr}
+.storefront-shell .footer-grid{grid-template-columns:1.5fr 1fr 1fr 1fr}
 @media(max-width:650px){.storefront-shell .footer-grid{grid-template-columns:1fr 1fr}}
 
 button.gallery-thumb{padding:0;background:none;font:inherit;cursor:pointer}button.gallery-thumb:focus-visible{outline:3px solid #a98643;outline-offset:2px}
