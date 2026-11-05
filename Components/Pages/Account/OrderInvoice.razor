@@ -343,7 +343,7 @@ else
 
     private string PageSizeCss => _format switch
     {
-        InvoiceFormat.Thermal => "@page { size: 80mm auto; margin: 0; }",
+        InvoiceFormat.Thermal => "@page { size: auto; margin: 0; }",
         InvoiceFormat.Official => "@page { size: A4 landscape; margin: 10mm; }",
         _ => "@page { size: A4 portrait; margin: 12mm; }"
     };
@@ -362,7 +362,7 @@ else
         _lineTaxes = _order is null ? [] : OrderTax.Allocate(_order);
     }
 
-    private Task Print() => JS.InvokeVoidAsync("print").AsTask();
+    private Task Print() => JS.InvokeVoidAsync(_format == InvoiceFormat.Thermal ? "papey.printThermalReceipt" : "print").AsTask();
 
     private static string Money(decimal amount)
         => PersianHelpers.ToPersianDigits(amount.ToString("N0", CultureInfo.InvariantCulture));

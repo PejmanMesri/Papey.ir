@@ -84,7 +84,7 @@ else
 
 <style>
     /* ---- Bixolon SRP-330II: 80mm paper, 72mm printable width (512 dots on SRP-330II) ---- */
-    @@page { size: 80mm auto; margin: 0; }
+    @@page { size: auto; margin: 0; }
 
     .print-toolbar { display: flex; gap: 10px; align-items: center; justify-content: center; padding: 14px; flex-wrap: wrap; }
 
@@ -144,11 +144,11 @@ else
         {
             _autoPrintedOrderId = _order.Id;
             await Task.Delay(400);
-            await JS.InvokeVoidAsync("print");
+            await JS.InvokeVoidAsync("papey.printThermalReceipt");
         }
     }
 
-    private Task Print() => JS.InvokeVoidAsync("print").AsTask();
+    private Task Print() => JS.InvokeVoidAsync("papey.printThermalReceipt").AsTask();
 
     private static string Money(decimal v) => PersianHelpers.ToPersianDigits(v.ToString("N0", CultureInfo.InvariantCulture));
     private static string Fa(int n) => PersianHelpers.ToPersianDigits(n.ToString());
