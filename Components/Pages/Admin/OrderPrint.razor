@@ -15,9 +15,10 @@
 else
 {
     <div class="print-toolbar no-print">
-        <button class="btn-papey" @onclick="Print">🖨 چاپ فاکتور</button>
+        <button class="btn-papey" @onclick="Print">🖨 چاپ سازگار با چاپگر</button>
+        <button class="btn-papey btn-outline" @onclick="PrintCompact">چاپ با ارتفاع خودکار</button>
         <a class="btn-papey btn-outline" href="/admin/sales">→ بازگشت به فروش</a>
-        <span style="font-size:0.8rem; color:var(--papey-muted)">چاپ مستقیم روی پرینتر حرارتی ۸۰ میلی‌متری (Bixolon SRP-330II)</span>
+        <span style="font-size:0.8rem; color:var(--papey-muted)">BIXOLON: کاغذ ۸۰ میلی‌متری، مقیاس ۱۰۰٪، حاشیه و سرصفحه خاموش. اگر چاپ سفید است، «چاپ سازگار با چاپگر» را بزنید.</span>
     </div>
 
     <div class="receipt" data-print-ready="true" data-order-id="@_order.Id">
@@ -148,6 +149,7 @@ else
         }
     }
 
+    private Task PrintCompact() => JS.InvokeVoidAsync("papey.printThermalReceipt", true).AsTask();
     private Task Print() => JS.InvokeVoidAsync("papey.printThermalReceipt").AsTask();
 
     private static string Money(decimal v) => PersianHelpers.ToPersianDigits(v.ToString("N0", CultureInfo.InvariantCulture));

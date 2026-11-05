@@ -81,6 +81,10 @@
     });
 
     window.papey = window.papey || {};
+    window.papey.productView = {
+        read: function () { try { return localStorage.getItem('papey.product-view') === 'compact'; } catch (_) { return false; } },
+        write: function (compact) { try { localStorage.setItem('papey.product-view', compact ? 'compact' : 'normal'); } catch (_) { } }
+    };
     window.papey.openOrderInvoiceOnce = function (orderId, url) {
         try {
             var key = 'papey:invoice-opened:' + orderId;

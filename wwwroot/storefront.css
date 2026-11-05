@@ -270,3 +270,16 @@
 .storefront-shell .desktop-type-menu>summary>a{color:inherit;text-decoration:none;font-weight:inherit;padding:0}
 #contact{scroll-margin-top:100px}.contact-page h2.page-text-lines{font-size:clamp(2rem,4vw,3.8rem);line-height:1.5}
 @media(max-width:650px){.homepage-content{padding-inline:20px}}
+
+/* Product density preference: retain the same information in a tighter grid. */
+.product-view-options{display:flex;align-items:center;justify-content:flex-end;gap:7px;margin:12px 0 8px;font-size:.75rem;color:#555;flex-wrap:wrap}
+.product-view-options>span{margin-inline-end:7px}.product-view-options button{display:inline-flex;align-items:center;gap:7px;border:1px solid #ddd;background:#fff;color:#555;padding:9px 12px;border-radius:8px;font:inherit;min-height:42px;cursor:pointer}
+.product-view-options button.is-selected{border-color:#171717;background:#f2f2f2;color:#111}.product-view-options svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.4}
+.product-view-options button:focus-visible{outline:2px solid #171717;outline-offset:3px}
+.storefront-shell .product-grid.product-grid--compact{grid-template-columns:repeat(6,minmax(0,1fr));gap:20px 12px}
+.storefront-shell .catalog-results .product-grid.product-grid--compact{grid-template-columns:repeat(4,minmax(0,1fr))}
+.storefront-shell .product-grid--compact .info{padding:10px 0}.storefront-shell .product-grid--compact h3{font-size:.78rem;line-height:1.8}.storefront-shell .product-grid--compact .price-row{flex-wrap:wrap;gap:4px}.storefront-shell .product-grid--compact .price{font-size:.78rem}.storefront-shell .product-grid--compact .old-price{font-size:.65rem}
+@media(max-width:900px){.storefront-shell .product-grid.product-grid--compact,.storefront-shell .catalog-results .product-grid.product-grid--compact{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:650px){.product-view-options{justify-content:flex-start}.product-view-options button{padding:8px 10px}.storefront-shell .product-grid.product-grid--compact,.storefront-shell .catalog-results .product-grid.product-grid--compact{gap:18px 8px}.storefront-shell .product-grid--compact h3{font-size:.7rem}.storefront-shell .product-grid--compact .price{font-size:.68rem}.storefront-shell .product-grid--compact .favorite-button{width:30px;height:30px;top:5px;inset-inline-end:5px}.storefront-shell .product-grid--compact .badge-new{font-size:.55rem;padding:3px 5px}}
+
+.storefront-shell .product-grid--compact .price,.storefront-shell .product-grid--compact .old-price{min-width:0;overflow-wrap:anywhere}

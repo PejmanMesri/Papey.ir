@@ -4,7 +4,7 @@
 <PageTitle>جستجو | پاپی</PageTitle>
 
 <div class="section-title"><h2>🔍 نتایج جستجو برای «@Q»</h2></div>
-<ProductGrid Products="_products" />
+<ProductGrid ShowViewOptions="true" Products="_products" />
 
 @code {
     [SupplyParameterFromQuery(Name = "q")] public string? Q { get; set; }

@@ -14,9 +14,15 @@ const window = { addEventListener(name, handler) { handlers[name] = handler; }, 
 vm.runInNewContext(readFileSync(new URL('../../wwwroot/js/thermal-print.js', import.meta.url), 'utf8'), { window, document, Number, Math });
 await window.papey.printThermalReceipt();
 assert.equal(printed, 1);
+assert.match(style.textContent, /size: auto; margin: 0/);
+assert.match(style.textContent, /direction:ltr!important/);
+assert.match(style.textContent, /margin:0 0 0 4mm!important/);
+handlers.afterprint();
+await window.papey.printThermalReceipt(true);
 assert.match(style.textContent, /size: 80mm 110mm; margin: 0/);
 handlers.afterprint(); assert.equal(style, undefined);
-height = 800; handlers.beforeprint(); assert.match(style.textContent, /size: 80mm 216mm/);
+height = 800; await window.papey.printThermalReceipt(true); assert.match(style.textContent, /size: 80mm 216mm/);
 handlers.afterprint(); exists = false; handlers.beforeprint(); assert.equal(style, undefined);
 exists = true; height = NaN; handlers.beforeprint(); assert.equal(style, undefined);
-console.log('PASS: Receipt height determines 80mm paper dimensions; longer orders retain their content; print cleanup, explicit A4 pages and invalid measurements are safe. No physical printing.');
+await window.papey.printThermalReceipt(); assert.equal(printed, 3);
+console.log('PASS: Driver-compatible paper is the default; RTL receipts remain inside the physical roll; optional content height determines 80mm paper dimensions; longer orders retain their content; print cleanup, explicit A4 pages and invalid measurements are safe. No physical printing.');

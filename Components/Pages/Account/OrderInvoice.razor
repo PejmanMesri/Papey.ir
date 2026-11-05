@@ -23,6 +23,7 @@ else
         <a class="btn-papey btn-outline" href="/account/orders/@_order.Id/invoice/official">فاکتور رسمی</a>
         <a class="btn-papey btn-outline" href="/account/orders/@_order.Id/invoice/thermal">پرینت حرارتی</a>
         <button class="btn-papey" type="button" @onclick="Print">🖨 چاپ @_format.Label()</button>
+        @if (_format == InvoiceFormat.Thermal) { <button class="btn-papey btn-outline" @onclick="PrintCompact">چاپ با ارتفاع خودکار</button><span>برای BIXOLON، کاغذ ۸۰ میلی‌متری، مقیاس ۱۰۰٪ و حاشیه «ندارد» را انتخاب کنید.</span> }
     </div>
 
     @if (_format == InvoiceFormat.Thermal)
@@ -362,6 +363,7 @@ else
         _lineTaxes = _order is null ? [] : OrderTax.Allocate(_order);
     }
 
+    private Task PrintCompact() => JS.InvokeVoidAsync("papey.printThermalReceipt", true).AsTask();
     private Task Print() => JS.InvokeVoidAsync(_format == InvoiceFormat.Thermal ? "papey.printThermalReceipt" : "print").AsTask();
 
     private static string Money(decimal amount)
