@@ -295,3 +295,9 @@
 .product-card button.img-wrap{display:block;width:100%;padding:0;border:0;text-align:inherit;cursor:zoom-in}.product-photo-open{display:block;position:relative;width:100%;padding:0;border:0;background:#f2f2f2;cursor:zoom-in;font:inherit}.product-photo-open>img{display:block;width:100%}.product-photo-open>span{position:absolute;bottom:15px;left:15px;padding:8px 12px;border-radius:24px;background:#fffe;color:#222;font-size:.7rem;box-shadow:0 2px 12px #0001}.product-photo-open:focus-visible{outline:3px solid #a98643;outline-offset:3px}
 
 .product-photo-open>img{aspect-ratio:4/5;object-fit:contain}
+
+/* Three footer sections while the Enamad block is temporarily commented out. */
+.storefront-shell .footer-grid{grid-template-columns:1.5fr 1fr 1fr}
+@media(max-width:650px){.storefront-shell .footer-grid{grid-template-columns:1fr 1fr}}
+
+button.gallery-thumb{padding:0;background:none;font:inherit;cursor:pointer}button.gallery-thumb:focus-visible{outline:3px solid #a98643;outline-offset:2px}

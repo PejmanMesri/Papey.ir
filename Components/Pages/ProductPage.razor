@@ -37,7 +37,7 @@ else
                         {
                             var idx = i;
                             var m = _media[i];
-                            <div class="gallery-thumb @(idx == _activeMedia ? "active" : "")" @onclick="() => _activeMedia = idx">
+                            <button type="button" class="gallery-thumb @(idx == _activeMedia ? "active" : "")" aria-label="@(m.Type == MediaType.Video ? "نمایش ویدیو" : $"بزرگ‌نمایی تصویر {idx + 1}")" aria-haspopup="@(m.Type == MediaType.Image ? "dialog" : null)" @onclick="() => SelectGalleryMedia(idx)">
                                 @if (m.Type == MediaType.Video)
                                 {
                                     <span class="thumb-video">▶</span>
@@ -46,7 +46,7 @@ else
                                 {
                                     <img src="@m.Url" alt="@(m.Alt ?? _product.Name)" />
                                 }
-                            </div>
+                            </button>
                         }
                     </div>
                 }
@@ -133,6 +133,11 @@ else
     [Parameter] public string Slug { get; set; } = "";
 
     private Product? _product;
+    private async Task SelectGalleryMedia(int index)
+    {
+        _activeMedia = index;
+        if (_media[index].Type == MediaType.Image) await OpenPicture(_media[index].Url);
+    }
     private ProductImageLightbox? _imageViewer;
     private Task OpenPicture(string? selected) => _imageViewer?.ShowAsync(new[] { _product!.ImageUrl }.Concat(_media.Where(m => m.Type == MediaType.Image).Select(m => m.Url)).OfType<string>(), _product.Name, selectedImage: selected) ?? Task.CompletedTask;
     private List<ProductMedia> _media = new();
