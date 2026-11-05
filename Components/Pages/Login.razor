@@ -77,11 +77,11 @@
                 }
                 <div class="form-group">
                     <label class="form-label">کد تایید</label>
-                    <input class="form-input" @bind="_forgotCode" @bind:event="oninput" maxlength="5" style="text-align:center; letter-spacing:8px; font-size:1.3rem" />
+                    <OtpCodeInput @bind-Value="_forgotCode" Completed="ForgotCodeCompleted" Disabled="_sending" />
                 </div>
                 <div class="form-group">
                     <label class="form-label">رمز عبور جدید</label>
-                    <input class="form-input" type="password" @bind="_forgotNewPass" @bind:event="oninput" placeholder="حداقل ۶ کاراکتر" />
+                    <input @ref="_forgotPasswordInput" class="form-input" type="password" @bind="_forgotNewPass" @bind:event="oninput" placeholder="حداقل ۶ کاراکتر" />
                 </div>
                 @if (_forgotError is not null)
                 {
@@ -90,7 +90,7 @@
                 <button class="btn-papey" style="width:100%" type="submit" disabled="@_sending">
                     @(_sending ? "در حال بررسی..." : "تغییر رمز عبور")
                 </button>
-                <button class="btn-papey btn-outline" style="width:100%; margin-top:8px" type="button" @onclick="ResetForgot">ویرایش شماره</button>
+                <button class="btn-papey btn-outline" style="width:100%; margin-top:8px" type="button" disabled="@_sending" @onclick="ResetForgot">ویرایش شماره</button>
             }
             </form>
         }
@@ -121,14 +121,14 @@
                 }
                 <div class="form-group">
                     <label class="form-label">کد تایید</label>
-                    <input class="form-input" aria-label="کد تایید" inputmode="numeric" autocomplete="one-time-code" dir="ltr" @bind="_code" @bind:event="oninput" maxlength="5" style="text-align:center; letter-spacing:8px; font-size:1.3rem" />
+                    <OtpCodeInput @bind-Value="_code" @bind-Value:after="ClearOtpError" Completed="VerifyOtp" Disabled="_sending" />
                 </div>
                 @if (_otpError is not null)
                 {
                     <div class="alert-papey alert-danger">@_otpError</div>
                 }
-                <button class="btn-papey" style="width:100%" type="submit" disabled="@_sending">تایید و ادامه</button>
-                <button class="btn-papey btn-outline" style="width:100%; margin-top:8px" type="button" @onclick="ResetOtp">ویرایش شماره / ارسال مجدد</button>
+                <button class="btn-papey" style="width:100%" type="submit" disabled="@(_sending || _code.Length != 5)">تایید و ادامه</button>
+                <button class="btn-papey btn-outline" style="width:100%; margin-top:8px" type="button" disabled="@_sending" @onclick="ResetOtp">ویرایش شماره / ارسال مجدد</button>
                 @if (Remaining(_phone) > 0) { <p role="status">امکان ارسال مجدد پس از @Remaining(_phone) ثانیه</p> }
             }
             </form>
@@ -168,6 +168,8 @@
     private string? _otpError;
 
     // Forgot-password flow
+    private ElementReference _forgotPasswordInput;
+    private async Task ForgotCodeCompleted() { if (_forgotNewPass.Length >= 6) await ResetPassword(); else await _forgotPasswordInput.FocusAsync(); }
     private string _forgotPhone = "";
     private string _forgotCode = "";
     private string _forgotNewPass = "";
@@ -201,13 +203,15 @@
         _otpError = null;
     }
 
+    private void ClearOtpError() => _otpError = null;
     private async Task VerifyOtp()
     {
         if (_sending) return;
+        if (_code.Length != 5) { _otpError = "کد پنج‌رقمی را کامل کنید."; return; }
         _sending = true; _otpError = null;
         var user = await Auth.VerifyOtpAndSignInAsync(_phone, _code);
         _sending = false;
-        if (user is null) { _otpError = "کد وارد شده صحیح نیست یا منقضی شده است."; return; }
+        if (user is null) { _code = ""; _otpError = "کد وارد شده صحیح نیست یا منقضی شده است."; return; }
         // Sign-in must happen in a real HTTP request (cookie headers), not over the Blazor circuit
         var token = SignInTickets.Create(user.Id);
         Nav.NavigateTo($"/account/otp-complete?token={token}&returnUrl={Uri.EscapeDataString(LoginRedirect.ForUser(user, ReturnUrl))}", forceLoad: true);
@@ -241,7 +245,7 @@
         _sending = true; _forgotError = null;
         var (ok, error) = await Auth.ResetPasswordByOtpAsync(_forgotPhone, _forgotCode, _forgotNewPass);
         _sending = false;
-        if (!ok) { _forgotError = error; return; }
+        if (!ok) { _forgotCode = ""; _forgotError = error; return; }
         _forgotDone = true;
     }
 }
