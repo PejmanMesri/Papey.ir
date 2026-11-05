@@ -10,6 +10,19 @@ try
 {
     Check(ThermalReceipt.WidthFor("BIXOLON SRP-330II") == 512 && ThermalReceipt.WidthFor("BIXOLON SRP-332II") == 576,
         "Raster width matches the 180 dpi / 203 dpi BIXOLON model");
+    var paper = DriverReceipt.PaperFor(512, 512);
+    Check(paper.Width == 315 && paper.Height is >= 299 and <= 300, "Driver mode requests an 80mm roll and content-sized height instead of A4");
+    var area = new System.Drawing.RectangleF(14, 4, 280, 100);
+    var destination = DriverReceipt.Destination(area, 512, 2000);
+    Check(destination.Width <= area.Width && destination.Height <= area.Height && destination.Left >= area.Left,
+        "Driver raster stays inside hardware printable bounds and long receipts continue without shrinking text");
+    Check(DriverReceipt.RowsFor(new(0, 0, 280, 1000), 512, 512) == 512, "A short receipt ends on one driver page without a one-row trailing blank page");
+    Check(DriverReceipt.RowsFor(area, 512, 2000) < 2000, "A long driver receipt is divided into bounded readable page segments");
+    using (var border = new System.Drawing.Bitmap(512, 300)) {
+        using (var g = System.Drawing.Graphics.FromImage(border)) { g.Clear(System.Drawing.Color.White); g.DrawRectangle(System.Drawing.Pens.Black, 0, 0, 511, 299); }
+        var rejected = false; try { ThermalReceipt.Create(border, 512); } catch (InvalidOperationException) { rejected = true; }
+        Check(rejected, "A failed border-only render is rejected before either printer mode can feed paper");
+    }
     using (var image = new System.Drawing.Bitmap(512, 2000))
     {
         using (var graphics = System.Drawing.Graphics.FromImage(image))

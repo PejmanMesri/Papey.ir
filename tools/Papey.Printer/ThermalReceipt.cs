@@ -26,16 +26,17 @@ internal sealed record ThermalReceipt(byte[] Commands, byte[] PreviewPng, int Wi
         try { Marshal.Copy(data.Scan0, pixels, 0, pixels.Length); }
         finally { scaled.UnlockBits(data); }
         var rows = new byte[height * (width / 8)];
-        var first = height; var last = -1;
+        var first = height; var last = -1; var interiorInk = 0;
         for (var y = 0; y < height; y++)
         for (var x = 0; x < width; x++)
         {
             var p = y * data.Stride + x * 4;
             if ((pixels[p + 2] * 299 + pixels[p + 1] * 587 + pixels[p] * 114) / 1000 >= 180) continue;
             rows[y * (width / 8) + x / 8] |= (byte)(0x80 >> (x % 8));
+            if (x > 8 && x < width - 9 && y > 8 && y < height - 9) interiorInk++;
             first = Math.Min(first, y); last = Math.Max(last, y);
         }
-        if (last < first) throw new InvalidOperationException("Receipt is blank; nothing was sent to the printer.");
+        if (last < first || interiorInk < 32) throw new InvalidOperationException("Receipt is blank or contains only a border; nothing was sent to the printer.");
         // Trim unused top/bottom page area. Retain only a small 1 mm breathing space.
         first = Math.Max(0, first - 7); last = Math.Min(height - 1, last + 7);
         var croppedHeight = last - first + 1;

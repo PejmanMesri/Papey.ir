@@ -85,3 +85,25 @@ Installed executable switches (only while the tray app is stopped):
 Server API and isolated queue tests are documented in `PRINTING_API.md`.
 Microsoft documents the
 [Windows RAW spooler API](https://learn.microsoft.com/en-us/windows/win32/printdocs/sending-data-directly-to-a-printer).
+
+## Version 1.2: blank-paper compatibility mode
+
+The tray menu now includes **Print method** and **Print a test receipt**. If RAW
+ESC/POS feeds blank paper, switch to **Windows driver** (click Print method).
+Switching pauses automatic orders: run a synthetic test, then resume only after
+checking the result. No automatic fallback reprints an uncertain order.
+Driver mode draws the validated receipt bitmap through the installed Windows
+driver, requests 80 mm paper with content-sized height, respects hardware margins,
+and continues on another page if the driver caps roll length. RAW mode remains
+available. Existing installations keep their current mode; new setup recommends
+the Windows driver. Spooler acceptance cannot prove physical printing.
+
+Before updating, exit the tray app after the queue is idle and any uncertain
+job has been resolved. Extract the updated package, then run Setup.cmd. The
+updater refuses a running instance or unresolved journal and preserves existing
+credentials. To change credentials later, run the installed app with --setup.
+
+If the printer's own self-test is also blank, website page dimensions cannot
+explain that result: check the thermal paper and device with the customer. If
+the self-test prints but the app's test does not, try the other print method and
+check the driver/queue name. Do not mark a blank order as successfully printed.

@@ -7,7 +7,7 @@ namespace Papey.Printer;
 
 internal sealed class PrinterForm : Form
 {
-    private readonly Settings _settings;
+    private Settings _settings;
     private readonly PrintingApi _api;
     private readonly WebView2 _web = new() { Dock = DockStyle.Fill };
     private readonly NotifyIcon _tray;
@@ -28,6 +28,16 @@ internal sealed class PrinterForm : Form
         menu.Items.Add("Status / وضعیت", null, (_, _) => MessageBox.Show(_status + "\n" + settings.Server + "\n" + settings.Printer, Text));
         menu.Items.Add("Pause / resume", null, (_, _) => { _paused = !_paused; Report(_paused ? "Paused" : "Resumed"); });
         menu.Items.Add("Resolve uncertain print…", null, async (_, _) => await Resolve());
+        var mode = menu.Items.Add("Print method: " + (settings.PrintMode == "driver" ? "Windows driver" : "RAW ESC/POS"));
+        mode.Click += (_, _) => {
+            if (_busy || Store.Read<Journal>("pending.json") is not null) { MessageBox.Show("Pause and resolve the current job before changing the print method.", Text); return; }
+            _settings = _settings with { PrintMode = _settings.PrintMode == "driver" ? "raw" : "driver" };
+            Store.Write("settings.json", _settings);
+            _paused = true;
+            mode.Text = "Print method: " + (_settings.PrintMode == "driver" ? "Windows driver" : "RAW ESC/POS");
+            Report("Print method changed; run a test receipt before resuming orders");
+        };
+        menu.Items.Add("Print a test receipt", null, async (_, _) => { if (_busy || Store.Read<Journal>("pending.json") is not null) { MessageBox.Show("Wait for or resolve the current order first.", Text); return; } _busy = true; try { await TestReceipt(); } catch (Exception ex) { Report("Test failed: " + ex.GetType().Name); } finally { _busy = false; } });
         menu.Items.Add("Open log folder", null, (_, _) => System.Diagnostics.Process.Start("explorer.exe", Store.Folder));
         menu.Items.Add("Exit", null, (_, _) =>
         {
@@ -164,7 +174,7 @@ internal sealed class PrinterForm : Form
             if (!leaseValid || !await _api.Action(lease, "renew")) throw new InvalidOperationException("Print lease lost before submission.");
             Store.Write("pending.json", new Journal(lease, "Submitting"));
             Report("Sending paid order to BIXOLON");
-            await Task.Run(() => RawPrinter.Submit(_settings.Printer, receipt.Commands));
+            await SubmitReceipt(receipt);
             Store.Write("pending.json", new Journal(lease, "Submitted"));
             PrinterHealth.EnsureReady(_settings.Printer);
             if (!await _api.Action(lease, "complete")) { Review(new(lease, "NeedsReview")); return; }
@@ -172,6 +182,12 @@ internal sealed class PrinterForm : Form
         }
         finally { renewal.Cancel(); await renewTask; }
     }
+
+    private Task SubmitReceipt(ThermalReceipt receipt) => Task.Run(() => {
+        Store.Write("render-diagnostics.json", new { version = "1.2.0", mode = _settings.PrintMode, receipt.Width, receipt.Height, paperWidthMm = 80, contentWidthMm = 72, contentHeightMm = Math.Round(receipt.Height * 72d / receipt.Width, 1) });
+        if (_settings.PrintMode == "driver") DriverReceipt.Submit(_settings.Printer, receipt);
+        else RawPrinter.Submit(_settings.Printer, receipt.Commands);
+    });
 
     private async Task Navigate(string uri)
     {
@@ -242,7 +258,7 @@ internal sealed class PrinterForm : Form
         {
             _web.CoreWebView2.NavigateToString("""
                 <!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><style>
-                @page {size:80mm auto;margin:4mm}body{margin:0;background:white;font:14px Tahoma}
+                @page {size:auto;margin:0}body{margin:0;background:white;font:14px Tahoma}
                 .receipt{width:72mm;text-align:center;line-height:2;color:black}h1{font-size:24px}hr{border:0;border-top:1px dashed black}
                 </style><div class="receipt" data-print-ready="true" data-order-id="0"><h1>پاپی</h1><hr>
                 چاپ آزمایشی اتصال خودکار سفارش‌ها<br>تیشرت — مشکی — سایز XL<br>تعداد: ۲ | مبلغ: ۲٬۲۸۰٬۰۰۰ تومان<hr>
@@ -264,7 +280,7 @@ internal sealed class PrinterForm : Form
             else
             {
                 PrinterHealth.EnsureReady(_settings.Printer);
-                await Task.Run(() => RawPrinter.Submit(_settings.Printer, receipt.Commands));
+                await SubmitReceipt(receipt);
                 Report("Test receipt accepted by BIXOLON printer spooler");
             }
         }
