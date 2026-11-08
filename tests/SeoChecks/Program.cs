@@ -48,7 +48,18 @@ try
     db.Products.Add(item);
     db.Products.Add(new() { Name = "Hidden", Slug = "hidden", Category = category, IsActive = false });
     await db.SaveChangesAsync();
+    var futureType=new ProductTypeEntity {Name="کاپشن",IsActive=true};db.ProductTypes.Add(futureType);await db.SaveChangesAsync();
     var seo = new StoreSeo(new Factory(options), new ConfigurationBuilder().Build());
+    Check(ClothingSearchTerms.PrintedName("کاپشن")=="کاپشن چاپی"&&ClothingSearchTerms.PrintedName("پلیور")=="پلیور چاپی","Future clothing names gain printed-clothing search terms without code changes");
+    Check(ClothingSearchTerms.PrintedName("بیسیک")=="بیسیک"&&ClothingSearchTerms.PrintedName("هودی ساده")=="هودی ساده"&&ClothingSearchTerms.PrintedName("هودی چاپی")=="هودی چاپی","Plain garments and existing printed labels are not mislabelled or duplicated");
+    var futureUrl="https://papey.ir/products?type="+futureType.Id;
+    Check(!(await seo.ReadAsync(futureUrl)).Indexable&&!(await seo.SitemapAsync()).Contains(futureUrl),"Empty future clothing type stays out of the sitemap and indexing");
+    item.ProductTypeId=futureType.Id;await db.SaveChangesAsync();
+    var futurePage=await seo.ReadAsync(futureUrl);
+    Check(futurePage.Indexable&&futurePage.Title!.Contains("کاپشن چاپی")&&futurePage.Description.Contains("کاپشن چاپی")&&(await seo.SitemapAsync()).Contains(futureUrl),"Adding an active jacket automatically enables its SEO title, description and sitemap URL");
+    futureType.IsActive=false;await db.SaveChangesAsync();
+    Check(!(await seo.ReadAsync(futureUrl)).Indexable&&!(await seo.SitemapAsync()).Contains(futureUrl),"Deactivated clothing types leave the sitemap and indexing");
+    futureType.IsActive=true;await db.SaveChangesAsync();
     var page = await seo.ReadAsync("https://untrusted-host.example/product/test-product?utm_source=test");
     Check(page.Indexable && page.Canonical == "https://papey.ir/product/test-product" && page.Image == "https://papey.ir/uploads/test.jpg", "Canonical and preview URLs use the configured site, stripping campaign parameters");
     Check(page.Title!.Contains("Test product") && page.ProductJson is not null, "Product-specific title and structured data are generated");
@@ -56,6 +67,7 @@ try
     Check((await seo.ReadAsync("https://papey.ir/")).Title!.Contains("تیشرت چاپی"), "Homepage targets printed T-shirts naturally");
     Check((await seo.ReadAsync("https://papey.ir/custom-design")).Title!.Contains("سفارش تیشرت کاستوم"), "Custom order page has its own search intent");
     Check((await seo.ReadAsync("https://papey.ir/guides/tshirt-print-design")).Indexable, "Design guide is indexable");
+    Check((await seo.ReadAsync("https://papey.ir/guides/dtf-printing")).Title!.Contains("چاپ DTF"),"DTF method guide has indexable intent-specific metadata");
     Check((await seo.ReadAsync("https://papey.ir/printed-hoodies")).Title!.Contains("خرید هودی چاپی"),"Hoodie landing page targets its own shopping intent");
     Check(!(await seo.ReadAsync("https://papey.ir/products?type=99999")).Indexable, "Invalid clothing types are not indexable");
     Check(!(await seo.ReadAsync("https://papey.ir/category/empty-category")).Indexable, "Empty categories are not indexable");
@@ -65,7 +77,7 @@ try
     XNamespace ns = "http://www.sitemaps.org/schemas/sitemap/0.9";
     var urls = sitemap.Descendants(ns + "loc").Select(x => x.Value).ToArray();
     Check(urls.Contains("https://papey.ir/product/test-product") && urls.Contains("https://papey.ir/category/test-category"), "Sitemap includes active products and their categories");
-    Check(urls.Contains("https://papey.ir/printed-hoodies")&&urls.Contains("https://papey.ir/printed-tshirts")&&urls.Contains("https://papey.ir/guides/tshirt-print-design"),"Search landing page and guide appear in the sitemap");
+    Check(urls.Contains("https://papey.ir/guides/dtf-printing")&&urls.Contains("https://papey.ir/printed-hoodies")&&urls.Contains("https://papey.ir/printed-tshirts")&&urls.Contains("https://papey.ir/guides/tshirt-print-design"),"Search landing page and guide appear in the sitemap");
     XNamespace imageNs="http://www.google.com/schemas/sitemap-image/1.1";
     Check(sitemap.Descendants(imageNs+"loc").Any(x=>x.Value=="https://papey.ir/uploads/test.jpg"),"Image sitemap includes the real active product photo");
     Check(!urls.Any(u => u.Contains("hidden") || u.Contains("empty-category") || u.Contains("/account")), "Sitemap excludes inactive products, empty categories and private pages");
@@ -79,7 +91,7 @@ try
         for(var i=0;i<100;i++){try{if((await client.GetAsync("/healthz")).IsSuccessStatusCode)break;}catch{}if(server.HasExited)throw new Exception("SEO test server failed");await Task.Delay(150);}
         foreach(var path in new[]{"/product/missing-product","/category/missing-category"}){var response=await client.GetAsync(path);Check(response.StatusCode==HttpStatusCode.NotFound,"Missing catalog URL returns HTTP 404: "+path+" ("+(int)response.StatusCode+")");}
         var invalid=await client.GetStringAsync("/products?type=999999");Check(invalid.Contains("noindex,follow"),"Invalid filter is noindex in server-rendered HTML");
-        foreach(var path in new[]{"/","/printed-tshirts","/printed-hoodies","/guides/tshirt-print-design","/custom-design","/product/test-product"}){
+        foreach(var path in new[]{"/","/printed-tshirts","/printed-hoodies","/guides/dtf-printing","/guides/tshirt-print-design","/custom-design","/product/test-product"}){
             var response=await client.GetAsync(path);var body=await response.Content.ReadAsStringAsync();Check(response.IsSuccessStatusCode&&body.Contains("rel=\"canonical\"")&&body.Contains("name=\"description\""),"Public page has server-rendered SEO metadata: "+path);
             Check(System.Text.RegularExpressions.Regex.Matches(body,"<title>").Count==1,"One title element for "+path);
         }

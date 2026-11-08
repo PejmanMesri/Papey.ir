@@ -19,8 +19,9 @@
     {
         <div class="catalog-heading">
             <p class="catalog-kicker">فروشگاه پاپی</p>
-            @if (Heading is not null) { <h2>@Heading</h2> } else { <h1>@(SelectedProductType is { } t ? $"خرید {t.Name} با طرح‌های خاص" : "خرید پوشاک طرح‌دار پاپی")</h1> }
-            <p>طرح مورد علاقه‌ات را با فیلترهای دقیق‌تر پیدا کن.</p>
+            @if (Heading is not null) { <h2>@Heading</h2> } else { <h1>@(SelectedProductType is { } t ? $"خرید {ClothingSearchTerms.PrintedName(t.Name)} با طرح‌های خاص" : "خرید پوشاک طرح‌دار پاپی")</h1> }
+            @if (SelectedProductType is { } selected) { <p>مدل‌های @ClothingSearchTerms.PrintedName(selected.Name) را ببین و رنگ و سایز دلخواهت را انتخاب کن. برای سفارش @selected.Name با طرح اختصاصی، <a href="/custom-design">درخواست تماس یا گفت‌وگو در واتساپ</a> را ادامه بده؛ امکان اجرای طرح و قیمت پیش از نهایی شدن سفارش بررسی می‌شود.</p> }
+            else { <p>طرح مورد علاقه‌ات را با فیلترهای دقیق‌تر پیدا کن.</p> }
         </div>
     }
 
@@ -123,7 +124,7 @@
             IEnumerable<Product> query = _products;
 
             if (_selectedProductTypeId is { } typeId)
-                query = query.Where(product => product.ProductTypeId == typeId);
+                query = query.Where(product => (product.ProductTypeId ?? product.Category.ProductTypeId) == typeId);
             if (_selectedCategoryId is { } categoryId)
                 query = query.Where(product => product.CategoryId == categoryId || product.ProductCategories.Any(link => link.CategoryId == categoryId));
 

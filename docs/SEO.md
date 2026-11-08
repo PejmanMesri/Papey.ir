@@ -27,3 +27,8 @@ Official guidance:
 
 ## Expanded Persian phrase coverage
 Related phrases appear in useful visible content, headings and links rather than hidden keyword lists or duplicate landing pages: سفارش تیشرت چاپی، خرید تیشرت چاپی، سفارش لباس چاپی، چاپ روی لباس، تیشرت سفارشی، چاپ طرح دلخواه روی تیشرت، هودی با طرح دلخواه، چاپ روی هودی، پوشاک چاپی و سفارش گروهی. Exact product availability remains dynamic; do not claim printing methods, materials or turnaround beyond actual shop information.
+
+## Dynamic clothing types and DTF
+The owner confirmed that Papey uses DTF (not PDF). /guides/dtf-printing explains the method, تیشرت DTF، لباس DTF and چاپ دی‌تی‌اف, linking to shopping and custom-order pages. Definition checked against Epson: https://www.epson.co.uk/en_GB/buying-guides/guide-to-printing-on-garments . PDF is described only as a file format, not an offered printing method.
+
+New active clothing types with active products automatically receive collection metadata, a sitemap entry and a homepage search link. Names are derived from admin data, including future کاپشن، پلیور and other types; no hardcoded list or new SEO deployment required. Basic/plain labels remain plain. Empty/deactivated types are excluded from type-page indexing and sitemap coverage. Homepage discovery refreshes on page load. No unsupported future stock or printing compatibility is advertised in advance.
