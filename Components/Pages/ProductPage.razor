@@ -15,7 +15,7 @@ else
         <div class="gallery">
             @if (_media.Count == 0)
             {
-                <button class="product-photo-open" type="button" aria-label="نمایش و بزرگ‌نمایی تصویر محصول" aria-haspopup="dialog" @onclick="() => OpenPicture(_product.ImageUrl)"><img src="@_product.ImageUrl" alt="@_product.Name" /><span>بزرگ‌نمایی تصویر ⤢</span></button>
+                <button class="product-photo-open" type="button" aria-label="نمایش و بزرگ‌نمایی تصویر محصول" aria-haspopup="dialog" @onclick="() => OpenPicture(_product.ImageUrl)"><img src="@_product.ImageUrl" alt="@_product.Name" fetchpriority="high" decoding="async" /><span>بزرگ‌نمایی تصویر ⤢</span></button>
             }
             else
             {
@@ -27,7 +27,7 @@ else
                     }
                     else
                     {
-                        <button class="product-photo-open" type="button" aria-label="نمایش و بزرگ‌نمایی تصویر محصول" aria-haspopup="dialog" @onclick="() => OpenPicture(current.Url)"><img src="@current.Url" alt="@(current.Alt ?? _product.Name)" /><span>بزرگ‌نمایی تصویر ⤢</span></button>
+                        <button class="product-photo-open" type="button" aria-label="نمایش و بزرگ‌نمایی تصویر محصول" aria-haspopup="dialog" @onclick="() => OpenPicture(current.Url)"><img src="@current.Url" alt="@(current.Alt ?? _product.Name)" fetchpriority="high" decoding="async" /><span>بزرگ‌نمایی تصویر ⤢</span></button>
                     }
                 </div>
                 @if (_media.Count > 1)

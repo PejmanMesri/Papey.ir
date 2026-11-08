@@ -158,6 +158,28 @@ app.Use(async (context, next) =>
     }
 });
 
+// Public catalog URLs must describe their real HTTP status to crawlers.
+app.Use(async (context, next) =>
+{
+    if(HttpMethods.IsGet(context.Request.Method)||HttpMethods.IsHead(context.Request.Method)) {
+        var path=context.Request.Path.Value??"/";
+        if(path=="/contact") { context.Response.Redirect("/about#contact",permanent:true); return; }
+        if(path.Length>1 && path.EndsWith('/') && !path.StartsWith("/api/") && !path.StartsWith("/_")) {
+            context.Response.Redirect(path.TrimEnd('/')+context.Request.QueryString,permanent:true);return;
+        }
+        var product=path.StartsWith("/product/",StringComparison.OrdinalIgnoreCase);
+        var category=path.StartsWith("/category/",StringComparison.OrdinalIgnoreCase);
+        if(product||category) {
+            var factory=context.RequestServices.GetRequiredService<IDbContextFactory<AppDbContext>>();
+            await using var db=await factory.CreateDbContextAsync(context.RequestAborted);
+            var slug=Uri.UnescapeDataString(path[(product?9:10)..]);
+            var exists=product?await db.Products.AnyAsync(p=>p.Slug==slug&&p.IsActive,context.RequestAborted):await db.Categories.AnyAsync(c=>c.Slug==slug&&c.IsActive,context.RequestAborted);
+            if(!exists) { context.Response.StatusCode=StatusCodes.Status404NotFound; return; }
+        }
+    }
+    await next(context);
+});
+
 // Serve user-uploaded files (uploads, favicon, images) via classic static files.
 app.Use(async (context, next) =>
 {

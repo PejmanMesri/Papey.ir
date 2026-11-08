@@ -19,7 +19,7 @@
     {
         <div class="catalog-heading">
             <p class="catalog-kicker">فروشگاه پاپی</p>
-            <h1>همه محصولات</h1>
+            @if (Heading is not null) { <h2>@Heading</h2> } else { <h1>@(SelectedProductType is { } t ? $"خرید {t.Name} با طرح‌های خاص" : "خرید پوشاک طرح‌دار پاپی")</h1> }
             <p>طرح مورد علاقه‌ات را با فیلترهای دقیق‌تر پیدا کن.</p>
         </div>
     }
@@ -38,11 +38,11 @@
                 <div class="clothing-type-options">
                     @foreach (var type in _productTypes)
                     {
-                        <button type="button" class="clothing-type-option @GetClothingTypeClass(type) @(_selectedProductTypeId == type.Id ? "is-selected" : "")"
-                                @onclick="() => NavigateToProductType(type)">
+                        <a href="/products?type=@type.Id" class="clothing-type-option @GetClothingTypeClass(type) @(_selectedProductTypeId == type.Id ? "is-selected" : "")"
+>
                             <span class="clothing-type-icon"><ProductTypePhoto Id="@type.Id" TypeName="@type.Name" Value="@type.FilterIcon" /></span>
                             <span>@type.Name</span>
-                        </button>
+                        </a>
                     }
                 </div>
             </div>
@@ -52,8 +52,7 @@
                 <div class="filter-group" @key="selectedType.Id">
                     <label>طرح @selectedType.Name</label>
                     <div class="subcategory-options">
-                        <button type="button" class="subcategory-option @(_activeCategory is null ? "is-selected" : "")"
-                                @onclick="() => NavigateToProductType(selectedType)">همه</button>
+                        <a href="/products?type=@selectedType.Id" class="subcategory-option @(_activeCategory is null ? "is-selected" : "")">همه</a>
                         @foreach (var category in selectedType.Categories.OrderBy(c => c.DisplayOrder))
                         {
                             <button type="button" class="subcategory-option @(_selectedCategoryId == category.Id ? "is-selected" : "")"
@@ -96,6 +95,7 @@
 
 @code {
     private bool _filtersOpen;
+    [Parameter] public string? Heading { get; set; }
     [Parameter] public string? CategorySlug { get; set; }
     [Parameter] public int? ProductTypeId { get; set; }
 

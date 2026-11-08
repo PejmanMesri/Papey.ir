@@ -7,7 +7,7 @@
     @if (info.Title is not null) { <PageTitle>@info.Title</PageTitle> }
     <HeadContent>
         <meta name="description" content="@info.Description" />
-        <meta name="robots" content="@(info.Indexable ? "index,follow" : "noindex,follow")" />
+        <meta name="robots" content="@(info.Indexable ? "index,follow,max-image-preview:large" : "noindex,follow")" />
         @if (info.Indexable)
         {
             <link rel="canonical" href="@info.Canonical" />

@@ -38,7 +38,7 @@ public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfigura
         return JsonSerializer.Serialize(new Dictionary<string, object?> {
             ["@context"] = "https://schema.org", ["@type"] = "Product", ["name"] = product.Name,
             ["description"] = Description(product.Description, $"خرید {product.Name} از پاپی"), ["sku"] = product.Id.ToString(), ["url"] = url,
-            ["image"] = image is null ? Array.Empty<string>() : new[] { image },
+            ["image"] = (image is null ? Array.Empty<string>() : new[] { image }).Concat(product.Media.Where(m=>m.Type==MediaType.Image).OrderBy(m=>m.DisplayOrder).Select(m=>Uri.TryCreate(new Uri(url),m.Url,out var mediaUri)?mediaUri.AbsoluteUri:null).OfType<string>()).Distinct().ToArray(),
             ["brand"] = new Dictionary<string, string> { ["@type"] = "Brand", ["name"] = "Papey" }, ["offers"] = offers
         });
     }
@@ -48,10 +48,12 @@ public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfigura
         var path = uri.AbsolutePath.TrimEnd('/');
         var canonical = Url(path.Length == 0 ? "/" : path);
         string? title = null, image = null, json = null;
-        var description = "خرید تیشرت، هودی و لانگ اسلیو با طرح‌های خاص از پاپی؛ انتخاب رنگ و سایز و پرداخت امن.";
+        var description = "خرید تیشرت چاپی با طرح‌های خاص و سفارش تیشرت کاستوم از پاپی؛ انتخاب مدل، رنگ و سایز، بررسی طرح دلخواه و ارسال با تیپاکس به سراسر ایران.";
         await using var db = await factory.CreateDbContextAsync();
-        if (path == "") title = "پاپی Papey | تیشرت، هودی و لانگ اسلیو با طرح‌های خاص";
-        else if (path == "/custom-design") { title = "سفارش لباس اختصاصی | پاپی"; description = "برای چاپ طرح دلخواه روی لباس، شماره تماس خود را ثبت کنید یا در واتساپ با پاپی گفت‌وگو کنید. قیمت و جزئیات پیش از ثبت سفارش هماهنگ می‌شود."; image = Url("/img/custom-studio/hoodie-white-front.webp"); }
+        if (path == "") title = "پاپی | خرید تیشرت چاپی و سفارش تیشرت کاستوم";
+        else if (path == "/custom-design") { title = "سفارش تیشرت کاستوم با طرح دلخواه | پاپی"; description = "برای سفارش تیشرت کاستوم و چاپ طرح دلخواه روی تیشرت، هودی یا لانگ اسلیو با پاپی هماهنگ کنید؛ بررسی فایل طراحی، انتخاب لباس و اعلام قیمت پیش از سفارش."; image = Url("/img/custom-studio/hoodie-white-front.webp"); }
+        else if (path == "/printed-tshirts") { title="خرید تیشرت چاپی با طرح‌های خاص | پاپی"; description="مدل‌های تیشرت چاپی پاپی را ببینید؛ طرح‌های انیمه، موسیقی، گیم و تاریخی با انتخاب رنگ و سایز. برای چاپ طرح شخصی، سفارش تیشرت کاستوم ثبت کنید."; }
+        else if (path == "/guides/tshirt-print-design") { title="راهنمای طراحی تیشرت چاپی و آماده‌سازی فایل | پاپی"; description="برای طراحی تیشرت چاپی از کجا شروع کنیم؟ راهنمای انتخاب طرح، پس‌زمینه شفاف، محل چاپ، رنگ لباس و ارسال فایل برای سفارش تیشرت کاستوم در پاپی."; }
         else if (path == "/about") { title = "درباره و ارتباط با ما | پاپی"; description = "با پاپی آشنا شوید؛ فروشگاه تیشرت، هودی و لانگ اسلیو با طرح‌های خاص و امکان سفارش لباس با طرح دلخواه."; }
         else if (path == "/wholesale") { title = "فروش عمده پوشاک و قرارداد همکاری | پاپی"; description = "برای سفارش عمده تیشرت، هودی و لانگ اسلیو، توافق قیمت و عقد قرارداد همکاری با پاپی تماس بگیرید: ۰۹۱۲۱۸۳۸۹۹۱."; }
         else if (path == "/products")
@@ -60,13 +62,15 @@ public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfigura
             if (int.TryParse(QueryHelpers.ParseQuery(uri.Query).GetValueOrDefault("type"), out var typeId))
             {
                 var type = await db.ProductTypes.AsNoTracking().FirstOrDefaultAsync(t => t.Id == typeId && t.IsActive);
-                if (type is not null) { title = $"خرید {type.Name} با طرح‌های خاص | پاپی"; canonical += $"?type={typeId}"; }
+                if (type is not null) { title = $"خرید {type.Name} با طرح‌های خاص | پاپی"; description=$"مدل‌های {type.Name} پاپی را ببینید و طرح، رنگ و سایز دلخواه خود را انتخاب کنید؛ سفارش آنلاین و ارسال با تیپاکس."; canonical += $"?type={typeId}";
+                    if(!await db.Products.AnyAsync(p=>p.IsActive&&p.ProductTypeId==typeId)) title=null;
+                } else title=null;
             }
         }
         else if (path.StartsWith("/product/"))
         {
             var slug = Uri.UnescapeDataString(path[9..]);
-            var product = await db.Products.AsNoTracking().Include(p => p.Variants).FirstOrDefaultAsync(p => p.Slug == slug && p.IsActive);
+            var product = await db.Products.AsNoTracking().Include(p => p.Variants).Include(p=>p.Media).FirstOrDefaultAsync(p => p.Slug == slug && p.IsActive);
             if (product is not null)
             {
                 title = $"{product.Name} | خرید از پاپی";
@@ -87,14 +91,31 @@ public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfigura
         }
         else if (path == "/contact") { canonical = Url("/about"); title = "ارتباط با پاپی | تماس و پشتیبانی سفارش"; description = "راه‌های ارتباط با فروشگاه پاپی؛ تماس، واتساپ و اینستاگرام برای راهنمای خرید و پیگیری سفارش."; }
         var indexable = title is not null;
+        var query=QueryHelpers.ParseQuery(uri.Query);
+        if(path=="/products" && query.TryGetValue("type",out var rawType) && !int.TryParse(rawType,out _))indexable=false;
+        if(query.Keys.Any(k=>new[]{"sort","q","minPrice","maxPrice","color","size"}.Contains(k,StringComparer.OrdinalIgnoreCase)))indexable=false;
+        if(path.StartsWith("/category/") && indexable) {
+            var slug=Uri.UnescapeDataString(path[10..]);
+            indexable=await db.Products.AnyAsync(p=>p.IsActive&&(p.Category.Slug==slug||p.ProductCategories.Any(pc=>pc.Category.Slug==slug)));
+        }
         if (indexable && image is null)
             image = ImageUrl(await db.Products.AsNoTracking().Where(p => p.IsActive && p.ImageUrl != null).OrderByDescending(p => p.HomeHeroSlot != null).ThenBy(p => p.Id).Select(p => p.ImageUrl).FirstOrDefaultAsync());
         var siteJson = path == "" ? JsonSerializer.Serialize(new Dictionary<string, object?> {
             ["@context"] = "https://schema.org", ["@graph"] = new object[] {
-                new Dictionary<string, object?> { ["@type"] = "Organization", ["@id"] = Url("/#organization"), ["name"] = "پاپی", ["alternateName"] = "Papey", ["url"] = Url("/"), ["sameAs"] = new[] { "https://www.instagram.com/papey.ir" } },
+                new Dictionary<string, object?> { ["@type"] = "OnlineStore", ["@id"] = Url("/#organization"), ["name"] = "پاپی", ["alternateName"] = "Papey", ["url"] = Url("/"), ["sameAs"] = new[] { "https://www.instagram.com/papey.ir", "https://t.me/papeycompany" } },
                 new Dictionary<string, object?> { ["@type"] = "WebSite", ["@id"] = Url("/#website"), ["name"] = "پاپی", ["alternateName"] = "Papey", ["url"] = Url("/"), ["inLanguage"] = "fa-IR" }
             }
         }) : null;
+        if(indexable && path!="") {
+            var name=title?.Split(" | ")[0]??"پاپی";
+            siteJson=JsonSerializer.Serialize(new Dictionary<string,object?> {
+                ["@context"]="https://schema.org",["@type"]="BreadcrumbList",["itemListElement"]=new object[]{
+                    new Dictionary<string,object?> { ["@type"]="ListItem",["position"]=1,["name"]="پاپی",["item"]=Url("/") },
+                    new Dictionary<string,object?> { ["@type"]="ListItem",["position"]=2,["name"]=name,["item"]=canonical }
+                }
+            });
+        }
+        if(title is null && (path.StartsWith("/product/")||path.StartsWith("/category/")))title="صفحه پیدا نشد | پاپی";
         return new(title, description, canonical, image, json, indexable, siteJson);
     }
     public async Task<string> SitemapAsync()
@@ -106,9 +127,16 @@ public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfigura
         var categories = await db.Categories.Where(c => c.IsActive && categoryIds.Contains(c.Id)).Select(c => c.Slug).ToListAsync();
         var typeIds = products.Where(p => p.ProductTypeId != null).Select(p => p.ProductTypeId!.Value).ToHashSet();
         var types = await db.ProductTypes.Where(t => t.IsActive && typeIds.Contains(t.Id)).Select(t => t.Id).ToListAsync();
-        var paths = new[] { "/", "/products", "/about", "/wholesale", "/custom-design" }.Concat(products.Select(p => "/product/" + Uri.EscapeDataString(p.Slug)))
+        var paths = new[] { "/", "/products", "/printed-tshirts", "/guides/tshirt-print-design", "/about", "/wholesale", "/custom-design" }.Concat(products.Select(p => "/product/" + Uri.EscapeDataString(p.Slug)))
             .Concat(categories.Select(c => "/category/" + Uri.EscapeDataString(c))).Concat(types.Select(t => $"/products?type={t}"));
         XNamespace ns = "http://www.sitemaps.org/schemas/sitemap/0.9";
-        return new XDocument(new XElement(ns + "urlset", paths.Distinct().Select(path => new XElement(ns + "url", new XElement(ns + "loc", Url(path)))))).ToString();
+        XNamespace img="http://www.google.com/schemas/sitemap-image/1.1";
+        var images=await db.Products.AsNoTracking().Where(p=>p.IsActive).Select(p=>new {p.Slug,p.ImageUrl,Media=p.Media.Where(m=>m.Type==MediaType.Image).OrderBy(m=>m.DisplayOrder).Select(m=>m.Url).ToList()}).ToListAsync();
+        return new XDocument(new XElement(ns+"urlset",new XAttribute(XNamespace.Xmlns+"image",img),paths.Distinct().Select(path=> {
+            var element=new XElement(ns+"url",new XElement(ns+"loc",Url(path)));
+            var product=images.FirstOrDefault(p=>path=="/product/"+Uri.EscapeDataString(p.Slug));
+            if(product is not null) foreach(var image in product.Media.Prepend(product.ImageUrl).Select(ImageUrl).OfType<string>().Distinct().Take(20))element.Add(new XElement(img+"image",new XElement(img+"loc",image)));
+            return element;
+        }))).ToString();
     }
 }
