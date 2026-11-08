@@ -22,10 +22,11 @@ public sealed class TaxSettingsService(IDbContextFactory<AppDbContext> factory)
         return settings.TaxEnabled;
     }
 
-    public async Task UpdateAsync(bool enabled)
+    public async Task<int> DiscountAsync() { await using var db=await factory.CreateDbContextAsync(); return await db.StoreSettings.Where(s=>s.Id==1).Select(s=>s.DiscountPercent).SingleAsync(); }
+    public async Task UpdateAsync(bool enabled, int discountPercent = 0)
     {
         await using var db = await factory.CreateDbContextAsync();
-        await db.StoreSettings.Where(s => s.Id == 1).ExecuteUpdateAsync(s => s.SetProperty(s => s.TaxEnabled, enabled));
+        await db.StoreSettings.Where(s => s.Id == 1).ExecuteUpdateAsync(s => s.SetProperty(s => s.TaxEnabled, enabled).SetProperty(s=>s.DiscountPercent,Math.Clamp(discountPercent,0,100)));
         Changed?.Invoke();
     }
 }

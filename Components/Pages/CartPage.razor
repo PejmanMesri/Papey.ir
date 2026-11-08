@@ -3,6 +3,8 @@
 @inject CartService Cart
 @inject NavigationManager Nav
 @inject TaxSettingsService TaxSettings
+@inject DiscountService Discounts
+@inject AuthService Auth
 @implements IDisposable
 
 <PageTitle>سبد خرید | پاپی</PageTitle>
@@ -58,9 +60,15 @@ else
         </div>
         <div class="card-box" style="height:fit-content">
             <h3 style="margin-top:0">خلاصه سفارش</h3>
+            <form @onsubmit="ApplyVoucher" @onsubmit:preventDefault><label class="form-label" for="voucher-code">کد تخفیف</label><div style="display:flex;gap:8px"><input id="voucher-code" class="form-input" @bind="_voucher" maxlength="40" dir="ltr" /><button class="btn-papey" type="submit">اعمال</button></div></form>
+            @if (!string.IsNullOrEmpty(Cart.VoucherCode)) { <button class="btn-papey btn-outline btn-sm" @onclick="RemoveVoucher">حذف کد</button> }
+
             <div style="display:flex; justify-content:space-between; margin:12px 0">
                 <span>جمع کالاها:</span><strong>@Cart.Total.ToToman()</strong>
             </div>
+            @if (_discount.StoreAmount > 0) { <div class="tax-summary-row"><span>تخفیف فروشگاه (@PersianHelpers.ToPersianDigits(_discount.StorePercent.ToString())٪)</span><strong>−@_discount.StoreAmount.ToToman()</strong></div> }
+            @if (_discount.VoucherAmount > 0) { <div class="tax-summary-row"><span>کد تخفیف @_discount.Code</span><strong>−@_discount.VoucherAmount.ToToman()</strong></div> }
+            @if (_discount.Error is not null) { <p role="alert">@_discount.Error</p> }
             <div class="tax-summary-row"><span>@OrderTax.Label(_taxEnabled)</span><strong>@TaxAmount.ToToman()</strong></div>
             <div class="alert-papey alert-info" style="font-size:0.8rem; font-weight:500">
                 🚚 تمام سفارش‌ها به صورت پس‌پرداخت توسط تیپاکس ارسال می‌شوند
@@ -88,18 +96,24 @@ else
 }
 
 @code {
+    private DiscountQuote _discount = new(0,0,null,0,0);
+    private string _voucher="";
+    private async Task ApplyVoucher() { await Cart.SetVoucherAsync(_voucher); await RefreshDiscount(); }
+    private async Task RemoveVoucher() { _voucher=""; await Cart.SetVoucherAsync(null); await RefreshDiscount(); }
+    private async Task RefreshDiscount() { _discount=await Discounts.QuoteAsync(Cart.Total,Cart.VoucherCode,Auth.CurrentUserId); }
+    private void CartChanged()=>_ = InvokeAsync(async()=>{await RefreshDiscount();StateHasChanged();});
     private bool _taxEnabled;
-    private decimal TaxAmount => OrderTax.Calculate(Cart.Total, _taxEnabled);
-    private decimal GrandTotal => Cart.Total + TaxAmount;
-    private void OnTaxChanged() => _ = InvokeAsync(async () => { _taxEnabled = await TaxSettings.ReadAsync(); StateHasChanged(); });
+    private decimal TaxAmount => OrderTax.Calculate(Cart.Total-_discount.Total, _taxEnabled);
+    private decimal GrandTotal => Cart.Total - _discount.Total + TaxAmount;
+    private void OnTaxChanged() => _ = InvokeAsync(async () => { _taxEnabled = await TaxSettings.ReadAsync(); await RefreshDiscount(); StateHasChanged(); });
 
     protected override async Task OnInitializedAsync()
     {
-        Cart.OnChange += StateHasChanged;
+        Cart.OnChange += CartChanged;
         TaxSettings.Changed += OnTaxChanged;
         _taxEnabled = await TaxSettings.ReadAsync();
-        await Cart.LoadAsync();
+        await Cart.LoadAsync(); _voucher=Cart.VoucherCode??""; await RefreshDiscount();
     }
 
-    public void Dispose() { Cart.OnChange -= StateHasChanged; TaxSettings.Changed -= OnTaxChanged; }
+    public void Dispose() { Cart.OnChange -= CartChanged; TaxSettings.Changed -= OnTaxChanged; }
 }

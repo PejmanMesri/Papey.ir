@@ -51,11 +51,11 @@
             @if (_invoiceOpenAttempted)
             {
                 <p style="font-size:0.82rem; color:var(--papey-muted)">
-                    @(_invoiceOpened ? "فاکتور سفارش در برگه جدید باز شد." : "باز شدن خودکار فاکتور توسط مرورگر مسدود شد؛ از دکمه زیر استفاده کنید.")
+                    @(_invoiceOpened ? "جزئیات سفارش در برگه جدید باز شد." : "باز شدن خودکار جزئیات سفارش توسط مرورگر مسدود شد؛ از دکمه زیر استفاده کنید.")
                 </p>
             }
             <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap">
-                <a class="btn-papey btn-outline" href="/account/orders/@_order.Id/invoice" target="_blank" rel="noopener">مشاهده فاکتور</a>
+                <a class="btn-papey btn-outline" href="/account/orders/@_order.Id" target="_blank" rel="noopener">جزئیات سفارش</a>
                 <a class="btn-papey" href="/">بازگشت به فروشگاه</a>
             </div>
         }
@@ -137,7 +137,7 @@
         if (!firstRender || _order?.PaidAt is null) return;
 
         _invoiceOpenAttempted = true;
-        _invoiceOpened = await JS.InvokeAsync<bool>("papey.openOrderInvoiceOnce", _order.Id, $"/account/orders/{_order.Id}/invoice");
+        _invoiceOpened = await JS.InvokeAsync<bool>("papey.openOrderInvoiceOnce", _order.Id, $"/account/orders/{_order.Id}");
         await InvokeAsync(StateHasChanged);
     }
 }

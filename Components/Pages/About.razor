@@ -3,7 +3,7 @@
 <PageTitle>درباره و ارتباط با ما | پاپی</PageTitle>
 <section class="story-page">
     <div class="story-photo"><img src="/img/custom-studio/tshirt-black-front.webp" alt="تیشرت پاپی" /><span>@Text("imageCaption")</span></div>
-    <div class="story-copy"><span class="editorial-eyebrow">@Text("eyebrow")</span><h1 class="page-text-lines">@Text("heading")</h1>@foreach (var paragraph in Text("body").Split('\n', StringSplitOptions.RemoveEmptyEntries)) { <p>@paragraph</p> }<div class="editorial-actions"><a class="btn-papey" href="/products">@Text("shopButton")</a><a class="editorial-link" href="#contact">@Text("contactButton")</a></div></div>
+    <div class="story-copy"><span class="editorial-eyebrow">@Text("eyebrow")</span><h1 class="page-text-lines">@Text("heading")</h1>@foreach (var paragraph in Text("body").Split('\n', StringSplitOptions.RemoveEmptyEntries)) { <p>@paragraph</p> }<SocialLinks /><div class="editorial-actions"><a class="btn-papey" href="/products">@Text("shopButton")</a><a class="editorial-link" href="#contact">@Text("contactButton")</a></div></div>
 </section>
 
 <div id="contact"><ContactDetails /></div>

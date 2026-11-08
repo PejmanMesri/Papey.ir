@@ -18,13 +18,12 @@ else
         <button class="btn-papey" @onclick="Print">🖨 چاپ سازگار با چاپگر</button>
         <button class="btn-papey btn-outline" @onclick="PrintCompact">چاپ با ارتفاع خودکار</button>
         <a class="btn-papey btn-outline" href="/admin/sales">→ بازگشت به فروش</a>
-        <span style="font-size:0.8rem; color:var(--papey-muted)">BIXOLON: کاغذ ۸۰ میلی‌متری، مقیاس ۱۰۰٪، حاشیه و سرصفحه خاموش. اگر چاپ سفید است، «چاپ سازگار با چاپگر» را بزنید.</span>
     </div>
 
     <div class="receipt" data-print-ready="true" data-order-id="@_order.Id">
         <div class="rcpt-head">
             <div class="rcpt-logo">پاپی</div>
-            <div class="rcpt-sub">فروشگاه لباس</div>
+            <div class="rcpt-sub">خانه شخصی سازی لباس</div>
         </div>
 
         <div class="rcpt-sep"></div>
@@ -67,6 +66,8 @@ else
 
         <div class="rcpt-totals">
             <div><span>جمع اقلام:</span> <span>@Money(_order.TotalAmount)</span></div>
+            @if (_order.StoreDiscountAmount > 0) { <div><span>تخفیف فروشگاه:</span><span>−@Money(_order.StoreDiscountAmount)</span></div> }
+            @if (_order.VoucherDiscountAmount > 0) { <div><span>کد تخفیف @_order.VoucherCode:</span><span>−@Money(_order.VoucherDiscountAmount)</span></div> }
             <div><span>@OrderTax.Label(_order):</span><span>@Money(_order.TaxAmount) تومان</span></div>
             <div class="rt-grand"><span>مبلغ نهایی:</span> <span>@Money(_order.GrandTotal) تومان</span></div>
             <div class="rt-status"><span>وضعیت:</span> @PersianHelpers.StatusLabel(_order.Status)

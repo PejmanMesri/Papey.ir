@@ -7,6 +7,8 @@ public class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
+    public DbSet<Voucher> Vouchers => Set<Voucher>();
+    public DbSet<VoucherUse> VoucherUses => Set<VoucherUse>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
@@ -35,6 +37,10 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
+        mb.Entity<Voucher>().HasIndex(v => v.Code).IsUnique();
+        mb.Entity<VoucherUse>().HasIndex(v => new { v.VoucherId, v.UserId }).IsUnique();
+        mb.Entity<VoucherUse>().HasIndex(v => v.OrderId).IsUnique();
+        mb.Entity<VoucherUse>().HasOne(v => v.Order).WithMany().HasForeignKey(v => v.OrderId).OnDelete(DeleteBehavior.Restrict);
         mb.Entity<CustomCallbackRequest>().HasIndex(r => new { r.Phone, r.CreatedAt });
         mb.Entity<CustomCallbackRequest>().HasIndex(r => new { r.Status, r.CreatedAt });
         mb.Entity<CustomDesignSmsJob>().HasOne(j => j.CallbackRequest).WithMany(r => r.SmsJobs).HasForeignKey(j => j.CallbackRequestId).OnDelete(DeleteBehavior.Cascade);

@@ -103,6 +103,15 @@ try
     var sellerDashboard=WebUtility.HtmlDecode(await staffClient.GetStringAsync("/admin"));
     Check(sellerDashboard.Contains("میز کار فروشنده")&&!sellerDashboard.Contains("فروش ۳۰ روز اخیر"), "Seller dashboard focuses on fulfillment rather than owner analytics");
     Check((await staffClient.GetStringAsync("/")).Contains("admin-storefront-return"), "Staff sees the storefront return-to-admin link");
+    Check(WebUtility.HtmlDecode(await staffClient.GetStringAsync("/admin/vouchers")).Contains("تعریف کد تخفیف"), "Seller can open voucher administration");
+    using var buyerClient=new HttpClient(new HttpClientHandler {AllowAutoRedirect=false}) {BaseAddress=new Uri(origin)};
+    await buyerClient.PostAsync("/account/login",new FormUrlEncodedContent(new Dictionary<string,string>{{"identifier","normal.user"},{"password","customer-password"}}));
+    var unpaidOrder=new Order {OrderNumber="UNPAID-CHECK",UserId=ordinary.User!.Id,CustomerName="Test",CustomerPhone="09121113333",Province="Test",City="Test",FullAddress="Test"};db.Orders.Add(unpaidOrder);await db.SaveChangesAsync();
+    var orderList=await buyerClient.GetStringAsync("/account/orders");Check(!orderList.Contains($"/account/orders/{unpaidOrder.Id}/invoice"),"Unpaid order list offers details without invoice buttons");
+    foreach(var format in new[]{"thermal","standard","official"}) {var document=await buyerClient.GetStringAsync($"/account/orders/{unpaidOrder.Id}/invoice/{format}");Check(!document.Contains("<article class=\"thermal-receipt")&&!document.Contains("<article class=\"standard-invoice")&&!document.Contains("<article class=\"official-invoice"),"Unpaid "+format+" invoice cannot render through direct URL");}
+    var info=await buyerClient.GetStringAsync($"/account/orders/{unpaidOrder.Id}");Check(!info.Contains($"/account/orders/{unpaidOrder.Id}/invoice"),"Unpaid order details do not offer invoices");
+    Check(!(await buyerClient.GetAsync("/admin/vouchers")).IsSuccessStatusCode,"Customer cannot access voucher administration route");
+    var about=await buyerClient.GetStringAsync("/about");Check(about.Contains("https://t.me/papeycompany")&&about.Contains("social-links"),"About page includes Telegram card and social logo links");
     Check(await accounts.ResetPasswordAsync(staff.Id, newPassword) is null, "Owner can reset a staff password");
     await activity(null!);
     var staleAuth = new AuthService(factory, new FixedAccessor { HttpContext = new DefaultHttpContext { User = staffPrincipal } }, config, sms, environment, circuitState);

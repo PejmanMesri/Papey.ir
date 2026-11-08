@@ -20,6 +20,7 @@ public sealed class SmsService(HttpClient http, IConfiguration config, IHostEnvi
     public bool CanSendOtp => IsConfigured && (OtpTemplateId > 0 || (!IsSandbox && LineNumber > 0)) && (environment.IsDevelopment() || !IsSandbox);
     public bool CanSendBulk => IsConfigured && LineNumber > 0;
     public bool CanSendShipping => IsConfigured && (LineNumber > 0 || (!IsSandbox && (ShippingTemplateId > 0 || ShippingTrackingTemplateId > 0)));
+    public string[] CustomNotificationPhones => ["09122197962"];
     public string[] OrderNotificationPhones => (config["ORDER_NOTIFICATION_PHONES"] ?? "")
         .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         .Select(NormalizePhone).OfType<string>().Distinct().ToArray();

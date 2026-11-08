@@ -443,6 +443,12 @@ namespace Papey.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
+                    b.Property<decimal>("StoreDiscountAmount")
+                        .HasColumnType("numeric(18,0)");
+
+                    b.Property<int>("StoreDiscountPercent")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("TaxAmount")
                         .HasColumnType("numeric(18,0)");
 
@@ -460,6 +466,16 @@ namespace Papey.Migrations
                         .HasColumnType("character varying(25)");
 
                     b.Property<int?>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("VoucherCode")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<decimal>("VoucherDiscountAmount")
+                        .HasColumnType("numeric(18,0)");
+
+                    b.Property<int>("VoucherPercent")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -1136,6 +1152,9 @@ namespace Papey.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("DiscountPercent")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("TaxEnabled")
                         .HasColumnType("boolean");
 
@@ -1150,8 +1169,79 @@ namespace Papey.Migrations
                         new
                         {
                             Id = 1,
+                            DiscountPercent = 0,
                             TaxEnabled = false
                         });
+                });
+
+            modelBuilder.Entity("Papey.Models.Voucher", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("MaxReduction")
+                        .HasColumnType("numeric(18,0)");
+
+                    b.Property<int>("Percent")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UseLimit")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("Vouchers");
+                });
+
+            modelBuilder.Entity("Papey.Models.VoucherUse", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("VoucherId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique();
+
+                    b.HasIndex("VoucherId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("VoucherUses");
                 });
 
             modelBuilder.Entity("Papey.Models.Address", b =>
@@ -1397,6 +1487,25 @@ namespace Papey.Migrations
                         .IsRequired();
 
                     b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("Papey.Models.VoucherUse", b =>
+                {
+                    b.HasOne("Papey.Models.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Papey.Models.Voucher", "Voucher")
+                        .WithMany()
+                        .HasForeignKey("VoucherId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+
+                    b.Navigation("Voucher");
                 });
 
             modelBuilder.Entity("Papey.Models.AppUser", b =>

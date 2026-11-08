@@ -48,6 +48,12 @@ public class Order
     [Column(TypeName = "numeric(18,0)")]
     public decimal ShippingCost { get; set; }
 
+    public int StoreDiscountPercent { get; set; }
+    [Column(TypeName = "numeric(18,0)")] public decimal StoreDiscountAmount { get; set; }
+    [MaxLength(40)] public string? VoucherCode { get; set; }
+    public int VoucherPercent { get; set; }
+    [Column(TypeName = "numeric(18,0)")] public decimal VoucherDiscountAmount { get; set; }
+    [NotMapped] public decimal DiscountAmount => StoreDiscountAmount + VoucherDiscountAmount;
     public bool TaxEnabled { get; set; }
 
     [Column(TypeName = "numeric(5,2)")]

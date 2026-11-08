@@ -47,13 +47,13 @@ public class AuthService
     /// <summary>Login by username OR phone number (username is case-insensitive).</summary>
     public async Task<AppUser?> ValidateLoginAsync(string identifier, string password)
     {
-        identifier = identifier.Trim();
+        identifier = PersianHelpers.ToEnglishDigits(identifier.Trim());
         await using var db = await _dbFactory.CreateDbContextAsync();
         var phone = SmsService.NormalizePhone(identifier);
         var user = phone is not null && AdminPhones.Contains(phone)
             ? await FindPhoneUserAsync(db, phone)
             : await db.Users.FirstOrDefaultAsync(u =>
-                u.Username.ToLower() == identifier.ToLower() || u.Phone == identifier);
+                u.Username.ToLower() == identifier.ToLower() || u.Phone == (phone ?? identifier));
         if (user is null || user.IsDisabled) return null;
         return BCrypt.Net.BCrypt.Verify(password, user.PasswordHash) ? user : null;
     }
@@ -174,11 +174,13 @@ public class AuthService
         return await db.Users.FirstOrDefaultAsync(u => u.Id == id && !u.IsDisabled);
     }
 
-    public async Task SignInAsync(AppUser user)
+    public async Task SignInAsync(AppUser user, bool otp = false)
     {
         if (user.IsDisabled) throw new UnauthorizedAccessException();
+        var principal=AccountAccess.Principal(user);
+        if(otp) ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim(ClaimTypes.AuthenticationMethod,"otp"));
         await _http.HttpContext!.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
-            AccountAccess.Principal(user), new AuthenticationProperties { IsPersistent = true });
+            principal, new AuthenticationProperties { IsPersistent = true });
     }
 
     public async Task SignOutAsync()
@@ -231,6 +233,7 @@ public class AuthService
         return (user, null);
     }
 
+    public bool SignedInWithOtp => CurrentPrincipal?.FindFirstValue(ClaimTypes.AuthenticationMethod)=="otp";
     /// <summary>Change password: requires the current password. Returns (Success, Error).</summary>
     public async Task<(bool Success, string? Error)> ChangePasswordAsync(int userId, string currentPassword, string newPassword)
     {
@@ -238,7 +241,8 @@ public class AuthService
         await using var db = await _dbFactory.CreateDbContextAsync();
         var user = await db.Users.FindAsync(userId);
         if (user is null) return (false, "کاربر یافت نشد.");
-        if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
+        if (CurrentPrincipal is null || !AccountAccess.Valid(CurrentPrincipal,user) || CurrentUserId != userId) return (false,"نشست معتبر نیست؛ دوباره وارد شوید.");
+        if (!SignedInWithOtp && !BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
             return (false, "رمز عبور فعلی اشتباه است.");
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
         user.AuthVersion++;
@@ -247,11 +251,22 @@ public class AuthService
     }
 
     /// <summary>Update display profile fields (username/phone are login identity — not editable here).</summary>
-    public async Task<(bool Success, string? Error)> UpdateProfileAsync(int userId, string? fullName, string? email)
+    public async Task<(bool Success, string? Error)> UpdateProfileAsync(int userId, string? fullName, string? email, string? username = null)
     {
         await using var db = await _dbFactory.CreateDbContextAsync();
         var user = await db.Users.FindAsync(userId);
         if (user is null) return (false, "کاربر یافت نشد.");
+        if (CurrentPrincipal is null || !AccountAccess.Valid(CurrentPrincipal,user) || CurrentUserId != userId) return (false,"نشست معتبر نیست.");
+        username=username?.Trim();
+        if (!string.IsNullOrEmpty(username) && !string.Equals(username,user.Username,StringComparison.Ordinal)) {
+            if (user.Username != user.Phone) return (false,"نام کاربری قبلاً تعیین شده است.");
+            if(!System.Text.RegularExpressions.Regex.IsMatch(username,@"^[A-Za-z][A-Za-z0-9_]{2,39}$")) return (false,"نام کاربری باید با حرف انگلیسی شروع شود و ۳ تا ۴۰ حرف، عدد یا زیرخط باشد.");
+            await using var tx=await db.Database.BeginTransactionAsync();
+            await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(701129)");
+            if(await db.Users.AnyAsync(u=>u.Id!=userId&&u.Username.ToLower()==username.ToLower()))return(false,"نام کاربری تکراری است.");
+            user.Username=username;user.FullName=fullName?.Trim();user.Email=string.IsNullOrWhiteSpace(email)?null:email.Trim();
+            try{await db.SaveChangesAsync();await tx.CommitAsync();}catch(DbUpdateException){return(false,"نام کاربری تکراری است.");}return(true,null);
+        }
         user.FullName = fullName?.Trim();
         user.Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
         await db.SaveChangesAsync();

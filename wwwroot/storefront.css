@@ -304,3 +304,10 @@ button.gallery-thumb{padding:0;background:none;font:inherit;cursor:pointer}butto
 
 /* The homepage carousel starts flush against the navigation. */
 .storefront-shell>main.container-papey:has(.homepage-content){padding-top:0;margin-top:0}
+
+.photo-type-grid{display:grid!important;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);grid-template-columns:none!important;gap:16px}
+@media(max-width:650px){.photo-type-grid{grid-auto-columns:42%;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:12px}.photo-type-card{scroll-snap-align:start}}
+.social-links{display:flex;gap:12px;margin:22px 0}.social-links a{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border:1px solid #ccc;border-radius:99px;color:#161616;text-decoration:none}.social-links svg{width:22px;height:22px}
+.contact-cards{grid-template-columns:repeat(4,minmax(0,1fr))}.whatsapp-cta.btn-papey{display:flex;justify-content:center;gap:16px;padding:16px 24px;border:1px solid #1c7552;background:#f1faf5;color:#16573f;border-radius:8px;text-decoration:none;font-weight:750}.whatsapp-cta.btn-papey:hover{background:#dff3e6}
+.mobile-products>summary,.mobile-category>summary{display:flex!important;align-items:center;justify-content:space-between;list-style:none;padding:0!important}.mobile-products>summary::-webkit-details-marker,.mobile-category>summary::-webkit-details-marker{display:none}.mobile-products summary a{flex:1;color:inherit!important;padding:14px!important;text-decoration:none}.menu-expand{display:grid;place-items:center;min-width:48px;min-height:48px;border-inline-start:1px solid #ddd;font-size:1.3rem;cursor:pointer}.mobile-products>.mobile-category{margin-inline:12px}.mobile-products .mobile-category>a{padding-inline:28px!important}
+@media(max-width:850px){.contact-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:450px){.contact-cards{grid-template-columns:1fr}}

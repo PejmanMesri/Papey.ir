@@ -25,7 +25,7 @@ public sealed class CustomDesignSmsQueue(IDbContextFactory<AppDbContext> factory
             job.State = ShippingSmsState.Sending; job.StartedAt = DateTime.UtcNow; job.Attempts++;
             await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
         }
-        if (!sms.OrderNotificationPhones.Contains(job.Phone)) job.State = ShippingSmsState.Cancelled;
+        if (!sms.CustomNotificationPhones.Contains(job.Phone)) job.State = ShippingSmsState.Cancelled;
         else
         {
             var number = job.CallbackRequestId is Guid callbackId

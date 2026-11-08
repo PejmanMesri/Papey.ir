@@ -16,7 +16,8 @@
                 <h3 style="margin-top:0">👤 اطلاعات پروفایل</h3>
                 <div class="form-group">
                     <label class="form-label">نام کاربری</label>
-                    <input class="form-input" value="@_username" disabled />
+                    <input class="form-input" @bind="_username" disabled="@(!_canSetUsername)" placeholder="نام کاربری دلخواه" />
+                    @if (_canSetUsername) { <small>ورود فعلی با شماره موبایل است. می‌توانید یک نام کاربری انگلیسی هم تعیین کنید.</small> }
                 </div>
                 <div class="form-group">
                     <label class="form-label">شماره موبایل (نام کاربری پیامکی)</label>
@@ -34,16 +35,18 @@
                 @if (_profileError is not null) { <div class="alert-papey alert-danger">@_profileError</div> }
                 <button class="btn-papey" style="width:100%" @onclick="SaveProfile">💾 ذخیره پروفایل</button>
                 <p style="font-size:0.75rem; color:var(--papey-muted); margin-top:10px">
-                    نام کاربری و شماره موبایل، شناسه ورود شما هستند و قابل تغییر نیستند.
+                    با شماره موبایل یا نام کاربری می‌توانید وارد شوید. نام کاربری دلخواه فقط یک بار تعیین می‌شود.
                 </p>
             </div>
 
             <div class="card-box">
                 <h3 style="margin-top:0">🔑 تغییر رمز عبور</h3>
+                @if (!Auth.SignedInWithOtp) {
                 <div class="form-group">
                     <label class="form-label">رمز عبور فعلی</label>
                     <input class="form-input" type="password" @bind="_currentPass" />
                 </div>
+                }
                 <div class="form-group">
                     <label class="form-label">رمز عبور جدید</label>
                     <input class="form-input" type="password" @bind="_newPass" placeholder="حداقل ۶ کاراکتر" />
@@ -64,6 +67,7 @@
 </div>
 
 @code {
+    private bool _canSetUsername;
     private string _username = "";
     private string? _phone, _fullName, _email;
     private string _currentPass = "", _newPass = "", _confirmPass = "";
@@ -76,7 +80,8 @@
             var user = await Auth.GetUserByIdAsync(uid);
             if (user is not null)
             {
-                _username = user.Username;
+                _canSetUsername = user.Username == user.Phone;
+                _username = _canSetUsername ? "" : user.Username;
                 _phone = user.Phone;
                 _fullName = user.FullName;
                 _email = user.Email;
@@ -88,8 +93,8 @@
     {
         _profileMsg = null; _profileError = null;
         if (Auth.CurrentUserId is not { } uid) return;
-        var (ok, error) = await Auth.UpdateProfileAsync(uid, _fullName, _email);
-        if (ok) _profileMsg = "✓ پروفایل ذخیره شد.";
+        var (ok, error) = await Auth.UpdateProfileAsync(uid, _fullName, _email, _username);
+        if (ok) { _profileMsg = "✓ پروفایل ذخیره شد."; if(!string.IsNullOrWhiteSpace(_username)) _canSetUsername=false; }
         else _profileError = error;
     }
 

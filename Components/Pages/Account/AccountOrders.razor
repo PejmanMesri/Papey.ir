@@ -38,9 +38,11 @@
                                 <td data-label="عملیات‌ها">
                                     <div class="order-row-actions">
                                         <a class="btn-papey btn-sm btn-outline" href="/account/orders/@o.Id">مشاهده</a>
+ @if (o.PaidAt is not null) {
                                         <a class="btn-papey btn-sm btn-outline" href="/account/orders/@o.Id/invoice/thermal" target="_blank">حرارتی</a>
                                         <a class="btn-papey btn-sm btn-outline" href="/account/orders/@o.Id/invoice" target="_blank">فاکتور</a>
                                         <a class="btn-papey btn-sm btn-outline" href="/account/orders/@o.Id/invoice/official" target="_blank">فاکتور رسمی</a>
+ }
                                     </div>
                                 </td>
                             </tr>

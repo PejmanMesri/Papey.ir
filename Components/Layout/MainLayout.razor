@@ -13,21 +13,14 @@
             <summary aria-label="منوی فروشگاه"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg><span>منو</span></summary>
             <nav class="mobile-menu-panel" aria-label="منوی فروشگاه">
                 <a href="/">خانه</a>
-                <a href="/products">محصولات</a>
-                <a href="/custom-design">سفارش اختصاصی</a>
-                <a href="/about">درباره و ارتباط با ما</a>
-                <a href="/wholesale">فروش عمده</a>
-                @foreach (var type in _navTypes)
-                {
-                    <details class="mobile-category">
-                        <summary>@type.Name</summary>
-                        <a href="/products?type=@type.Id">همه @type.Name</a>
-                        @foreach (var category in type.Categories.OrderBy(c => c.DisplayOrder))
-                        {
-                            <a href="@($"/category/{category.Slug}")">@category.Name</a>
-                        }
+                <details class="mobile-products"><summary><a href="/products" onclick="event.stopPropagation()">محصولات</a><span class="menu-expand" aria-label="باز کردن انواع لباس">+</span></summary>
+                @foreach (var type in _navTypes) {
+                    <details class="mobile-category"><summary><a href="/products?type=@type.Id" onclick="event.stopPropagation()">@type.Name</a><span class="menu-expand" aria-label="باز کردن دسته‌ها">+</span></summary>
+                    @foreach (var category in type.Categories.OrderBy(c=>c.DisplayOrder)) { <a href="/category/@category.Slug">@category.Name</a> }
                     </details>
                 }
+                </details>
+                <a href="/custom-design">سفارش اختصاصی</a><a href="/about">درباره و ارتباط با ما</a><a href="/wholesale">فروش عمده</a>
 
                 <AuthorizeView>
                     <Authorized>

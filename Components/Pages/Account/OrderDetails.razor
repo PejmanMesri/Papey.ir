@@ -32,9 +32,11 @@
             </div>
 
             <div class="order-action-bar">
+ @if (_order.PaidAt is not null) {
                 <a class="btn-papey btn-outline btn-sm" href="/account/orders/@_order.Id/invoice" target="_blank">فاکتور</a>
                 <a class="btn-papey btn-outline btn-sm" href="/account/orders/@_order.Id/invoice/official" target="_blank">فاکتور رسمی</a>
                 <a class="btn-papey btn-outline btn-sm" href="/account/orders/@_order.Id/invoice/thermal" target="_blank">پرینت حرارتی</a>
+ }
                 <button class="btn-papey btn-sm" type="button" disabled="@_addingToCart" @onclick="OrderAgainAsync">
                     @(_addingToCart ? "در حال افزودن..." : "سفارش دوباره")
                 </button>
@@ -131,6 +133,7 @@
                             {
                                 <tr><th colspan="5">هزینه ارسال</th><td>@_order.ShippingCost.ToToman()</td></tr>
                             }
+                            @if (_order.DiscountAmount > 0) { <tr><th colspan="5">تخفیف فروشگاه و کد @_order.VoucherCode</th><td>−@_order.DiscountAmount.ToToman()</td></tr> }
                             <tr><th colspan="5">@OrderTax.Label(_order)</th><td>@_order.TaxAmount.ToToman()</td></tr>
                             <tr class="order-grand-total"><th colspan="5">مبلغ نهایی</th><td>@_order.GrandTotal.ToToman()</td></tr>
                         </tfoot>

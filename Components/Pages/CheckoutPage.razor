@@ -6,7 +6,9 @@
 @inject AuthService Auth
 @inject ZarinpalService Zarinpal
 @inject NavigationManager Nav
+@inject OrderAdminSmsQueue AdminSms
 @inject TaxSettingsService TaxSettings
+@inject DiscountService Discounts
 
 <PageTitle>تکمیل خرید | پاپی</PageTitle>
 
@@ -95,6 +97,9 @@ else
             <div style="display:flex; justify-content:space-between; margin:8px 0">
                 <span>جمع کالاها:</span><span>@Cart.Total.ToToman()</span>
             </div>
+            @if (_discount.StoreAmount > 0) { <div class="tax-summary-row"><span>تخفیف فروشگاه (@PersianHelpers.ToPersianDigits(_discount.StorePercent.ToString())٪)</span><strong>−@_discount.StoreAmount.ToToman()</strong></div> }
+            @if (_discount.VoucherAmount > 0) { <div class="tax-summary-row"><span>کد تخفیف @_discount.Code</span><strong>−@_discount.VoucherAmount.ToToman()</strong></div> }
+            @if (_discount.Error is not null) { <p role="alert">@_discount.Error</p> }
             <div class="tax-summary-row"><span>@OrderTax.Label(_taxEnabled)</span><strong>@_tax.ToToman()</strong></div>
             <div class="alert-papey alert-info" style="font-size:0.85rem; font-weight:500; margin:12px 0">
                 🚚 تمام سفارش‌ها به صورت پس‌پرداخت توسط تیپاکس ارسال می‌شوند
@@ -113,9 +118,10 @@ else
     private bool _processing;
     // Shipping is pay-on-delivery via Tipax — charged by the courier, not the shop
     private decimal _shipping => 0;
+    private DiscountQuote _discount = new(0,0,null,0,0);
     private bool _taxEnabled;
-    private decimal _tax => OrderTax.Calculate(Cart.Total, _taxEnabled);
-    private decimal _grand => Cart.Total + _tax;
+    private decimal _tax => OrderTax.Calculate(Cart.Total-_discount.Total, _taxEnabled);
+    private decimal _grand => Cart.Total - _discount.Total + _tax;
 
     public class CheckoutModel
     {
@@ -137,6 +143,7 @@ else
     {
         await Cart.LoadAsync();
         _taxEnabled = await TaxSettings.ReadAsync();
+        _discount=await Discounts.QuoteAsync(Cart.Total,Cart.VoucherCode,Auth.CurrentUserId);
         if (Auth.CurrentUserId is { } uid)
         {
             await using var db = await DbFactory.CreateDbContextAsync();
@@ -184,7 +191,11 @@ else
 
             await using var transaction = await db.Database.BeginTransactionAsync();
 
-            var currentTaxEnabled = await TaxSettingsService.ReadForOrderAsync(db);
+            var settings = await db.StoreSettings.FromSqlRaw("SELECT * FROM \"StoreSettings\" WHERE \"Id\"=1 FOR SHARE").AsNoTracking().SingleAsync();
+            var currentTaxEnabled = settings.TaxEnabled;
+            var quote=await DiscountService.QuoteAsync(db,Cart.Total,Cart.VoucherCode,Auth.CurrentUserId,settings.DiscountPercent,true);
+            if(quote.Error is not null) { _discount=quote; _error=quote.Error; _processing=false; return; }
+            if(quote != _discount) { _discount=quote; _taxEnabled=currentTaxEnabled; _error="تخفیف تغییر کرده است؛ مبلغ جدید را بررسی و دوباره پرداخت کنید."; _processing=false; return; }
             if (currentTaxEnabled != acceptedTaxEnabled)
             {
                 _taxEnabled = currentTaxEnabled;
@@ -234,8 +245,10 @@ else
                     LineTotal = item.LineTotal
                 });
             }
+            order.StoreDiscountPercent=quote.StorePercent; order.StoreDiscountAmount=quote.StoreAmount; order.VoucherCode=quote.Code; order.VoucherPercent=quote.VoucherPercent; order.VoucherDiscountAmount=quote.VoucherAmount;
             OrderTax.Apply(order, currentTaxEnabled);
             db.Orders.Add(order);
+            if(quote.Code is not null) { var voucher=await db.Vouchers.SingleAsync(v=>v.Code==quote.Code); db.VoucherUses.Add(new VoucherUse {VoucherId=voucher.Id,UserId=Auth.CurrentUserId!.Value,Order=order}); }
 
             // Always save the address to the user's account
             if (Auth.CurrentUserId is { } uid)
@@ -258,9 +271,11 @@ else
                     });
                 }
             }
+            if(order.GrandTotal==0) { order.Status=OrderStatus.Paid; order.PaidAt=DateTime.UtcNow; order.PaymentRefId="FREE"; }
             await db.SaveChangesAsync();
-
+            if(order.PaidAt is not null) { await AdminSms.EnqueueAsync(db,order); await db.SaveChangesAsync(); }
             await transaction.CommitAsync();
+            if(order.PaidAt is not null) { await Cart.ClearAsync(); Nav.NavigateTo($"/account/orders/{order.Id}"); return; }
 
             // Request from the configured gateway, explicitly in rials.
             var pay = await Zarinpal.RequestPaymentAsync(

@@ -8,7 +8,7 @@ namespace Papey.Printer;
 internal sealed class PrinterForm : Form
 {
     private Settings _settings;
-    private readonly PrintingApi _api;
+    private PrintingApi _api;
     private readonly WebView2 _web = new() { Dock = DockStyle.Fill };
     private readonly NotifyIcon _tray;
     private readonly System.Windows.Forms.Timer _timer = new() { Interval = 5000 };
@@ -26,6 +26,13 @@ internal sealed class PrinterForm : Form
         Controls.Add(_web);
         var menu = new ContextMenuStrip();
         menu.Items.Add("Status / وضعیت", null, (_, _) => MessageBox.Show(_status + "\n" + settings.Server + "\n" + settings.Printer, Text));
+        menu.Items.Add("Account and printer setup / تنظیمات", null, (_, _) => {
+            if (_busy || Store.Read<Journal>("pending.json") is not null) { MessageBox.Show("Wait for or resolve the current job first.", Text); return; }
+            _paused = true;
+            using var setup = new SetupForm();
+            if(setup.ShowDialog() == DialogResult.OK) { _settings=setup.Result!; _api.Dispose(); _api=new(_settings); Report("Settings updated — ready to reconnect"); }
+            _paused = false;
+        });
         menu.Items.Add("Pause / resume", null, (_, _) => { _paused = !_paused; Report(_paused ? "Paused" : "Resumed"); });
         menu.Items.Add("Resolve uncertain print…", null, async (_, _) => await Resolve());
         var mode = menu.Items.Add("Print method: " + (settings.PrintMode == "driver" ? "Windows driver" : "RAW ESC/POS"));
@@ -45,12 +52,16 @@ internal sealed class PrinterForm : Form
             _exit = true; Close();
         });
         _tray = new() { Icon = SystemIcons.Application, Text = "Papey Order Printer", ContextMenuStrip = menu, Visible = !test && !preview };
-        Shown += async (_, _) =>
+        // Initialize from the message loop even when Windows starts the tray app hidden.
+        EventHandler? initialize = null;
+        initialize = async (_, _) =>
         {
+            Application.Idle -= initialize;
+            Report("Starting receipt renderer");
             try
             {
                 var env = await CoreWebView2Environment.CreateAsync(null, Store.PathFor("WebView"));
-                await _web.EnsureCoreWebView2Async(env);
+                await _web.EnsureCoreWebView2Async(env).WaitAsync(TimeSpan.FromSeconds(45));
                 Report("Receipt renderer initialized");
                 _web.CoreWebView2.Settings.AreDevToolsEnabled = false;
                 _web.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
@@ -69,10 +80,17 @@ internal sealed class PrinterForm : Form
             }
             catch (Exception ex) { Report("Initialization failed: " + ex.GetType().Name); if (test || preview) { Environment.ExitCode = 1; _exit = true; Close(); } }
         };
+        Application.Idle += initialize;
         FormClosing += (_, e) => { if (!_exit && e.CloseReason == CloseReason.UserClosing) { e.Cancel = true; Hide(); } };
         FormClosed += (_, _) => { _timer.Dispose(); _tray.Dispose(); _api.Dispose(); };
     }
 
+    private static string ErrorSummary(Exception ex) => ex switch {
+        HttpRequestException { StatusCode: HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden } => "Sign-in expired or password changed. Open Setup and sign in again.",
+        HttpRequestException http => "Server connection failed" + (http.StatusCode is { } code ? " (HTTP " + (int)code + ")" : ""),
+        IOException => "Printer offline, out of paper, or queue needs attention. Check Windows printer settings.",
+        _ => ex.GetType().Name
+    };
     private void Report(string message)
     {
         _status = message; Store.Status(message);
@@ -111,7 +129,7 @@ internal sealed class PrinterForm : Form
         catch (Exception ex)
         {
             if (DateTime.UtcNow - _lastError > TimeSpan.FromMinutes(1))
-            { _lastError = DateTime.UtcNow; Report("Connection / printing retry: " + ex.GetType().Name); }
+            { _lastError = DateTime.UtcNow; Report("Connection / printing retry: " + ErrorSummary(ex)); }
         }
         finally { _busy = false; }
     }
@@ -184,7 +202,7 @@ internal sealed class PrinterForm : Form
     }
 
     private Task SubmitReceipt(ThermalReceipt receipt) => Task.Run(() => {
-        Store.Write("render-diagnostics.json", new { version = "1.2.1", mode = _settings.PrintMode, receipt.Width, receipt.Height, paperWidthMm = 80, contentWidthMm = 72, contentHeightMm = Math.Round(receipt.Height * 72d / receipt.Width, 1) });
+        Store.Write("render-diagnostics.json", new { version = "1.3.0", mode = _settings.PrintMode, receipt.Width, receipt.Height, paperWidthMm = 80, contentWidthMm = 72, contentHeightMm = Math.Round(receipt.Height * 72d / receipt.Width, 1) });
         if (_settings.PrintMode == "driver") DriverReceipt.Submit(_settings.Printer, receipt);
         else RawPrinter.Submit(_settings.Printer, receipt.Commands);
     });

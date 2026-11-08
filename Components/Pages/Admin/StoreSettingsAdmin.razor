@@ -17,6 +17,8 @@
     <div class="tax-setting-example">نمونه: جمع کالاها ۱٬۰۰۰٬۰۰۰ تومان ← مالیات ۱۰۰٬۰۰۰ تومان ← قابل پرداخت ۱٬۱۰۰٬۰۰۰ تومان</div>
     <p class="tax-history-note">مالیات و مبلغ سفارش‌های قبلی ثابت می‌ماند؛ تغییر این تنظیم روی فاکتورهای قبلی اعمال نمی‌شود.</p>
     @if (_message is not null) { <div class="alert-papey @(_failed ? "alert-danger" : "alert-success")" role="status">@_message</div> }
+    <label class="form-label">تخفیف همه کالاها (درصد؛ صفر یعنی غیرفعال)<input class="form-input" type="number" min="0" max="100" @bind="_discountPercent" /></label>
+    <p>تخفیف فروشگاه، سپس کد تخفیف و در پایان مالیات محاسبه می‌شود. سفارش‌های قبلی تغییر نمی‌کنند.</p>
     <button class="btn-papey" type="button" disabled="@(!_loaded || _saving)" @onclick="Save">@(_saving ? "در حال ذخیره…" : "ذخیره تنظیمات")</button>
 </section>
 <section class="card-box guide-settings" aria-labelledby="guide-settings-title">
@@ -35,12 +37,13 @@
 </section>
 
 @code {
+    private int _discountPercent;
     private bool _enabled, _loaded, _saving, _failed;
     private string? _message;
     private List<ProductTypeEntity> _types = [];
     private bool _uploading;
     private string? _guideMessage;
-    protected override async Task OnInitializedAsync() { _enabled = await TaxSettings.ReadAsync(); await LoadTypes(); _loaded = true; }
+    protected override async Task OnInitializedAsync() { _enabled = await TaxSettings.ReadAsync(); _discountPercent=await TaxSettings.DiscountAsync(); await LoadTypes(); _loaded = true; }
     private async Task LoadTypes() { await using var db = await Factory.CreateDbContextAsync(); _types = await db.ProductTypes.AsNoTracking().OrderBy(t => t.DisplayOrder).ToListAsync(); }
     private async Task UploadGuide(int id, InputFileChangeEventArgs e)
     {
@@ -61,7 +64,7 @@
     {
         if (_saving || !_loaded || !await Guides.CanManageAsync(Auth.CurrentPrincipal)) return;
         _saving = true; _message = null; _failed = false;
-        try { await TaxSettings.UpdateAsync(_enabled); _message = "تنظیمات ذخیره شد. سفارش‌های قبلی تغییر نکردند."; }
+        try { await TaxSettings.UpdateAsync(_enabled,_discountPercent); _message = "تنظیمات ذخیره شد. سفارش‌های قبلی تغییر نکردند."; }
         catch { _failed = true; _message = "ذخیره انجام نشد؛ دوباره تلاش کنید."; }
         finally { _saving = false; }
     }

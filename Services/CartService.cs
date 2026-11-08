@@ -28,6 +28,8 @@ public class CartService
         _cartKey = "papey:cart:" + (CartIdentity.Valid(id) ? id : Guid.NewGuid().ToString("N"));
     }
 
+    public string? VoucherCode { get; private set; }
+    public async Task SetVoucherAsync(string? code) { VoucherCode = DiscountService.Normalize(code); await _cache.SetStringAsync(_cartKey+":voucher",VoucherCode,new DistributedCacheEntryOptions { SlidingExpiration=TimeSpan.FromDays(7) }); OnChange?.Invoke(); }
     public int TotalQuantity => Items.Sum(i => i.Quantity);
     public decimal Total => Items.Sum(i => i.LineTotal);
 
@@ -35,6 +37,7 @@ public class CartService
     {
         try
         {
+            VoucherCode = await _cache.GetStringAsync(_cartKey+":voucher");
             var json = await _cache.GetStringAsync(_cartKey);
             if (!string.IsNullOrEmpty(json))
                 Items = JsonSerializer.Deserialize<List<CartItem>>(json) ?? new();
@@ -130,6 +133,7 @@ public class CartService
 
     public async Task ClearAsync()
     {
+        await _cache.RemoveAsync(_cartKey+":voucher"); VoucherCode=null;
         Items.Clear();
         await PersistAsync();
     }

@@ -10,6 +10,7 @@
 <h1 style="margin-top:0">💰 فروش و تراکنش‌ها</h1>
 @if (_trackingNotice is not null) { <div class="alert-papey alert-info" role="status">@_trackingNotice</div> }
 
+<div class="card-box"><h2>چاپ خودکار سفارش‌ها</h2><p>@Fa(_waitingPrints) فاکتور در صف چاپ است. برنامه Papey Order Printer باید روی رایانه متصل به چاپگر باز و به حساب مدیر وارد شده باشد.</p>@if(_printError is not null){<p role="status">آخرین خطای چاپ: @_printError</p>}</div>
 <div class="stat-grid">
     <div class="stat-card">💰 کل فروش (پرداخت‌شده)<div class="num">@_totalRevenue.ToToman()</div></div>
     <div class="stat-card">✅ تراکنش‌های موفق<div class="num">@Fa(_paidCount)</div></div>
@@ -145,7 +146,7 @@
                                         @foreach (var i in o.Items)
                                         {
                                             <tr>
-                                                <td data-label="محصول">@i.ProductName</td>
+                                                <td data-label="محصول">@if(i.Product is { } product){<a href="/product/@product.Slug" target="_blank" rel="noopener" style="display:flex;gap:10px;align-items:center"><img src="@product.ImageUrl" alt="@i.ProductName" style="width:56px;height:68px;object-fit:cover;border-radius:6px" />@i.ProductName</a>}else{@i.ProductName}</td>
                                                 <td data-label="رنگ">@i.Color</td>
                                                 <td data-label="سایز">@i.Size</td>
                                                 <td data-label="قیمت واحد">@i.UnitPrice.ToToman()</td>
@@ -158,6 +159,7 @@
                             </div>
                             <div style="display:flex; gap:24px; flex-wrap:wrap; justify-content:flex-end; margin-top:12px; border-top:1px solid var(--papey-border); padding-top:12px">
                                 <span>جمع اقلام: <strong>@o.TotalAmount.ToToman()</strong></span>
+                                @if(o.DiscountAmount>0){<span>تخفیف فروشگاه: @o.StoreDiscountAmount.ToToman() | کد @o.VoucherCode: @o.VoucherDiscountAmount.ToToman()</span>}
                                 <span>@OrderTax.Label(o): <strong>@o.TaxAmount.ToToman()</strong></span>
                                 <span>مبلغ نهایی: <strong style="color:var(--papey-accent)">@o.GrandTotal.ToToman()</strong></span>
                             </div>
@@ -204,6 +206,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) { if (_openShipment) { _openShipment = false; await JS.InvokeVoidAsync("papeyShipment.open", _shipmentDialog); } }
     private async Task CloseShipment() { await JS.InvokeVoidAsync("papeyShipment.close", _shipmentDialog); _shipmentOrder = null; }
 
+    private int _waitingPrints; private string? _printError;
     private List<Order> _orders = new();
     private decimal _totalRevenue;
     private int _paidCount, _pendingCount, _failedCount;
@@ -289,7 +292,9 @@
     protected override async Task OnInitializedAsync()
     {
         await using var db = await DbFactory.CreateDbContextAsync();
-        _orders = await db.Orders.Include(o => o.Items).Include(o => o.User).OrderByDescending(o => o.CreatedAt).ToListAsync();
+        _orders = await db.Orders.Include(o => o.Items).ThenInclude(i=>i.Product).Include(o => o.User).OrderByDescending(o => o.CreatedAt).ToListAsync();
+        _waitingPrints=await db.OrderPrintJobs.CountAsync(j=>j.PrintedAt==null&&j.Order.PaidAt!=null&&j.Order.Status!=OrderStatus.Cancelled);
+        _printError=await db.OrderPrintJobs.Where(j=>j.PrintedAt==null&&j.LastError!=null).OrderByDescending(j=>j.CreatedAt).Select(j=>j.LastError).FirstOrDefaultAsync();
         RecountStats();
     }
 

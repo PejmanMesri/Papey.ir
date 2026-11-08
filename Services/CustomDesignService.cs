@@ -117,7 +117,7 @@ public sealed class CustomDesignService(IDbContextFactory<AppDbContext> factory,
                 if (bytes.Length > MaxFileBytes || !ValidPng(bytes)) throw new ArgumentException("فقط فایل PNG سالم با ابعاد حداکثر ۱۲۰۰۰ پیکسل و ۴۰ مگاپیکسل قابل ارسال است.");
                 await File.WriteAllBytesAsync(Path.Combine(folder, $"{i}.png"), bytes, ct);
             }
-            foreach (var recipient in sms.OrderNotificationPhones)
+            foreach (var recipient in sms.CustomNotificationPhones)
                 request.SmsJobs.Add(new() { Phone = recipient, IsSandbox = sms.IsSandbox });
             db.CustomDesignRequests.Add(request); await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
             return request;

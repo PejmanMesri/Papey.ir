@@ -16,7 +16,7 @@ public sealed class CustomCallbackService(IDbContextFactory<AppDbContext> factor
         await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({lockKey})", ct);
         if (await db.CustomCallbackRequests.AnyAsync(r => r.Phone == phone && r.CreatedAt > DateTime.UtcNow.AddHours(-24), ct)) return;
         var request = new CustomCallbackRequest { Phone = phone };
-        foreach (var recipient in sms.OrderNotificationPhones)
+        foreach (var recipient in sms.CustomNotificationPhones)
             request.SmsJobs.Add(new() { Phone = recipient, IsSandbox = sms.IsSandbox });
         db.CustomCallbackRequests.Add(request);
         await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);

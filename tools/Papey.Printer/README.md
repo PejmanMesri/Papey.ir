@@ -114,3 +114,7 @@ margins and no browser headers. It no longer invents a custom paper form in
 normal driver mode. Legacy configurations without an explicit method use driver
 mode; an explicitly selected RAW mode remains available. A long receipt paginates
 within the driver's printable area without shrinking or losing the remaining rows.
+
+## Version 1.3.0
+
+Starts receipt initialization even when Windows launches the tray app hidden. The tray menu now includes account/printer setup for renewing saved credentials. Server connection failures explain expired login versus printer queue attention. Exit the old tray app after its current receipt finishes, extract the updated Windows ZIP, run Setup.cmd, and sign in if requested. Existing uncertain journals must be resolved before updating; never delete them to force a reprint.

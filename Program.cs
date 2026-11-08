@@ -82,6 +82,7 @@ builder.Services.AddHostedService<PrintJobNotifier>();
 builder.Services.AddDistributedMemoryCache();
 builder.Services.Configure<StoreProfile>(builder.Configuration.GetSection("Store"));
 builder.Services.AddScoped<CartService>();
+builder.Services.AddScoped<DiscountService>();
 builder.Services.AddScoped<StoreSeo>();
 builder.Services.AddScoped<ProductRecommendations>();
 builder.Services.AddScoped<ProductReviewService>();
@@ -242,7 +243,7 @@ app.MapGet("/account/otp-complete", async (string? token, string? returnUrl, Aut
     if (userId is null) return Results.Redirect("/login?error=otp");
     var user = await auth.GetUserByIdAsync(userId.Value);
     if (user is null) return Results.Redirect("/login?error=otp");
-    await auth.SignInAsync(user);
+    await auth.SignInAsync(user, otp: true);
     var target = LoginRedirect.ForUser(user, returnUrl);
     return Results.Redirect(target);
 });

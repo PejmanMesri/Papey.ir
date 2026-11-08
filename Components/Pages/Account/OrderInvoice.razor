@@ -23,7 +23,7 @@ else
         <a class="btn-papey btn-outline" href="/account/orders/@_order.Id/invoice/official">فاکتور رسمی</a>
         <a class="btn-papey btn-outline" href="/account/orders/@_order.Id/invoice/thermal">پرینت حرارتی</a>
         <button class="btn-papey" type="button" @onclick="Print">🖨 چاپ @_format.Label()</button>
-        @if (_format == InvoiceFormat.Thermal) { <button class="btn-papey btn-outline" @onclick="PrintCompact">چاپ با ارتفاع خودکار</button><span>برای BIXOLON، کاغذ ۸۰ میلی‌متری، مقیاس ۱۰۰٪ و حاشیه «ندارد» را انتخاب کنید.</span> }
+        @if (_format == InvoiceFormat.Thermal) { <button class="btn-papey btn-outline" @onclick="PrintCompact">چاپ با ارتفاع خودکار</button> }
     </div>
 
     @if (_format == InvoiceFormat.Thermal)
@@ -73,6 +73,8 @@ else
                 {
                     <div><dt>هزینه ارسال</dt><dd>@Money(_order.ShippingCost)</dd></div>
                 }
+                @if (_order.StoreDiscountAmount > 0) { <div><dt>تخفیف فروشگاه</dt><dd>−@Money(_order.StoreDiscountAmount)</dd></div> }
+                @if (_order.VoucherDiscountAmount > 0) { <div><dt>کد تخفیف @_order.VoucherCode</dt><dd>−@Money(_order.VoucherDiscountAmount)</dd></div> }
                 <div><dt>@OrderTax.Label(_order)</dt><dd>@Money(_order.TaxAmount)</dd></div>
                 <div class="thermal-grand"><dt>مبلغ نهایی</dt><dd>@Money(_order.GrandTotal) تومان</dd></div>
             </dl>
@@ -133,10 +135,10 @@ else
                                 <td>@Fa(item.Quantity)</td>
                                 <td>@Rials(item.UnitPrice)</td>
                                 <td>@Rials(item.LineTotal)</td>
-                                <td>@Fa(0)</td>
-                                <td>@Rials(item.LineTotal)</td>
+                                <td>@Rials(_lineDiscounts[index])</td>
+                                <td>@Rials(item.LineTotal-_lineDiscounts[index])</td>
                                 <td>@Rials(_lineTaxes[index])</td>
-                                <td>@Rials(item.LineTotal + _lineTaxes[index])</td>
+                                <td>@Rials(item.LineTotal-_lineDiscounts[index] + _lineTaxes[index])</td>
                             </tr>
                         }
                     </tbody>
@@ -146,15 +148,16 @@ else
                             <th>@Fa(_order.Items.Sum(i => i.Quantity))</th>
                             <th>@Rials(_order.TotalAmount)</th>
                             <th>@Rials(_order.TotalAmount)</th>
-                            <th>@Fa(0)</th>
-                            <th>@Rials(_order.TotalAmount)</th>
+                            <th>@Rials(_order.DiscountAmount)</th>
+                            <th>@Rials(_order.TotalAmount-_order.DiscountAmount)</th>
                             <th>@Rials(_order.TaxAmount)</th>
-                            <th>@Rials(_order.TotalAmount + _order.TaxAmount)</th>
+                            <th>@Rials(_order.TotalAmount-_order.DiscountAmount + _order.TaxAmount)</th>
                         </tr>
                         @if (_order.ShippingCost > 0)
                         {
                             <tr><th colspan="9">هزینه حمل و نقل (ریال)</th><td>@Rials(_order.ShippingCost)</td></tr>
                         }
+                        @if (_order.DiscountAmount > 0) { <tr><th colspan="9">تخفیف فروشگاه و کد @_order.VoucherCode (ریال)</th><td>@Rials(_order.DiscountAmount)</td></tr> }
                         <tr><th colspan="9">@OrderTax.Label(_order) (ریال)</th><td>@Rials(_order.TaxAmount)</td></tr>
                         <tr class="official-grand"><th colspan="9">جمع نهایی (ریال)</th><td>@Rials(_order.GrandTotal)</td></tr>
                     </tfoot>
@@ -222,7 +225,9 @@ else
                     {
                         <div><dt>هزینه ارسال</dt><dd>@Money(_order.ShippingCost)</dd></div>
                     }
-                    <div><dt>@OrderTax.Label(_order)</dt><dd>@Money(_order.TaxAmount)</dd></div>
+                    @if (_order.StoreDiscountAmount > 0) { <div><dt>تخفیف فروشگاه</dt><dd>−@Money(_order.StoreDiscountAmount)</dd></div> }
+                @if (_order.VoucherDiscountAmount > 0) { <div><dt>کد تخفیف @_order.VoucherCode</dt><dd>−@Money(_order.VoucherDiscountAmount)</dd></div> }
+                <div><dt>@OrderTax.Label(_order)</dt><dd>@Money(_order.TaxAmount)</dd></div>
                     <div class="standard-grand"><dt>مبلغ قابل پرداخت</dt><dd>@Money(_order.GrandTotal)</dd></div>
                     <div><dt>روش پرداخت</dt><dd>@PaymentMethod</dd></div>
                     @if (_order.PaymentRefId is not null)
@@ -335,7 +340,7 @@ else
     private static readonly PersianCalendar PersianCalendar = new();
     private Order? _order;
     private InvoiceFormat _format;
-    private decimal[] _lineTaxes = [];
+    private decimal[] _lineTaxes = [], _lineDiscounts = [];
 
     private StoreProfile Store => StoreOptions.Value;
     private string PaymentMethod => _order?.Status == OrderStatus.PaymentFailed
@@ -359,8 +364,9 @@ else
         await using var db = await DbFactory.CreateDbContextAsync();
         _order = await db.Orders
             .Include(o => o.Items)
-            .FirstOrDefaultAsync(o => o.Id == Id && o.UserId == userId);
+            .FirstOrDefaultAsync(o => o.Id == Id && o.UserId == userId && o.PaidAt != null);
         _lineTaxes = _order is null ? [] : OrderTax.Allocate(_order);
+        _lineDiscounts = _order is null ? [] : OrderTax.AllocateDiscount(_order);
     }
 
     private Task PrintCompact() => JS.InvokeVoidAsync("papey.printThermalReceipt", true).AsTask();

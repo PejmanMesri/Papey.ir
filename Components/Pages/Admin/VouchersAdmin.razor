@@ -1,0 +1,33 @@
+@page "/admin/vouchers"
+@attribute [Authorize(Roles="Admin")]
+@layout AdminLayout
+@rendermode InteractiveServer
+@inject DiscountService Discounts
+@inject AuthService Auth
+@inject IDbContextFactory<AppDbContext> Factory
+<PageTitle>کدهای تخفیف | پاپی</PageTitle>
+<h1>کدهای تخفیف</h1>
+<section class="card-box">
+<h2>تعریف کد تخفیف</h2><p>کدها به حروف کوچک و بزرگ حساس نیستند. هر کاربر فقط یک بار؛ ظرفیت هنگام ثبت سفارش رزرو می‌شود. سقف تخفیف فروشنده ۳۰٪ است.</p>
+<form @onsubmit="Save" @onsubmit:preventDefault>
+<div class="form-grid">
+<label>کد<input class="form-input" required maxlength="40" dir="ltr" @bind="_code" /></label>
+<label>درصد تخفیف<input class="form-input" required type="number" min="1" max="@(Auth.CurrentPrincipal?.IsInRole("Owner")==true?100:30)" @bind="_percent" /></label>
+<label>حداکثر کاهش قیمت (تومان)<input class="form-input" required type="number" min="1" @bind="_cap" /></label>
+<label>ظرفیت کل استفاده<input class="form-input" required type="number" min="1" @bind="_limit" /></label>
+<label>آخرین روز اعتبار (شمسی)<JalaliDatePicker @bind-Value="_expiry" /></label>
+</div><button class="btn-papey" disabled="@_saving">تعریف کد</button>
+</form>@if(_message is not null){<p role="status">@_message</p>}
+</section>
+<table class="table-papey mobile-card-table"><thead><tr><th>کد</th><th>درصد</th><th>سقف</th><th>اعتبار</th><th>استفاده / ظرفیت</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody>
+@foreach(var row in _rows){var v=row.Voucher;<tr><td data-label="کد"><b dir="ltr">@v.Code</b></td><td data-label="درصد">@Fa(v.Percent)٪</td><td data-label="سقف">@v.MaxReduction.ToToman()</td><td data-label="اعتبار">@PersianHelpers.ToPersianDateTime(v.ExpiresAt)</td><td data-label="ظرفیت">@Fa(row.Used) / @Fa(v.UseLimit)</td><td data-label="وضعیت">@(!v.Active?"غیرفعال":v.ExpiresAt<=DateTime.UtcNow?"منقضی":"فعال")</td><td data-label="عملیات">@if(v.Active){<button class="btn-papey btn-outline btn-sm" @onclick="()=>Deactivate(v.Id)">غیرفعال کردن</button>}</td></tr>}
+</tbody></table>
+@code{
+ private string _code="";private int _percent=10,_limit=100;private decimal _cap=100000;private DateTime? _expiry;private bool _saving;private string? _message;
+ private sealed record Row(Voucher Voucher,int Used);private List<Row> _rows=[];
+ protected override Task OnInitializedAsync()=>Load();
+ private async Task Load(){await using var db=await Factory.CreateDbContextAsync();_rows=await db.Vouchers.AsNoTracking().OrderByDescending(v=>v.Id).Select(v=>new Row(v,db.VoucherUses.Count(u=>u.VoucherId==v.Id))).ToListAsync();}
+ private async Task Save(){if(_saving)return;_saving=true;try{if(_expiry is null){_message="تاریخ اعتبار را وارد کنید.";return;}var expiry=TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(_expiry.Value.Date.AddDays(1),DateTimeKind.Unspecified),TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran"));_message=await Discounts.SaveAsync(Auth.CurrentPrincipal,new Voucher{Code=_code,Percent=_percent,MaxReduction=_cap,UseLimit=_limit,ExpiresAt=expiry});if(_message is null){_message="کد تخفیف ذخیره شد.";_code="";await Load();}}finally{_saving=false;}}
+ private async Task Deactivate(int id){_message=await Discounts.DeactivateAsync(Auth.CurrentPrincipal,id)?"کد غیرفعال شد.":"دسترسی ندارید.";await Load();}
+ private static string Fa(int n)=>PersianHelpers.ToPersianDigits(n.ToString());
+}
