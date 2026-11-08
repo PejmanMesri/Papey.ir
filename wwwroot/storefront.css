@@ -225,7 +225,6 @@
  .photo-type-card > div { padding:16px; }
  .photo-type-card h3 { font-size:1.35rem; }
  .photo-type-card > div > span { font-size:.63rem; }
- .photo-type-card:last-child:nth-child(odd) { grid-column:1/-1; aspect-ratio:4/3; }
  .storefront-shell .product-grid,.storefront-shell .catalog-results .product-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:25px 12px; }
  .storefront-shell .product-card h3 { font-size:.78rem; }
  .storefront-shell .product-card .price { font-size:.72rem; }
@@ -306,6 +305,7 @@ button.gallery-thumb{padding:0;background:none;font:inherit;cursor:pointer}butto
 .storefront-shell>main.container-papey:has(.homepage-content){padding-top:0;margin-top:0}
 
 .photo-type-grid{display:grid!important;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);grid-template-columns:none!important;gap:16px}
+.photo-type-grid>.photo-type-card{grid-column:auto;grid-row:1;min-width:0}
 @media(max-width:650px){.photo-type-grid{grid-auto-columns:42%;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:12px}.photo-type-card{scroll-snap-align:start}}
 .social-links{display:flex;gap:12px;margin:22px 0}.social-links a{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border:1px solid #ccc;border-radius:99px;color:#161616;text-decoration:none}.social-links svg{width:22px;height:22px}
 .contact-cards{grid-template-columns:repeat(4,minmax(0,1fr))}.whatsapp-cta.btn-papey{display:flex;justify-content:center;gap:16px;padding:16px 24px;border:1px solid #1c7552;background:#f1faf5;color:#16573f;border-radius:8px;text-decoration:none;font-weight:750}.whatsapp-cta.btn-papey:hover{background:#dff3e6}
