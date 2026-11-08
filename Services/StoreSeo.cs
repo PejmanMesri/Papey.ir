@@ -12,6 +12,7 @@ public sealed record SeoPage(string? Title, string Description, string Canonical
 
 public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfiguration configuration)
 {
+    private static string SearchTypeName(string name) => name.Contains("بیسیک") ? name : name.Contains("هودی") ? "هودی چاپی" : name.Contains("تیشرت") || name.Contains("تی‌شرت") || name.Contains("تی شرت") ? "تیشرت چاپی" : name;
     public string Origin => (configuration["SITE_URL"] ?? "https://papey.ir").TrimEnd('/');
     public string Url(string path) => Origin + (path.StartsWith('/') ? path : "/" + path);
     public string? ImageUrl(string? path) => string.IsNullOrWhiteSpace(path) ? null
@@ -48,11 +49,12 @@ public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfigura
         var path = uri.AbsolutePath.TrimEnd('/');
         var canonical = Url(path.Length == 0 ? "/" : path);
         string? title = null, image = null, json = null;
-        var description = "خرید تیشرت چاپی با طرح‌های خاص و سفارش تیشرت کاستوم از پاپی؛ انتخاب مدل، رنگ و سایز، بررسی طرح دلخواه و ارسال با تیپاکس به سراسر ایران.";
+        var description = "خرید تیشرت چاپی و هودی چاپی از پاپی؛ سفارش لباس چاپی با طرح دلخواه، انتخاب رنگ و سایز، بررسی فایل طراحی و هماهنگی قیمت برای تیشرت کاستوم.";
         await using var db = await factory.CreateDbContextAsync();
-        if (path == "") title = "پاپی | خرید تیشرت چاپی و سفارش تیشرت کاستوم";
-        else if (path == "/custom-design") { title = "سفارش تیشرت کاستوم با طرح دلخواه | پاپی"; description = "برای سفارش تیشرت کاستوم و چاپ طرح دلخواه روی تیشرت، هودی یا لانگ اسلیو با پاپی هماهنگ کنید؛ بررسی فایل طراحی، انتخاب لباس و اعلام قیمت پیش از سفارش."; image = Url("/img/custom-studio/hoodie-white-front.webp"); }
+        if (path == "") title = "پاپی | خرید تیشرت چاپی، هودی چاپی و لباس کاستوم";
+        else if (path == "/custom-design") { title = "سفارش تیشرت کاستوم و لباس چاپی | پاپی"; description = "سفارش تیشرت چاپی، هودی کاستوم و لباس با طرح دلخواه در پاپی؛ فایل طراحی، رنگ، سایز و محل چاپ را هماهنگ کنید. قیمت و زمان پیش از نهایی شدن سفارش اعلام می‌شود."; image = Url("/img/custom-studio/hoodie-white-front.webp"); }
         else if (path == "/printed-tshirts") { title="خرید تیشرت چاپی با طرح‌های خاص | پاپی"; description="مدل‌های تیشرت چاپی پاپی را ببینید؛ طرح‌های انیمه، موسیقی، گیم و تاریخی با انتخاب رنگ و سایز. برای چاپ طرح شخصی، سفارش تیشرت کاستوم ثبت کنید."; }
+        else if (path == "/printed-hoodies") { title="خرید هودی چاپی و سفارش هودی کاستوم | پاپی"; description="مدل‌های هودی چاپی پاپی را ببینید یا برای سفارش هودی چاپی با طرح دلخواه هماهنگ کنید؛ انتخاب رنگ و سایز، راهنمای فایل طراحی و بررسی محل چاپ روی هودی."; image=Url("/img/custom-studio/hoodie-black-front.webp"); }
         else if (path == "/guides/tshirt-print-design") { title="راهنمای طراحی تیشرت چاپی و آماده‌سازی فایل | پاپی"; description="برای طراحی تیشرت چاپی از کجا شروع کنیم؟ راهنمای انتخاب طرح، پس‌زمینه شفاف، محل چاپ، رنگ لباس و ارسال فایل برای سفارش تیشرت کاستوم در پاپی."; }
         else if (path == "/about") { title = "درباره و ارتباط با ما | پاپی"; description = "با پاپی آشنا شوید؛ فروشگاه تیشرت، هودی و لانگ اسلیو با طرح‌های خاص و امکان سفارش لباس با طرح دلخواه."; }
         else if (path == "/wholesale") { title = "فروش عمده پوشاک و قرارداد همکاری | پاپی"; description = "برای سفارش عمده تیشرت، هودی و لانگ اسلیو، توافق قیمت و عقد قرارداد همکاری با پاپی تماس بگیرید: ۰۹۱۲۱۸۳۸۹۹۱."; }
@@ -62,7 +64,7 @@ public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfigura
             if (int.TryParse(QueryHelpers.ParseQuery(uri.Query).GetValueOrDefault("type"), out var typeId))
             {
                 var type = await db.ProductTypes.AsNoTracking().FirstOrDefaultAsync(t => t.Id == typeId && t.IsActive);
-                if (type is not null) { title = $"خرید {type.Name} با طرح‌های خاص | پاپی"; description=$"مدل‌های {type.Name} پاپی را ببینید و طرح، رنگ و سایز دلخواه خود را انتخاب کنید؛ سفارش آنلاین و ارسال با تیپاکس."; canonical += $"?type={typeId}";
+                if (type is not null) { title = $"خرید {SearchTypeName(type.Name)} با طرح‌های خاص | پاپی"; description=$"مدل‌های {SearchTypeName(type.Name)} پاپی را ببینید و طرح، رنگ و سایز دلخواه خود را انتخاب کنید؛ سفارش آنلاین و ارسال با تیپاکس."; canonical += $"?type={typeId}";
                     if(!await db.Products.AnyAsync(p=>p.IsActive&&p.ProductTypeId==typeId)) title=null;
                 } else title=null;
             }
@@ -84,8 +86,8 @@ public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfigura
             var category = await db.Categories.AsNoTracking().Include(c => c.ProductType).FirstOrDefaultAsync(c => c.Slug == slug && c.IsActive);
             if (category is not null)
             {
-                title = $"{category.ProductType?.Name} طرح {category.Name} | پاپی".Trim();
-                description = Description(category.Description, $"خرید لباس با طرح {category.Name} از پاپی؛ انتخاب مدل، رنگ و سایز مورد علاقه شما.");
+                title = $"{(category.ProductType is null ? "لباس چاپی" : SearchTypeName(category.ProductType.Name))} طرح {category.Name} | پاپی".Trim();
+                description = Description(category.Description, $"خرید {(category.ProductType is null ? "لباس چاپی" : SearchTypeName(category.ProductType.Name))} با طرح {category.Name} از پاپی؛ انتخاب مدل، رنگ و سایز مورد علاقه شما.");
                 image = ImageUrl(category.ImageUrl);
             }
         }
@@ -127,7 +129,7 @@ public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfigura
         var categories = await db.Categories.Where(c => c.IsActive && categoryIds.Contains(c.Id)).Select(c => c.Slug).ToListAsync();
         var typeIds = products.Where(p => p.ProductTypeId != null).Select(p => p.ProductTypeId!.Value).ToHashSet();
         var types = await db.ProductTypes.Where(t => t.IsActive && typeIds.Contains(t.Id)).Select(t => t.Id).ToListAsync();
-        var paths = new[] { "/", "/products", "/printed-tshirts", "/guides/tshirt-print-design", "/about", "/wholesale", "/custom-design" }.Concat(products.Select(p => "/product/" + Uri.EscapeDataString(p.Slug)))
+        var paths = new[] { "/", "/products", "/printed-tshirts", "/printed-hoodies", "/guides/tshirt-print-design", "/about", "/wholesale", "/custom-design" }.Concat(products.Select(p => "/product/" + Uri.EscapeDataString(p.Slug)))
             .Concat(categories.Select(c => "/category/" + Uri.EscapeDataString(c))).Concat(types.Select(t => $"/products?type={t}"));
         XNamespace ns = "http://www.sitemaps.org/schemas/sitemap/0.9";
         XNamespace img="http://www.google.com/schemas/sitemap-image/1.1";

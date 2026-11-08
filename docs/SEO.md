@@ -3,6 +3,7 @@
 ## Search-intent map
 - Home: تیشرت چاپی and brand پاپی / Papey.
 - /printed-tshirts: shopping for تیشرت چاپی; real catalog links plus size, shipping and custom-order information.
+- /printed-hoodies: هودی چاپی، خرید هودی چاپی، سفارش هودی چاپی، هودی کاستوم and printing on hoodies. Real hoodie catalog and model-specific placement guidance.
 - /custom-design: سفارش تیشرت کاستوم; phone callback and WhatsApp, no promise of immediate production or free garments.
 - /guides/tshirt-print-design: طراحی تیشرت چاپی; original Persian file-preparation guide linked to catalog and custom ordering.
 - Product/type/category URLs: specific product or collection intent; no invented descriptions or reviews.
@@ -23,3 +24,6 @@ Official guidance:
 - https://developers.google.com/search/docs/appearance/title-link
 - https://developers.google.com/search/docs/specialty/ecommerce/designing-a-url-structure-for-ecommerce-sites
 - https://developers.google.com/search/docs/appearance/structured-data/product-snippet
+
+## Expanded Persian phrase coverage
+Related phrases appear in useful visible content, headings and links rather than hidden keyword lists or duplicate landing pages: سفارش تیشرت چاپی، خرید تیشرت چاپی، سفارش لباس چاپی، چاپ روی لباس، تیشرت سفارشی، چاپ طرح دلخواه روی تیشرت، هودی با طرح دلخواه، چاپ روی هودی، پوشاک چاپی و سفارش گروهی. Exact product availability remains dynamic; do not claim printing methods, materials or turnaround beyond actual shop information.
