@@ -58,13 +58,7 @@ else
                 <span> / </span><a href="/category/@_product.Category.Slug">@_product.Category.Name</a>
             </p>
             <h1 style="margin:0 0 12px; font-size:1.7rem">@_product.Name</h1>
-            <div class="price-row" style="margin-bottom: 24px">
-                <span class="price" style="font-size:1.4rem">@_product.Price.ToToman()</span>
-                @if (_product.OldPrice is not null)
-                {
-                    <span class="old-price">@_product.OldPrice.Value.ToToman()</span>
-                }
-            </div>
+            <ProductPrice Price="SelectedPrice" OldPrice="_product.OldPrice" Detail="true" />
 
             <label class="form-label">رنگ: <strong>@_selectedColor</strong></label>
             <div>
@@ -151,6 +145,7 @@ else
     private bool _added;
     private bool _isFavorite;
 
+    private decimal SelectedPrice => _product?.Variants.FirstOrDefault(v=>v.IsEnabled && v.Color==_selectedColor && v.Size==_selectedSize)?.EffectivePrice ?? _product?.Price ?? 0;
     private int MaxQty => _product?.Variants.FirstOrDefault(v => v.Color == _selectedColor && v.Size == _selectedSize) is { } variant
         ? ProductInventory.MaximumQuantity(variant) : 0;
     private bool CanAdd => _selectedColor is not null && _selectedSize is not null && MaxQty > 0;

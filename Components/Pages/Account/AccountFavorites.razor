@@ -42,17 +42,7 @@
                         </div>
                         <div class="info">
                             <h3><a href="/product/@product.Slug">@product.Name</a></h3>
-                            <div class="price-row">
-                                <span class="price">@product.Price.ToToman()</span>
-                                @if (product.OldPrice is not null)
-                                {
-                                    <span class="old-price">@product.OldPrice.Value.ToToman()</span>
-                                }
-                            </div>
-                            @if (product.OldPrice is > 0 && product.OldPrice > product.Price)
-                            {
-                                <span class="product-discount"><bdi>@PersianHelpers.ToPersianDigits(((int)((product.OldPrice.Value - product.Price) / product.OldPrice.Value * 100)).ToString())٪</bdi> تخفیف</span>
-                            }
+                    <ProductPrice Price="product.Price" OldPrice="product.OldPrice" />
                         </div>
                     </article>
                 }

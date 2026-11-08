@@ -1,3 +1,9 @@
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using System.Net;
+using Papey.Components.Shared;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +31,17 @@ try{
  Check(await discounts.SaveAsync(AccountAccess.Principal(owner),Draft("WELCOME")) is not null,"Case-insensitive duplicate is rejected");
  Check(await discounts.SaveAsync(AccountAccess.Principal(owner),new Voucher{Code="EXPIRED",Percent=10,MaxReduction=1,UseLimit=1,ExpiresAt=DateTime.UtcNow.AddDays(-1)}) is not null,"Expired vouchers cannot be created");
  await db.StoreSettings.Where(s=>s.Id==1).ExecuteUpdateAsync(s=>s.SetProperty(s=>s.DiscountPercent,10));
+ var services=new ServiceCollection();services.AddLogging();services.AddSingleton<IDbContextFactory<AppDbContext>>(factory);var settings=new TaxSettingsService(factory);services.AddSingleton(settings);services.AddScoped<StorefrontPricing>();await using var provider=services.BuildServiceProvider();await using var scope=provider.CreateAsyncScope();await using var renderer=new HtmlRenderer(scope.ServiceProvider,scope.ServiceProvider.GetRequiredService<ILoggerFactory>());
+ var rendered=await renderer.Dispatcher.InvokeAsync(()=>renderer.RenderComponentAsync<ProductPrice>(ParameterView.FromDictionary(new Dictionary<string,object?>{{"Price",100000m},{"OldPrice",120000m}})));
+ var markup=await renderer.Dispatcher.InvokeAsync(()=>Task.FromResult(WebUtility.HtmlDecode(rendered.ToHtmlString())));
+ Check(markup.Contains("۹۰٬۰۰۰")||markup.Contains("۹۰,۰۰۰"),"Product price renders the ten-percent reduction");
+ Check(markup.Contains("<del")&&markup.Contains("تخفیف فروشگاه")&&markup.Contains("۱۰"),"Product widget shows crossed original price, store percentage and savings");
+ await settings.UpdateAsync(false,0);
+ for(var i=0;i<40;i++){await Task.Delay(10);markup=await renderer.Dispatcher.InvokeAsync(()=>Task.FromResult(WebUtility.HtmlDecode(rendered.ToHtmlString())));if(!markup.Contains("تخفیف فروشگاه"))break;}
+ Check(!markup.Contains("تخفیف فروشگاه")&&markup.Contains("تخفیف"),"Open product prices update when discount is disabled and retain existing item sale");
+ await settings.UpdateAsync(false,10);
+ var schemaProduct=new Product{Id=1,Name="Test",Price=100000,Variants=[new(){PriceOverride=200000,IsEnabled=true}]};schemaProduct.Variants[0].Product=schemaProduct;
+ using(var json=System.Text.Json.JsonDocument.Parse(StoreSeo.ProductJson(schemaProduct,"https://papey.ir/product/test",null,10)))Check(json.RootElement.GetProperty("offers").GetProperty("price").GetDecimal()==1800000,"Google offer price includes global discount on the variant and converts to rials once");
  var quote=await discounts.QuoteAsync(1000000,"wElCoMe",customer.Id);
  Check(quote.StoreAmount==100000&&quote.VoucherAmount==50000&&quote.Error is null,"Global discount is applied first, voucher percentage is capped");
  var order=new Order{OrderNumber="CHECK",UserId=customer.Id,TotalAmount=1000000,StoreDiscountAmount=quote.StoreAmount,StoreDiscountPercent=10,VoucherCode=quote.Code,VoucherDiscountAmount=quote.VoucherAmount};OrderTax.Apply(order,true);

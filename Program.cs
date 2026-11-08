@@ -83,6 +83,7 @@ builder.Services.AddDistributedMemoryCache();
 builder.Services.Configure<StoreProfile>(builder.Configuration.GetSection("Store"));
 builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<DiscountService>();
+builder.Services.AddScoped<StorefrontPricing>();
 builder.Services.AddScoped<StoreSeo>();
 builder.Services.AddScoped<ProductRecommendations>();
 builder.Services.AddScoped<ProductReviewService>();

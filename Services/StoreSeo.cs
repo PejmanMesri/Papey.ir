@@ -23,10 +23,10 @@ public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfigura
         if (value.Length == 0) value = fallback;
         return value.Length <= 160 ? value : value[..157] + "…";
     }
-    public static string ProductJson(Product product, string url, string? image)
+    public static string ProductJson(Product product, string url, string? image, int discountPercent = 0)
     {
         var variants = product.Variants.Where(v => v.IsEnabled).ToArray();
-        var prices = variants.Select(v => v.EffectivePrice).DefaultIfEmpty(product.Price).ToArray();
+        var prices = variants.Select(v => v.EffectivePrice).DefaultIfEmpty(product.Price).Select(price=>price-DiscountService.PercentOff(price,discountPercent)).ToArray();
         var available = variants.Any(v => product.IsActive && (product.HasUnlimitedStock || v.Stock > 0));
         var offers = new Dictionary<string, object?> {
             ["@type"] = prices.Min() == prices.Max() ? "Offer" : "AggregateOffer", ["url"] = url, ["priceCurrency"] = "IRR",
@@ -75,7 +75,7 @@ public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfigura
             {
                 title = $"{product.Name} | خرید از پاپی";
                 description = Description(product.Description, $"خرید {product.Name} از پاپی؛ مشاهده تصاویر، رنگ‌ها و راهنمای سایز.");
-                image = ImageUrl(product.ImageUrl); json = ProductJson(product, canonical, image);
+                image = ImageUrl(product.ImageUrl); json = ProductJson(product, canonical, image, await db.StoreSettings.Where(s=>s.Id==1).Select(s=>s.DiscountPercent).SingleAsync());
             }
         }
         else if (path.StartsWith("/category/"))

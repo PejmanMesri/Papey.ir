@@ -1,0 +1,21 @@
+@inject StorefrontPricing Pricing
+@implements IDisposable
+<div class="product-pricing @(Detail ? "product-pricing-detail" : "")">
+    <div class="price-row"><span class="price">@FinalPrice.ToToman()</span>
+        @if (Reduction > 0) { <del class="old-price">@Price.ToToman()</del> }
+        else if (OldPrice > Price) { <del class="old-price">@OldPrice.Value.ToToman()</del> }
+    </div>
+    @if(Reduction > 0) { <span class="product-discount store-discount"><bdi>@PersianHelpers.ToPersianDigits(_percent.ToString())٪</bdi> تخفیف فروشگاه <span>— @Reduction.ToToman() کمتر</span></span> }
+    else if(OldPrice > Price && OldPrice > 0) { <span class="product-discount"><bdi>@PersianHelpers.ToPersianDigits(((int)((OldPrice.Value-Price)/OldPrice.Value*100)).ToString())٪</bdi> تخفیف</span> }
+</div>
+@code {
+ [Parameter] public decimal Price {get;set;}
+ [Parameter] public decimal? OldPrice {get;set;}
+ [Parameter] public bool Detail {get;set;}
+ private int _percent;
+ private decimal Reduction=>DiscountService.PercentOff(Price,_percent);
+ private decimal FinalPrice=>Price-Reduction;
+ protected override async Task OnInitializedAsync(){Pricing.Changed+=Refresh;_percent=await Pricing.RateAsync();}
+ private void Refresh()=>_ = InvokeAsync(async()=>{_percent=await Pricing.RateAsync();StateHasChanged();});
+ public void Dispose()=>Pricing.Changed-=Refresh;
+}
