@@ -38,8 +38,7 @@
                 <div class="clothing-type-options">
                     @foreach (var type in _productTypes)
                     {
-                        <a href="/products?type=@type.Id" class="clothing-type-option @GetClothingTypeClass(type) @(_selectedProductTypeId == type.Id ? "is-selected" : "")"
->
+                        <a href="/products?type=@type.Id" class="clothing-type-option @GetClothingTypeClass(type) @(_selectedProductTypeId == type.Id ? "is-selected" : "")">
                             <span class="clothing-type-icon"><ProductTypePhoto Id="@type.Id" TypeName="@type.Name" Value="@type.FilterIcon" /></span>
                             <span>@type.Name</span>
                         </a>
@@ -55,8 +54,7 @@
                         <a href="/products?type=@selectedType.Id" class="subcategory-option @(_activeCategory is null ? "is-selected" : "")">همه</a>
                         @foreach (var category in selectedType.Categories.OrderBy(c => c.DisplayOrder))
                         {
-                            <button type="button" class="subcategory-option @(_selectedCategoryId == category.Id ? "is-selected" : "")"
-                                    @onclick="() => NavigateToCategory(category)">@category.Name</button>
+                            <a href="/category/@category.Slug" class="subcategory-option @(_selectedCategoryId == category.Id ? "is-selected" : "")">@category.Name</a>
                         }
                     </div>
                 </div>
