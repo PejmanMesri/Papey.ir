@@ -6,11 +6,11 @@
 
 @if (_banners.Slides.Any(s => s.Active)) { <HomeBanner Slides="_banners.Slides.Where(s => s.Active).ToList()" IntervalSeconds="_banners.IntervalSeconds" /> }
 <div class="homepage-content">
-<section class="photo-types-section"><div class="editorial-section-heading"><div><span class="editorial-eyebrow">انتخاب تو / THE COLLECTION</span><h1>تیشرت چاپی، هودی چاپی و پوشاک طرح‌دار</h1></div><a href="/products">همه محصولات ↗</a></div>
+<section class="photo-types-section"><div class="editorial-section-heading"><div><span class="editorial-eyebrow">انتخاب تو / THE COLLECTION</span></div><a href="/products">همه محصولات ↗</a></div>
     <div class="photo-type-grid">@foreach (var type in _types) { <a class="photo-type-card" href="/products?type=@type.Id"><ProductTypePhoto Id="@type.Id" TypeName="@type.Name" Value="@type.FilterIcon" /><div><h3>@type.Name</h3><span>مشاهده محصولات <b aria-hidden="true">↗</b></span></div></a> }</div>
 </section>
 <section class="editorial-custom"><div><span class="editorial-eyebrow">PAPEY CUSTOM / ایده از تو</span><h2>قرار نیست طرح تو<br />شبیه بقیه باشد.</h2><p>ایده‌ات را با ما در میان بگذار. برای انتخاب لباس، بررسی طرح و هماهنگی قیمت کنارت هستیم.</p><a class="editorial-hero-cta" href="/custom-design">سفارش تیشرت کاستوم ↗</a><small>ثبت شماره تماس یا گفت‌وگو در واتساپ</small></div><img src="/img/custom-studio/hoodie-white-front.webp" alt="هودی برای سفارش با طرح اختصاصی" loading="lazy" /></section>
-<section class="editorial-products"><div class="editorial-section-heading"><div><span class="editorial-eyebrow">NEW ARRIVALS</span><h2>جدیدترین ها</h2></div><a href="/products">مشاهده همه ↗</a></div><ProductGrid Products="_newProducts" /></section>
+@if (_newProducts.Count > 0) { <section class="editorial-products"><div class="editorial-section-heading"><div><span class="editorial-eyebrow">NEW ARRIVALS</span><h2>جدیدترین ها</h2></div><a href="/products">مشاهده همه ↗</a></div><ProductGrid Products="_newProducts" /></section> }
 
 @if (_featured.Count > 0) { <section class="editorial-products"><div class="editorial-section-heading"><div><span class="editorial-eyebrow">PAPEY PICKS</span><h2>منتخب‌ها</h2></div><a href="/products">گشتن در فروشگاه ↗</a></div><ProductGrid Products="_featured" /></section> }
 <section class="seo-intro"><h2>طرح آماده یا طرح خودت؟</h2><p>برای <a href="/printed-tshirts">خرید تیشرت چاپی</a> یا <a href="/printed-hoodies">خرید هودی چاپی</a> طرح‌های آماده را ببین، یا برای <a href="/custom-design">سفارش تیشرت کاستوم</a> یا <a href="/custom-design">سفارش لباس چاپی با طرح دلخواه</a>، ایده خودت را با ما در میان بگذار. قبل از ارسال فایل، <a href="/guides/tshirt-print-design">راهنمای طراحی تیشرت چاپی</a> کمکت می‌کند اندازه، پس‌زمینه و محل چاپ را مشخص کنی. برای آشنایی با روش چاپ پاپی، <a href="/guides/dtf-printing">راهنمای چاپ DTF روی لباس</a> را بخوان.</p>
@@ -34,7 +34,7 @@
         _types = await db.ProductTypes.Where(t => t.IsActive).OrderBy(t => t.DisplayOrder).ToListAsync();
         var activeTypeIds=await db.Products.Where(p=>p.IsActive).Select(p=>p.ProductTypeId ?? p.Category.ProductTypeId).Distinct().ToListAsync();
         _searchTypes=_types.Where(t=>activeTypeIds.Contains(t.Id)).ToList();
-        _newProducts = await db.Products.Include(p => p.Media).Where(p => p.IsActive).OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.Id).Take(8).ToListAsync();
+        _newProducts = await db.Products.Include(p => p.Media).Where(p => p.IsActive && p.IsNew).OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.Id).Take(8).ToListAsync();
         _featured = await db.Products.Include(p => p.Media).Where(p => p.IsActive && p.IsFeatured).OrderByDescending(p => p.CreatedAt).Take(4).ToListAsync();
     }
 }
