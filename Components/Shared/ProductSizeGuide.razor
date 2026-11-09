@@ -20,9 +20,15 @@
     [Parameter] public string? ProductTypeName { get; set; }
     [Parameter] public int? ProductTypeId { get; set; }
     [Parameter] public string ProductName { get; set; } = "";
-    private string GuideUrl => _guideUrl ?? ProductSizeGuides.Resolve(null, ProductTypeName);
+    private string GuideUrl => ProductSizeGuides.Resolve(
+        string.IsNullOrWhiteSpace(ImageUrl) ? _guideUrl : ImageUrl, ProductTypeName);
     private string? _guideUrl;
-    protected override async Task OnParametersSetAsync() { _guideUrl = await Guides.ReadAsync(ProductTypeId, ProductTypeName); }
+    protected override async Task OnParametersSetAsync()
+    {
+        _guideUrl = null;
+        if (string.IsNullOrWhiteSpace(ImageUrl))
+            _guideUrl = await Guides.ReadAsync(ProductTypeId, ProductTypeName);
+    }
     private ElementReference _dialog;
     private IJSObjectReference? _module;
     private async Task Open()

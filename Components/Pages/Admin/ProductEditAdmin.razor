@@ -24,7 +24,7 @@ else
             <h1>@(IsNew ? "افزودن محصول جدید" : "ویرایش محصول")</h1>
             <p>@(IsNew ? "مشخصات محصول را تکمیل کنید." : _product.Name)</p>
         </div>
-        <button type="button" class="btn-papey editor-save" disabled="@(_saving || _uploading || _designUploading)" @onclick="SaveInfo">@(_saving ? "در حال ذخیره…" : IsNew ? "ذخیره و ادامه" : "ذخیره تغییرات")</button>
+        <button type="button" class="btn-papey editor-save" disabled="@(_saving || _uploading || _designUploading || _guideUploading)" @onclick="SaveInfo">@(_saving ? "در حال ذخیره…" : IsNew ? "ذخیره و ادامه" : "ذخیره تغییرات")</button>
     </header>
     @if (IsNew)
     {
@@ -90,7 +90,7 @@ else
             <section class="editor-card" aria-labelledby="visibility-title">
                 <div class="editor-section-title"><span>۰۲</span><div><h2 id="visibility-title">نمایش در فروشگاه</h2><p>وضعیت و نشان‌های محصول</p></div></div>
                 <label class="editor-option"><span><strong>فعال در فروشگاه</strong><small>مشتریان می‌توانند محصول را ببینند.</small></span><input type="checkbox" @bind="_product.IsActive" /></label>
-                <label class="editor-option"><span><strong>محصول جدید</strong><small>نمایش نشان «جدید» روی محصول</small></span><input type="checkbox" @bind="_product.IsNew" /></label>
+                <label class="editor-option"><span><strong>محصول جدید</strong><small>نمایش نشان «جدید» و افزودن به بخش «جدیدترین ها» در صفحه اصلی</small></span><input type="checkbox" @bind="_product.IsNew" /></label>
                 <label class="editor-option"><span><strong>محصول محبوب</strong><small>نمایش در مجموعه محصولات محبوب</small></span><input type="checkbox" @bind="_product.IsFeatured" /></label>
             </section>
             <section class="editor-card editor-hero" aria-labelledby="hero-title">
@@ -108,7 +108,11 @@ else
             📐 نسبت پیشنهادی تصویر: <strong>۱:۱ (مربعی)</strong> — حداقل ۸۰۰×۸۰۰ پیکسل.
             ویدیو: MP4/WebM حداکثر ۵۰ مگابایت.
         </p>
-        <label class="editor-upload"><strong>افزودن تصویر یا ویدیو</strong><span>فایل را از دستگاه خود انتخاب کنید</span><InputFile OnChange="UploadMedia" accept="image/*,video/mp4,video/webm" disabled="@(_saving || _uploading)" /></label>
+        <label class="editor-upload">
+            <strong>افزودن تصاویر و ویدیو</strong>
+            <span>می‌توانید تا @MaxGalleryFilesPerSelection فایل را هم‌زمان انتخاب کنید.</span>
+            <InputFile OnChange="UploadMedia" multiple accept="image/*,video/mp4,video/webm" disabled="@(_saving || _uploading)" />
+        </label>
         @if (_uploading) { <p>در حال آپلود...</p> }
         @if (_uploadError is not null) { <div class="alert-papey alert-danger">@_uploadError</div> }
 
@@ -167,7 +171,39 @@ else
         }
     </section>
 
-    <section class="editor-card"><h2>راهنمای سایز</h2><p>راهنمای سایز بر اساس نوع لباس از تنظیمات فروشگاه انتخاب می‌شود.</p><AuthorizeView Roles="Owner"><a href="/admin/settings">مدیریت راهنمای سایز انواع لباس ←</a></AuthorizeView></section>
+    <section class="editor-card" aria-labelledby="product-guide-title">
+        <h2 id="product-guide-title">راهنمای سایز</h2>
+        <p class="editor-hint">تصویر اختصاصی اختیاری است. اگر تصویری انتخاب نشود، راهنمای نوع محصول از تنظیمات فروشگاه نمایش داده می‌شود.</p>
+        <label class="editor-upload">
+            <strong>انتخاب تصویر راهنمای سایز</strong>
+            <span>JPG، PNG، WebP، GIF یا AVIF تا ۱۵ مگابایت. تصویر با ذخیره محصول ثبت می‌شود.</span>
+            <InputFile @key="_guideInputKey" OnChange="UploadSizeGuide" accept=".jpg,.jpeg,.png,.webp,.gif,.avif" disabled="@(_saving || _guideUploading)" />
+        </label>
+        @if (_guideUploading) { <p role="status">در حال آپلود راهنمای سایز…</p> }
+        @if (_guideError is not null) { <div class="alert-papey alert-danger" role="alert">@_guideError</div> }
+        @{
+            var customGuide = _guideUpload?.PreviewUrl ?? (_removeGuide ? null : _product.SizeGuideImageUrl);
+            var hasCustomGuide = !string.IsNullOrWhiteSpace(customGuide);
+            var typeId = _product.ProductTypeId ?? _product.Category?.ProductTypeId;
+            var selectedType = _types.FirstOrDefault(t => t.Id == typeId)
+                ?? (_product.ProductType?.Id == typeId ? _product.ProductType : null);
+        }
+        <div class="editor-guide-preview">
+            <img src="@ProductSizeGuides.Resolve(hasCustomGuide ? customGuide : selectedType?.SizeGuideImageUrl, selectedType?.Name)" alt="پیش‌نمایش راهنمای سایز" />
+            <div>
+                @if (hasCustomGuide)
+                {
+                    <p>راهنمای اختصاصی این محصول</p>
+                    <button type="button" class="btn-papey btn-sm btn-outline" disabled="@(_saving || _guideUploading)" @onclick="ResetSizeGuide">استفاده از راهنمای نوع محصول</button>
+                }
+                else
+                {
+                    <p>راهنمای نوع محصول</p>
+                    <AuthorizeView Roles="Owner"><a href="/admin/settings">مدیریت راهنمای سایز انواع لباس ←</a></AuthorizeView>
+                }
+            </div>
+        </div>
+    </section>
 
     <section class="editor-card editor-stock">
         <div class="editor-section-title"><span>۰۶</span><div><h2>رنگ، سایز و موجودی</h2><p>ترکیب‌های قابل سفارش را فعال کنید.</p></div></div>
@@ -238,6 +274,10 @@ else
     private string? _variantMsg, _uploadError, _designUploadError;
     private bool _uploading, _designUploading, _saving;
     private string? _infoError;
+    private ProductDraftUploads.Upload? _guideUpload;
+    private string? _guideError;
+    private bool _guideUploading, _removeGuide;
+    private int _guideInputKey;
     private static readonly Dictionary<string, string> DesignContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         [".jpg"] = "image/jpeg",
@@ -250,6 +290,10 @@ else
     {
         _infoError = null;
         _variantMsg = null;
+        _guideUpload = null;
+        _guideError = null;
+        _removeGuide = false;
+        _guideInputKey++;
         await Reload();
     }
 
@@ -280,7 +324,8 @@ else
             }
             return;
         }
-        var fresh = await db.Products.Include(p => p.ProductType).Include(p => p.Variants).Include(p => p.ProductCategories).FirstOrDefaultAsync(p => p.Id == Id);
+        var fresh = await db.Products.Include(p => p.ProductType).Include(p => p.Category)
+            .Include(p => p.Variants).Include(p => p.ProductCategories).FirstOrDefaultAsync(p => p.Id == Id);
         if (preserveDraft && _product is not null && fresh is not null) _product.Variants = fresh.Variants;
         else
         {
@@ -293,7 +338,7 @@ else
 
     private async Task SaveInfo()
     {
-        if (_saving || _uploading || _designUploading || _product is null) return;
+        if (_saving || _uploading || _designUploading || _guideUploading || _product is null) return;
         _infoError = null;
         if (string.IsNullOrWhiteSpace(_product.Name) || _product.Name.Length > 200)
         { _infoError = "نام محصول را وارد کنید (حداکثر ۲۰۰ کاراکتر)."; return; }
@@ -369,6 +414,13 @@ else
         var copiedFiles = new List<string>();
         try
         {
+            if (_removeGuide) t.SizeGuideImageUrl = null;
+            if (_guideUpload is not null)
+            {
+                var path = DraftUploads.CopyToPermanent(_guideUpload, false);
+                copiedFiles.Add(path);
+                t.SizeGuideImageUrl = "/uploads/images/" + Path.GetFileName(path);
+            }
             if (creating)
             {
                 foreach (var media in _media.OrderBy(m => m.DisplayOrder))
@@ -402,6 +454,11 @@ else
         }
         foreach (var upload in _draftMedia.Values.Concat(_draftDesigns.Values))
         { try { DraftUploads.Delete(upload); } catch { } }
+        if (_guideUpload is not null)
+        {
+            try { DraftUploads.Delete(_guideUpload); } catch { }
+            _guideUpload = null;
+        }
         _draftMedia.Clear(); _draftDesigns.Clear();
         Nav.NavigateTo(creating ? $"/admin/products/{t.Id}" : "/admin/products");
     }
@@ -418,48 +475,111 @@ else
         _selectedCatIds.Clear();
     }
 
-    private async Task UploadMedia(InputFileChangeEventArgs e)
+    private async Task UploadSizeGuide(InputFileChangeEventArgs e)
     {
-        if (_saving || _uploading) return;
-        _uploading = true; _uploadError = null;
+        if (_saving || _guideUploading) return;
+        _guideUploading = true;
+        _guideError = null;
         try
         {
             var file = e.File;
-            var ext = Path.GetExtension(file.Name).ToLowerInvariant();
-            var isVideo = ext is ".mp4" or ".webm";
-            if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp" or ".gif" or ".avif" or ".mp4" or ".webm"))
-                throw new InvalidOperationException("فرمت فایل مجاز نیست.");
-            if (IsNew)
-            {
-                await using var input = file.OpenReadStream(50 * 1024 * 1024);
-                var upload = await DraftUploads.StageAsync(input, file.Name);
-                var media = new ProductMedia { Url = upload.PreviewUrl,
-                    Type = isVideo ? MediaType.Video : MediaType.Image, DisplayOrder = _media.Count };
-                _media.Add(media); _draftMedia.Add(media, upload);
-                return;
-            }
-            var folder = Path.Combine("wwwroot", "uploads", isVideo ? "videos" : "images");
-            Directory.CreateDirectory(folder);
-            var name = $"{Guid.NewGuid():N}{ext}";
-            var path = Path.Combine(folder, name);
-            await using (var fs = File.Create(path))
-                await file.OpenReadStream(50 * 1024 * 1024).CopyToAsync(fs);
-            var url = $"/uploads/{(isVideo ? "videos" : "images")}/{name}";
+            var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+            if (extension is not (".jpg" or ".jpeg" or ".png" or ".webp" or ".gif" or ".avif"))
+                throw new InvalidOperationException();
 
-            await using var db = await DbFactory.CreateDbContextAsync();
-            db.ProductMedia.Add(new ProductMedia
-            {
-                ProductId = Id,
-                Url = url,
-                Type = isVideo ? MediaType.Video : MediaType.Image,
-                Alt = _product?.Name,
-                DisplayOrder = _media.Count
-            });
-            await db.SaveChangesAsync();
-            await Reload(true);
+            await using var input = file.OpenReadStream(15 * 1024 * 1024);
+            _guideUpload = await DraftUploads.StageAsync(input, file.Name);
+            _removeGuide = false;
         }
-        catch (Exception ex) { _uploadError = "خطا در آپلود: " + ex.Message; }
+        catch
+        {
+            _guideError = "آپلود انجام نشد. یک تصویر معتبر تا ۱۵ مگابایت انتخاب کنید.";
+        }
+        finally { _guideUploading = false; }
+    }
+
+    private void ResetSizeGuide()
+    {
+        if (_saving || _guideUploading) return;
+        _guideUpload = null;
+        _guideError = null;
+        _removeGuide = true;
+        _guideInputKey++;
+    }
+
+    private const int MaxGalleryFilesPerSelection = 20;
+    private const long MaxGalleryFileSize = 50 * 1024 * 1024;
+
+    private async Task UploadMedia(InputFileChangeEventArgs e)
+    {
+        if (_saving || _uploading) return;
+        _uploadError = null;
+        if (e.FileCount > MaxGalleryFilesPerSelection)
+        {
+            _uploadError = $"در هر بار حداکثر {MaxGalleryFilesPerSelection} فایل انتخاب کنید.";
+            return;
+        }
+
+        _uploading = true;
+        var errors = new List<string>();
+        try
+        {
+            foreach (var file in e.GetMultipleFiles(MaxGalleryFilesPerSelection))
+            {
+                try { await UploadGalleryFile(file); }
+                catch (Exception ex) { errors.Add($"{file.Name}: {ex.Message}"); }
+            }
+            if (errors.Count > 0) _uploadError = "خطا در آپلود: " + string.Join(" | ", errors);
+        }
         finally { _uploading = false; }
+    }
+
+    private async Task UploadGalleryFile(IBrowserFile file)
+    {
+        var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+        if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp" or ".gif" or ".avif" or ".mp4" or ".webm"))
+            throw new InvalidOperationException("فرمت فایل مجاز نیست.");
+        if (file.Size > MaxGalleryFileSize)
+            throw new InvalidOperationException("حجم فایل بیشتر از ۵۰ مگابایت است.");
+
+        var isVideo = ext is ".mp4" or ".webm";
+        var media = new ProductMedia { Type = isVideo ? MediaType.Video : MediaType.Image };
+        await using var input = file.OpenReadStream(MaxGalleryFileSize);
+        if (IsNew)
+        {
+            var upload = await DraftUploads.StageAsync(input, file.Name);
+            media.Url = upload.PreviewUrl;
+            media.DisplayOrder = _media.Count;
+            _draftMedia.Add(media, upload);
+            _media.Add(media);
+            return;
+        }
+
+        var mediaFolder = isVideo ? "videos" : "images";
+        var folder = Path.Combine("wwwroot", "uploads", mediaFolder);
+        Directory.CreateDirectory(folder);
+        var name = $"{Guid.NewGuid():N}{ext}";
+        var path = Path.Combine(folder, name);
+        await using var db = await DbFactory.CreateDbContextAsync();
+        try
+        {
+            await using (var fs = File.Create(path))
+                await input.CopyToAsync(fs);
+
+            media.ProductId = Id;
+            media.Url = $"/uploads/{mediaFolder}/{name}";
+            media.Alt = _product?.Name;
+            media.DisplayOrder = 1 + (await db.ProductMedia.Where(m => m.ProductId == Id)
+                .MaxAsync(m => (int?)m.DisplayOrder) ?? -1);
+            db.ProductMedia.Add(media);
+            await db.SaveChangesAsync();
+        }
+        catch
+        {
+            try { File.Delete(path); } catch { }
+            throw;
+        }
+        _media.Add(media);
     }
 
     private async Task UploadDesigns(InputFileChangeEventArgs e)
@@ -536,7 +656,7 @@ else
 
     private async Task MoveMedia(ProductMedia m, int dir)
     {
-        if (_saving) return;
+        if (_saving || _uploading) return;
         if (IsNew)
         {
             var index = _media.IndexOf(m); var next = index + dir;
@@ -557,7 +677,7 @@ else
 
     private async Task DeleteMedia(ProductMedia m)
     {
-        if (_saving) return;
+        if (_saving || _uploading) return;
         if (IsNew)
         {
             DraftUploads.Delete(_draftMedia[m]); _draftMedia.Remove(m); _media.Remove(m);
