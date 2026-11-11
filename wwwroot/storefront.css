@@ -126,7 +126,16 @@
 .storefront-shell .site-footer a,.storefront-shell .site-footer p { color:#a5a5a5; }
 .storefront-shell .site-footer a:hover { color:#fff; }
 .storefront-shell .footer-grid { gap:40px; padding-bottom:35px; }
-.footer-brand-word { font:bold 36px/1 Arial,sans-serif; letter-spacing:-2px; color:#fff; margin-bottom:18px; }
+.footer-brand-lockup { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.footer-brand-signature {
+    width:72px;
+    height:112px;
+    object-fit:contain;
+    object-view-box:inset(17% 34% 6% 37%);
+    filter:grayscale(1) contrast(1.2);
+    mix-blend-mode:screen;
+}
+.footer-brand-word { font:bold 36px/1 Arial,sans-serif; letter-spacing:-2px; color:#fff; }
 .footer-story { font:900 clamp(46px,11vw,160px)/1 Arial,sans-serif; letter-spacing:-.07em; color:#fff; border-top:1px solid #333; padding-top:35px; text-align:center; direction:ltr; }
 .storefront-shell .footer-bottom { font-size:.75rem; color:#999; border-top:0; padding-block:25px; }
 .custom-contact-page,.story-page { display:grid; grid-template-columns:1fr 1fr; gap:70px; align-items:center; margin-block:50px 65px; }
