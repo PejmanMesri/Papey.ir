@@ -3,7 +3,7 @@
 <PageTitle>درباره پاپی؛ پارچه‌ها، کیفیت و راه‌های ارتباط</PageTitle>
 <div class="about-landing">
 <section class="about-hero" aria-labelledby="about-title">
-    <div class="about-intro"><span class="about-eyebrow">@Text("eyebrow")</span><h1 class="page-text-lines" id="about-title">@Text("heading")</h1>@foreach (var paragraph in Text("body").Split('\n', StringSplitOptions.RemoveEmptyEntries)) { <p>@paragraph</p> }<SocialLinks /><div class="editorial-actions"><a class="btn-papey" href="/products">@Text("shopButton")</a><a class="editorial-link" href="#contact">@Text("contactButton")</a></div></div>
+    <div class="about-intro"><span class="about-eyebrow">@Text("eyebrow")</span><h1 class="page-text-lines" id="about-title">@Text("heading")</h1>@foreach (var paragraph in Text("body").Split('\n', StringSplitOptions.RemoveEmptyEntries)) { <p>@paragraph</p> }<SocialLinks /><div class="editorial-actions"><a class="btn-papey" href="/products">@Text("shopButton")</a><a class="editorial-link" href="#contact" data-contact-dialog aria-haspopup="dialog">@Text("contactButton")</a></div></div>
     <div class="about-photo"><img src="/img/custom-studio/tshirt-black-front.webp" alt="تیشرت مشکی پاپی" fetchpriority="high" /><span>@Text("imageCaption")</span></div>
 </section>
 <section class="about-materials" aria-labelledby="materials-title"><div class="about-section-heading"><span class="about-eyebrow">PAPEY / MATERIALS</span><h2 id="materials-title">انتخاب متریال، متناسب با لباس شما.</h2></div>
@@ -13,6 +13,16 @@
 </div></section>
 <section class="about-quality" aria-labelledby="quality-title"><div><span class="about-eyebrow">تعهد پوشاک پاپی</span><h2 id="quality-title">@Text("qualityTitle")</h2></div><div>@foreach(var paragraph in Text("qualityBody").Split('\n',StringSplitOptions.RemoveEmptyEntries)){<p>@paragraph</p>}<a href="/wholesale">تولید و سفارش عمده پوشاک <span aria-hidden="true">↗</span></a></div></section>
 <div id="contact" class="about-contact"><ContactDetails /></div>
+<dialog id="about-contact-dialog" class="about-contact-dialog" aria-labelledby="about-contact-title">
+    <header>
+        <h2 id="about-contact-title">راه‌های ارتباط با پاپی</h2>
+        <form method="dialog"><button type="submit" autofocus aria-label="بستن">×</button></form>
+    </header>
+    <a href="@($"tel:{StorePageTexts.ContactPhone}")"><span>تلفن</span><bdi>@PersianHelpers.ToPersianDigits(StorePageTexts.ContactPhone)</bdi></a>
+    <a href="https://wa.me/989036421161" target="_blank" rel="noopener"><span>واتساپ</span><span aria-hidden="true">↗</span></a>
+    <a href="https://www.instagram.com/papey.ir" target="_blank" rel="noopener"><span>اینستاگرام</span><bdi>@@papey.ir</bdi></a>
+    <a href="https://t.me/papeycompany" target="_blank" rel="noopener"><span>تلگرام</span><bdi>@@papeycompany</bdi></a>
+</dialog>
 </div>
 @code {
     private Dictionary<string,string>? _texts;

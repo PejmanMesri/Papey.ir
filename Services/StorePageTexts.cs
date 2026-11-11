@@ -9,6 +9,8 @@ public sealed record PageTextField(string Key, string Label, string Default, boo
 
 public sealed class StorePageTexts(IDbContextFactory<AppDbContext> factory)
 {
+    public const string ContactPhone = "09125977260";
+
     public static readonly PageTextField[] About = [
         new("eyebrow", "متن کوچک بالای عنوان", "درباره پاپی / کیفیت از انتخاب آغاز می‌شود", false, 300),
         new("heading", "عنوان اصلی", "معرفی پارچه‌ها و متریال\nمورد استفاده در مجموعه پوشاک پاپی", true, 300),
@@ -41,7 +43,34 @@ public sealed class StorePageTexts(IDbContextFactory<AppDbContext> factory)
         new("customBody", "توضیحات سفارش اختصاصی", "شماره‌ات را در صفحه سفارش اختصاصی ثبت کن تا با تو تماس بگیریم.", true, 2000),
         new("customButton", "متن دکمه سفارش اختصاصی", "درخواست تماس ←")
     ];
-    public static PageTextField[] Fields(string page) => page switch { "about" => About, "contact" => Contact, _ => throw new ArgumentException("صفحه معتبر نیست.") };
+    public static readonly PageTextField[] Wholesale = [
+        new("eyebrow", "متن بالای عنوان", "PAPEY / همکاری و تولید عمده"),
+        new("heading", "عنوان اصلی", "از ایده شما،\nتا لباس شما.", true, 6000),
+        new("intro", "متن معرفی", "مجموعه پوشاک پاپی با بهره‌گیری از تجربه و تخصص بیست ساله در زمینه تولید و پخش پوشاک، آماده ارائه خدمات تولید انواع لباس به‌صورت عمده و سفارشی مطابق با نیاز، سلیقه و درخواست مشتریان است.", true, 6000),
+        new("button", "دکمه مشاوره", "مشاوره و ثبت سفارش"),
+        new("experience", "سال تجربه", "۲۰"),
+        new("experienceText", "توضیح تجربه", "سال تجربه\nدر تولید و پخش پوشاک", true, 6000),
+        new("photoCaption", "عنوان تصویر", "ساخته‌شده برای ایده شما"),
+        new("photoCaptionEnglish", "عنوان انگلیسی تصویر", "YOUR IDEA. OUR CRAFT."),
+        new("contactEyebrow", "متن بالای بخش تماس", "بیایید درباره سفارش شما صحبت کنیم."),
+        new("contactHeading", "عنوان بخش تماس", "ثبت سفارش و دریافت مشاوره"),
+        new("contactBody", "توضیحات بخش تماس", "جهت دریافت مشاوره، استعلام قیمت و ثبت سفارش تولید و خرید عمده با شماره زیر تماس حاصل فرمایید:", true, 6000),
+        new("signature", "امضای بخش تماس", "تولید و پخش تخصصی پوشاک پاپی"),
+        new("callButton", "متن دکمه تلفن", "تماس برای مشاوره و سفارش"),
+        new("whatsappButton", "متن دکمه واتساپ", "گفت‌وگو در واتساپ"),
+        new("rangeHeading", "عنوان دامنه تولید", "یک مجموعه، انتخاب‌های گسترده."),
+        new("rangeBody", "توضیح دامنه تولید", "ما امکان طراحی و تولید طیف گسترده‌ای از پوشاک شامل انواع تیشرت، پیراهن، شلوار، هودی، دورس، کاپشن و سایر محصولات پوشاک را فراهم کرده‌ایم.", true, 6000),
+        new("possibilities", "توضیح سفارش سفارشی", "در مجموعه پاپی، محدودیتی در نوع محصول و سفارش شما وجود ندارد؛ هر طرح، مدل یا سبک لباسی که مدنظر داشته باشید، پس از بررسی و هماهنگی، با بالاترین کیفیت و مناسب‌ترین قیمت برای شما تولید خواهد شد.", true, 6000),
+        new("organizationsHeading", "عنوان همکاری سازمانی", "پوشاکی برای هویت مجموعه شما."),
+        new("organizationsBody", "توضیح همکاری سازمانی", "همچنین شرکت‌ها، سازمان‌ها، ادارات، ارگان‌های دولتی و خصوصی، باشگاه‌های ورزشی و سایر مجموعه‌ها می‌توانند سفارش‌های اختصاصی خود را برای تولید انواع پوشاک سازمانی، تبلیغاتی، فرم و لباس ورزشی به ما بسپارند.", true, 6000),
+        new("promiseHeading", "عنوان تعهد پاپی", "همان چیزی که نیاز دارید."),
+        new("promiseBody", "متن تعهد پاپی", "تعهد ما در پوشاک پاپی، ارائه کیفیت مطلوب، قیمت رقابتی و تولید مطابق با خواسته و نیاز مشتریان است.", true, 6000),
+        new("garments", "انواع پوشاک (هر مورد در یک خط)", "تیشرت\nپیراهن\nشلوار\nهودی\nدورس\nکاپشن\nسایر پوشاک", true, 2000),
+        new("services", "انواع خدمات (هر مورد در یک خط)", "پوشاک سازمانی\nپوشاک تبلیغاتی\nلباس فرم\nلباس ورزشی", true, 2000),
+        new("promises", "موارد تعهد (هر مورد در یک خط)", "کیفیت مطلوب\nقیمت رقابتی\nتولید مطابق نیاز شما", true, 2000)
+    ];
+
+    public static PageTextField[] Fields(string page) => page switch { "about" => About, "contact" => Contact, "wholesale" => Wholesale, _ => throw new ArgumentException("صفحه معتبر نیست.") };
     public async Task<Dictionary<string, string>> ReadAsync(string page)
     {
         var fields = Fields(page);

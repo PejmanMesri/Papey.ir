@@ -1,30 +1,39 @@
 @page "/wholesale"
+@inject StorePageTexts Pages
 <PageTitle>تولید و پخش عمده پوشاک سفارشی | پاپی</PageTitle>
 <div class="wholesale-landing">
     <section class="wholesale-hero" aria-labelledby="wholesale-title">
         <div class="wholesale-intro">
-            <span class="wholesale-eyebrow">PAPEY / همکاری و تولید عمده</span>
-            <h1 id="wholesale-title">از ایده شما،<br />تا لباس شما.</h1>
-            <p class="wholesale-lead">مجموعه پوشاک پاپی با بهره‌گیری از تجربه و تخصص بیست ساله در زمینه تولید و پخش پوشاک، آماده ارائه خدمات تولید انواع لباس به‌صورت عمده و سفارشی مطابق با نیاز، سلیقه و درخواست مشتریان است.</p>
-            <div class="wholesale-hero-actions"><a class="btn-papey" href="#wholesale-contact">مشاوره و ثبت سفارش <span aria-hidden="true">↙</span></a><span class="wholesale-experience"><strong>۲۰</strong><span>سال تجربه<br />در تولید و پخش پوشاک</span></span></div>
+            <span class="wholesale-eyebrow">@Text("eyebrow")</span>
+            <h1 id="wholesale-title" class="page-text-lines">@Text("heading")</h1>
+            <p class="wholesale-lead page-text-lines">@Text("intro")</p>
+            <div class="wholesale-hero-actions"><a class="btn-papey" href="#wholesale-contact">@Text("button") <span aria-hidden="true">↙</span></a><span class="wholesale-experience"><strong>@Text("experience")</strong><span class="page-text-lines">@Text("experienceText")</span></span></div>
         </div>
-        <div class="wholesale-visual"><img src="/img/custom-studio/hoodie-black-front.webp" alt="هودی مشکی پاپی برای تولید و سفارش پوشاک" fetchpriority="high" /><div class="wholesale-photo-caption"><span>ساخته‌شده برای ایده شما</span><span lang="en">YOUR IDEA. OUR CRAFT.</span></div></div>
+        <div class="wholesale-visual"><img src="/img/custom-studio/hoodie-black-front.webp" alt="هودی مشکی پاپی برای تولید و سفارش پوشاک" fetchpriority="high" /><div class="wholesale-photo-caption"><span>@Text("photoCaption")</span><span lang="en">@Text("photoCaptionEnglish")</span></div></div>
     </section>
 
+    <section class="wholesale-contact" id="wholesale-contact" aria-labelledby="contact-title"><div><span class="wholesale-eyebrow">@Text("contactEyebrow")</span><h2 id="contact-title">@Text("contactHeading")</h2><p class="page-text-lines">@Text("contactBody")</p><strong class="wholesale-signature">@Text("signature")</strong></div><div class="wholesale-contact-actions"><a class="wholesale-phone" href="@($"tel:{StorePageTexts.ContactPhone}")" aria-label="@($"تماس با فروش عمده پاپی، {Phone}")"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M5 3h4l2 5-3 2a16 16 0 0 0 6 6l2-3 5 2v4a2 2 0 0 1-2 2A18 18 0 0 1 3 5a2 2 0 0 1 2-2Z"/></svg><span dir="ltr">@Phone</span><small>@Text("callButton")</small></a><a class="wholesale-whatsapp" href="https://wa.me/989121838991" target="_blank" rel="noopener">@Text("whatsappButton") <span aria-hidden="true">↗</span></a></div></section>
+
     <section class="wholesale-range" aria-labelledby="range-title">
-        <div class="wholesale-section-heading"><span class="wholesale-eyebrow">۰۱ / دامنه تولید</span><h2 id="range-title">یک مجموعه، انتخاب‌های گسترده.</h2></div>
-        <p>ما امکان طراحی و تولید طیف گسترده‌ای از پوشاک شامل انواع تیشرت، پیراهن، شلوار، هودی، دورس، کاپشن و سایر محصولات پوشاک را فراهم کرده‌ایم.</p>
-        <ul class="wholesale-garments" aria-label="انواع پوشاک قابل سفارش"><li>تیشرت</li><li>پیراهن</li><li>شلوار</li><li>هودی</li><li>دورس</li><li>کاپشن</li><li>سایر پوشاک</li></ul>
-        <div class="wholesale-possibilities"><span class="wholesale-line-mark" aria-hidden="true">↗</span><p>در مجموعه پاپی، محدودیتی در نوع محصول و سفارش شما وجود ندارد؛ هر طرح، مدل یا سبک لباسی که مدنظر داشته باشید، پس از بررسی و هماهنگی، با بالاترین کیفیت و مناسب‌ترین قیمت برای شما تولید خواهد شد.</p></div>
+        <div class="wholesale-section-heading"><span class="wholesale-eyebrow">۰۱ / دامنه تولید</span><h2 id="range-title">@Text("rangeHeading")</h2></div>
+        <p class="page-text-lines">@Text("rangeBody")</p>
+        <ul class="wholesale-garments" aria-label="انواع پوشاک قابل سفارش">@foreach (var item in Lines("garments")) { <li>@item</li> }</ul>
+        <div class="wholesale-possibilities"><span class="wholesale-line-mark" aria-hidden="true">↗</span><p class="page-text-lines">@Text("possibilities")</p></div>
     </section>
 
     <section class="wholesale-organizations" aria-labelledby="organizations-title">
-        <div class="wholesale-section-heading"><span class="wholesale-eyebrow">۰۲ / همکاری سازمانی</span><h2 id="organizations-title">پوشاکی برای هویت مجموعه شما.</h2></div>
-        <p>همچنین شرکت‌ها، سازمان‌ها، ادارات، ارگان‌های دولتی و خصوصی، باشگاه‌های ورزشی و سایر مجموعه‌ها می‌توانند سفارش‌های اختصاصی خود را برای تولید انواع پوشاک سازمانی، تبلیغاتی، فرم و لباس ورزشی به ما بسپارند.</p>
-        <div class="wholesale-services"><article><span>۰۱</span><h3>پوشاک سازمانی</h3></article><article><span>۰۲</span><h3>پوشاک تبلیغاتی</h3></article><article><span>۰۳</span><h3>لباس فرم</h3></article><article><span>۰۴</span><h3>لباس ورزشی</h3></article></div>
+        <div class="wholesale-section-heading"><span class="wholesale-eyebrow">۰۲ / همکاری سازمانی</span><h2 id="organizations-title">@Text("organizationsHeading")</h2></div>
+        <p class="page-text-lines">@Text("organizationsBody")</p>
+        <div class="wholesale-services">@foreach (var item in Lines("services")) { <article><h3>@item</h3></article> }</div>
     </section>
 
-    <section class="wholesale-promise" aria-labelledby="promise-title"><span class="wholesale-eyebrow">تعهد پاپی</span><h2 id="promise-title">همان چیزی که نیاز دارید.</h2><p>تعهد ما در پوشاک پاپی، ارائه کیفیت مطلوب، قیمت رقابتی و تولید مطابق با خواسته و نیاز مشتریان است.</p><div><span>کیفیت مطلوب</span><span>قیمت رقابتی</span><span>تولید مطابق نیاز شما</span></div></section>
-
-    <section class="wholesale-contact" id="wholesale-contact" aria-labelledby="contact-title"><div><span class="wholesale-eyebrow">بیایید درباره سفارش شما صحبت کنیم.</span><h2 id="contact-title">ثبت سفارش و دریافت مشاوره</h2><p>جهت دریافت مشاوره، استعلام قیمت و ثبت سفارش تولید و خرید عمده با شماره زیر تماس حاصل فرمایید:</p><strong class="wholesale-signature">تولید و پخش تخصصی پوشاک پاپی</strong></div><div class="wholesale-contact-actions"><a class="wholesale-phone" href="tel:09121838991" aria-label="تماس با فروش عمده پاپی، ۰۹۱۲۱۸۳۸۹۹۱"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M5 3h4l2 5-3 2a16 16 0 0 0 6 6l2-3 5 2v4a2 2 0 0 1-2 2A18 18 0 0 1 3 5a2 2 0 0 1 2-2Z"/></svg><span dir="ltr">۰۹۱۲۱۸۳۸۹۹۱</span><small>تماس برای مشاوره و سفارش</small></a><a class="wholesale-whatsapp" href="https://wa.me/989121838991" target="_blank" rel="noopener">گفت‌وگو در واتساپ <span aria-hidden="true">↗</span></a></div></section>
+    <section class="wholesale-promise" aria-labelledby="promise-title"><span class="wholesale-eyebrow">تعهد پاپی</span><h2 id="promise-title">@Text("promiseHeading")</h2><p class="page-text-lines">@Text("promiseBody")</p><div>@foreach (var item in Lines("promises")) { <span>@item</span> }</div></section>
 </div>
+
+@code {
+    private Dictionary<string, string>? _texts;
+    private static string Phone => PersianHelpers.ToPersianDigits(StorePageTexts.ContactPhone);
+    private string Text(string key) => _texts?.GetValueOrDefault(key) ?? StorePageTexts.Wholesale.First(field => field.Key == key).Default;
+    private string[] Lines(string key) => Text(key).Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+    protected override async Task OnInitializedAsync() => _texts = await Pages.ReadAsync("wholesale");
+}

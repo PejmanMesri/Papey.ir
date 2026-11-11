@@ -6,10 +6,11 @@
 @inject AuthService Auth
 <PageTitle>متن صفحات | مدیریت پاپی</PageTitle>
 <h1>متن صفحات فروشگاه</h1>
-<p>عنوان‌ها، توضیحات و متن دکمه‌های درباره ما و تماس با ما را ویرایش کنید. تغییرات پس از ذخیره در فروشگاه نمایش داده می‌شود.</p>
+<p>عنوان‌ها، توضیحات و متن دکمه‌های درباره ما، تماس با ما و فروش عمده را ویرایش کنید. تغییرات پس از ذخیره در فروشگاه نمایش داده می‌شود.</p>
 <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">
     <button class="btn-papey @(_page == "about" ? "" : "btn-outline")" disabled="@_busy" @onclick='() => SelectPage("about")'>درباره ما</button>
     <button class="btn-papey @(_page == "contact" ? "" : "btn-outline")" disabled="@_busy" @onclick='() => SelectPage("contact")'>تماس با ما</button>
+    <button class="btn-papey @(_page == "wholesale" ? "" : "btn-outline")" disabled="@_busy" @onclick='() => SelectPage("wholesale")'>فروش عمده</button>
     <a class="btn-papey btn-outline" href="/@_page" target="_blank" rel="noopener">مشاهده صفحه ↗</a>
 </div>
 @if (_values is not null)

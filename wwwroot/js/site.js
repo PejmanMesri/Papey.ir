@@ -4,6 +4,14 @@
 (function () {
     'use strict';
 
+    document.addEventListener('click', function (event) {
+        if (!event.target.closest('[data-contact-dialog]')) return;
+        var dialog = document.getElementById('about-contact-dialog');
+        if (typeof dialog?.showModal !== 'function') return;
+        event.preventDefault();
+        if (!dialog.open) dialog.showModal();
+    });
+
     // Keep one shared category panel open while moving through the desktop rail.
     var desktopCloseTimers = new WeakMap();
     document.addEventListener('pointerover', function (event) {
