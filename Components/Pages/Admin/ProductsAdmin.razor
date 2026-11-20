@@ -99,7 +99,7 @@
         {
             <tr>
                 <td data-label="تصویر"><img src="@(p.Media.OrderBy(m => m.DisplayOrder).FirstOrDefault()?.Url ?? p.ImageUrl)" style="width:48px; height:48px; object-fit:cover; border-radius:8px" /></td>
-                <td data-label="نام"><strong>@p.Name</strong></td>
+                <td data-label="نام"><strong><a href="@($"/product/{p.Slug}")">@p.Name</a></strong></td>
                 <td data-label="نوع">@(p.ProductType?.Name ?? "—")</td>
                 <td data-label="دسته">
                     @p.Category.Name
