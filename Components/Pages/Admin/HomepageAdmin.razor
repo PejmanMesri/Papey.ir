@@ -7,7 +7,7 @@
 @inject IDbContextFactory<AppDbContext> DbFactory
 <PageTitle>بنرها و تصاویر مدل لباس | مدیریت</PageTitle>
 <h1>صفحه اصلی و بنرها</h1>
-<p>بنرها تمام عرض صفحه نمایش داده می‌شوند. ترتیب کارت‌ها همان ترتیب نمایش است؛ تصویر افقی با کیفیت، ترجیحاً ۱۹۲۰ × ۷۲۰ پیکسل انتخاب کنید. برای تصویر مدل لباس از عکس عمودی استفاده کنید. فرمت‌های PNG، JPG و WebP تا ۲ مگابایت مجاز هستند.</p>
+<p>بنرها تمام عرض صفحه نمایش داده می‌شوند. ترتیب کارت‌ها همان ترتیب نمایش است؛ تصویر افقی با کیفیت، ترجیحاً ۱۹۲۰ × ۷۲۰ پیکسل انتخاب کنید. برای تصویر مدل لباس از عکس عمودی استفاده کنید. فرمت‌های PNG، JPG و WebP مجاز هستند. حداکثر حجم تصویر بنر ۱۰ مگابایت و تصویر مدل لباس ۲ مگابایت است.</p>
 @if (_notice is not null) { <p role="status" class="alert-papey">@_notice</p> }
 @if (_content is not null)
 {
@@ -48,15 +48,20 @@
     private void Add() { if (_content!.Slides.Count < 20) _content.Slides.Add(new() { Title = "", Description = "" }); }
     private void Move(HomeSlide slide, int delta) { var index = _content!.Slides.IndexOf(slide); var next = index + delta; if (next < 0 || next >= _content.Slides.Count) return; _content.Slides.RemoveAt(index); _content.Slides.Insert(next, slide); }
     private void Remove(HomeSlide slide) { _content!.Slides.Remove(slide); if (_pending.Remove(slide.Id, out var file)) Uploads.Delete(file); }
+    private const long MaxBannerBytes = 10 * 1024 * 1024;
+
     private async Task Upload(InputFileChangeEventArgs e, string id)
     {
         _busy = true; _notice = null;
         try {
             var extension = Path.GetExtension(e.File.Name).ToLowerInvariant();
-            if (extension is not (".png" or ".jpg" or ".jpeg" or ".webp")) throw new InvalidOperationException("فرمت PNG، JPG یا WebP و حجم حداکثر ۲ مگابایت انتخاب کنید.");
-            await using var input = e.File.OpenReadStream(ProductTypeIconUploads.MaxBytes);
+            if (extension is not (".png" or ".jpg" or ".jpeg" or ".webp")) throw new InvalidOperationException("تصویری با فرمت PNG، JPG یا WebP انتخاب کنید.");
+            var maxBytes = id.StartsWith("type-", StringComparison.Ordinal) ? ProductTypeIconUploads.MaxBytes : MaxBannerBytes;
+            if (e.File.Size > maxBytes)
+                throw new InvalidOperationException($"حداکثر حجم تصویر {PersianHelpers.ToPersianDigits((maxBytes / (1024 * 1024)).ToString())} مگابایت است.");
+            await using var input = e.File.OpenReadStream(maxBytes);
             using var buffer = new MemoryStream(); await input.CopyToAsync(buffer);
-            ProductTypeIconUploads.Validate(buffer.ToArray(), extension); buffer.Position = 0;
+            ProductTypeIconUploads.Validate(buffer.ToArray(), extension, maxBytes); buffer.Position = 0;
             var upload = await Uploads.StageAsync(buffer, e.File.Name);
             if (_pending.Remove(id, out var old)) Uploads.Delete(old);
             _pending[id] = upload;

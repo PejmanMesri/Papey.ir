@@ -37,9 +37,9 @@ public sealed class ProductTypeIconUploads(IWebHostEnvironment env, IDbContextFa
         return "/uploads/type-icons/" + file;
     }
 
-    public static byte[] Validate(byte[] bytes, string extension)
+    public static byte[] Validate(byte[] bytes, string extension, long maxBytes = MaxBytes)
     {
-        if (bytes.Length == 0 || bytes.Length > MaxBytes) throw new InvalidOperationException("فایل خالی یا بیش از ۲ مگابایت است.");
+        if (bytes.Length == 0 || bytes.Length > maxBytes) throw new InvalidOperationException($"فایل خالی یا بیش از {maxBytes / (1024 * 1024)} مگابایت است.");
         bool Starts(params byte[] prefix) => bytes.AsSpan().StartsWith(prefix);
         var valid = extension switch
         {
