@@ -49,7 +49,7 @@ public sealed class HomepageSettings(IDbContextFactory<AppDbContext> factory, Pr
         if (content.Slides.Select(s => s.Id).Distinct().Count() != content.Slides.Count) return "شناسه اسلاید تکراری است.";
         foreach (var slide in content.Slides)
         {
-            if (slide.Title.Length > 120 || slide.Description.Length > 500 || string.IsNullOrWhiteSpace(slide.Title)) return "عنوان (حداکثر ۱۲۰ حرف) و توضیح (حداکثر ۵۰۰ حرف) را بررسی کنید.";
+            if (slide.Title?.Length > 120 || slide.Description?.Length > 500) return "عنوان (حداکثر ۱۲۰ حرف) و توضیح (حداکثر ۵۰۰ حرف) را بررسی کنید.";
             if (!LocalUrl(slide.Link)) return "لینک دکمه باید آدرس داخلی مانند /products باشد.";
             if (!pending.ContainsKey(slide.Id) && !ImageUrl(slide.Image)) return "برای هر اسلاید یک تصویر انتخاب کنید.";
         }

@@ -22,8 +22,8 @@
         <section class="card-box banner-editor" @key="slide.Id">
             <div class="banner-editor-image">@if (!string.IsNullOrEmpty(Preview(slide.Id, slide.Image))) { <img src="@Preview(slide.Id, slide.Image)" alt="پیش‌نمایش بنر" /> }<label>تصویر بنر<InputFile accept="image/png,image/jpeg,image/webp" OnChange="e => Upload(e, slide.Id)" /></label></div>
             <div class="banner-editor-fields">
-                <label>عنوان<input class="form-input" maxlength="120" @bind="slide.Title" /></label>
-                <label>توضیح<textarea class="form-input" maxlength="500" @bind="slide.Description"></textarea></label>
+                <label>عنوان (اختیاری)<input class="form-input" maxlength="120" @bind="slide.Title" /></label>
+                <label>توضیح (اختیاری)<textarea class="form-input" maxlength="500" @bind="slide.Description"></textarea></label>
                 <label>لینک دکمه<input class="form-input" dir="ltr" placeholder="/products" @bind="slide.Link" /></label>
                 <label><input type="checkbox" @bind="slide.Active" /> بنر فعال است</label>
                 <label><input type="checkbox" @bind="slide.IsCampaign" /> تصویر عریض طراحی‌شده (نمایش تمام‌عرض)</label>
@@ -45,7 +45,7 @@
     private string? _notice;
     protected override async Task OnInitializedAsync() { _content = await Settings.ReadAsync(); _interval = _content.IntervalSeconds; await using var db = await DbFactory.CreateDbContextAsync(); _types = await db.ProductTypes.OrderBy(t => t.DisplayOrder).ToListAsync(); }
     private string Preview(string id, string fallback) => _pending.TryGetValue(id, out var file) ? file.PreviewUrl : fallback;
-    private void Add() { if (_content!.Slides.Count < 20) _content.Slides.Add(new()); }
+    private void Add() { if (_content!.Slides.Count < 20) _content.Slides.Add(new() { Title = "", Description = "" }); }
     private void Move(HomeSlide slide, int delta) { var index = _content!.Slides.IndexOf(slide); var next = index + delta; if (next < 0 || next >= _content.Slides.Count) return; _content.Slides.RemoveAt(index); _content.Slides.Insert(next, slide); }
     private void Remove(HomeSlide slide) { _content!.Slides.Remove(slide); if (_pending.Remove(slide.Id, out var file)) Uploads.Delete(file); }
     private async Task Upload(InputFileChangeEventArgs e, string id)
