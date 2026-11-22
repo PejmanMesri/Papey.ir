@@ -27,12 +27,28 @@ internal sealed class PrinterDashboard : Form
         var copy = new Button { AutoSize = true, Text = "Copy recent log" };
         copy.Click += (_, _) => { if (log.TextLength > 0) Clipboard.SetText(log.Text); };
         actions.Controls.Add(copy);
+        var filter = new TextBox { Width = 160, PlaceholderText = "Filter recent log" };
+        actions.Controls.Add(filter);
+        var export = new Button { AutoSize = true, Text = "Save visible log…" };
+        export.Click += (_, _) =>
+        {
+            using var dialog = new SaveFileDialog { FileName = "papey-printer.log", Filter = "Log files (*.log)|*.log" };
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+            try { File.WriteAllText(dialog.FileName, log.Text); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            { MessageBox.Show(this, ex.Message, "Could not save log"); }
+        };
+        actions.Controls.Add(export);
 
         void RefreshStatus()
         {
             summary.Text = status();
             string content;
-            try { content = string.Join(Environment.NewLine, File.ReadLines(Store.PathFor("agent.log")).TakeLast(150)); }
+            try
+            {
+                content = string.Join(Environment.NewLine, File.ReadLines(Store.PathFor("agent.log")).TakeLast(150)
+                    .Where(line => line.Contains(filter.Text, StringComparison.OrdinalIgnoreCase)));
+            }
             catch (IOException) { return; }
             if (log.Text == content) return;
             log.Text = content;
@@ -41,6 +57,7 @@ internal sealed class PrinterDashboard : Form
         }
 
         var refresh = new System.Windows.Forms.Timer { Interval = 2000 };
+        filter.TextChanged += (_, _) => RefreshStatus();
         refresh.Tick += (_, _) => RefreshStatus();
         FormClosed += (_, _) => refresh.Dispose();
         RefreshStatus();

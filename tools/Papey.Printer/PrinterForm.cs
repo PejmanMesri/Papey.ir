@@ -47,6 +47,16 @@ internal sealed class PrinterForm : Form
         };
         menu.Items.Add("Print a test receipt", null, async (_, _) => { if (_busy || Store.Read<Journal>("pending.json") is not null) { MessageBox.Show("Wait for or resolve the current order first.", Text); return; } _busy = true; try { await TestReceipt(); } catch (Exception ex) { Report("Test failed: " + ErrorSummary(ex)); } finally { _busy = false; } });
         menu.Items.Add("Open log folder", null, (_, _) => System.Diagnostics.Process.Start("explorer.exe", Store.Folder));
+        menu.Items.Add("Open Windows print queue", null, (_, _) =>
+        {
+            var start = new System.Diagnostics.ProcessStartInfo("rundll32.exe");
+            start.ArgumentList.Add("printui.dll,PrintUIEntry");
+            start.ArgumentList.Add("/o");
+            start.ArgumentList.Add("/n");
+            start.ArgumentList.Add(_settings.Printer);
+            try { System.Diagnostics.Process.Start(start); }
+            catch (System.ComponentModel.Win32Exception ex) { Report("Could not open print queue: " + ex.Message); }
+        });
         menu.Items.Add("Exit", null, (_, _) =>
         {
             if (_busy) { MessageBox.Show("A print job is in progress. Pause and wait for it to finish first.", Text); return; }
