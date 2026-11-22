@@ -8,13 +8,13 @@ internal static class RawPrinter
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct Document { public string Name; public string? Output; public string DataType; }
     [DllImport("winspool.drv", EntryPoint = "OpenPrinterW", SetLastError = true, CharSet = CharSet.Unicode)]
-    private static extern bool OpenPrinter(string name, out IntPtr printer, IntPtr defaults);
+    internal static extern bool OpenPrinter(string name, out IntPtr printer, IntPtr defaults);
     [DllImport("winspool.drv", EntryPoint = "StartDocPrinterW", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern uint StartDocPrinter(IntPtr printer, uint level, ref Document document);
     [DllImport("winspool.drv", SetLastError = true)] private static extern bool WritePrinter(IntPtr printer, IntPtr buffer, uint length, out uint written);
     [DllImport("winspool.drv", SetLastError = true)] private static extern bool EndDocPrinter(IntPtr printer);
     [DllImport("winspool.drv", SetLastError = true)] private static extern bool AbortPrinter(IntPtr printer);
-    [DllImport("winspool.drv")] private static extern bool ClosePrinter(IntPtr printer);
+    [DllImport("winspool.drv")] internal static extern bool ClosePrinter(IntPtr printer);
 
     public static uint Submit(string printerName, byte[] commands)
     {

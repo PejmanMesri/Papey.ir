@@ -16,7 +16,6 @@ internal static class Program
                 using (var updateMutex = new Mutex(true, "Local\\Papey.OrderPrinter", out var mayUpdate))
                 {
                     if (!mayUpdate) { MessageBox.Show("Exit Papey Order Printer from its tray icon before updating. Wait for any current receipt to finish first.", "Papey Printer update"); return; }
-                    if (Store.Read<Journal>("pending.json") is not null) { MessageBox.Show("Resolve the pending print in the existing app before updating. Do not delete its journal.", "Papey Printer update"); return; }
                     Directory.CreateDirectory(target);
                     if (!Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar).Equals(Path.GetFullPath(target), StringComparison.OrdinalIgnoreCase))
                     {

@@ -16,6 +16,7 @@ internal sealed class PrinterForm : Form
     private bool _busy, _paused, _exit;
     private DateTime _lastError;
     private string _status = "Starting";
+    private PrinterDashboard? _dashboard;
 
     public PrinterForm(Settings settings, bool test, bool preview)
     {
@@ -25,7 +26,7 @@ internal sealed class PrinterForm : Form
         Location = new Point(-32000, -32000);
         Controls.Add(_web);
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Status / وضعیت", null, (_, _) => MessageBox.Show(_status + "\n" + settings.Server + "\n" + settings.Printer, Text));
+        menu.Items.Add("Open dashboard / وضعیت", null, (_, _) => OpenDashboard(menu));
         menu.Items.Add("Account and printer setup / تنظیمات", null, (_, _) => {
             if (_busy || Store.Read<Journal>("pending.json") is not null) { MessageBox.Show("Wait for or resolve the current job first.", Text); return; }
             _paused = true;
@@ -44,7 +45,7 @@ internal sealed class PrinterForm : Form
             mode.Text = "Print method: " + (_settings.PrintMode == "driver" ? "Windows driver" : "RAW ESC/POS");
             Report("Print method changed; run a test receipt before resuming orders");
         };
-        menu.Items.Add("Print a test receipt", null, async (_, _) => { if (_busy || Store.Read<Journal>("pending.json") is not null) { MessageBox.Show("Wait for or resolve the current order first.", Text); return; } _busy = true; try { await TestReceipt(); } catch (Exception ex) { Report("Test failed: " + ex.GetType().Name); } finally { _busy = false; } });
+        menu.Items.Add("Print a test receipt", null, async (_, _) => { if (_busy || Store.Read<Journal>("pending.json") is not null) { MessageBox.Show("Wait for or resolve the current order first.", Text); return; } _busy = true; try { await TestReceipt(); } catch (Exception ex) { Report("Test failed: " + ErrorSummary(ex)); } finally { _busy = false; } });
         menu.Items.Add("Open log folder", null, (_, _) => System.Diagnostics.Process.Start("explorer.exe", Store.Folder));
         menu.Items.Add("Exit", null, (_, _) =>
         {
@@ -52,6 +53,7 @@ internal sealed class PrinterForm : Form
             _exit = true; Close();
         });
         _tray = new() { Icon = SystemIcons.Application, Text = "Papey Order Printer", ContextMenuStrip = menu, Visible = !test && !preview };
+        _tray.DoubleClick += (_, _) => OpenDashboard(menu);
         // Initialize from the message loop even when Windows starts the tray app hidden.
         EventHandler? initialize = null;
         initialize = async (_, _) =>
@@ -82,13 +84,26 @@ internal sealed class PrinterForm : Form
         };
         Application.Idle += initialize;
         FormClosing += (_, e) => { if (!_exit && e.CloseReason == CloseReason.UserClosing) { e.Cancel = true; Hide(); } };
-        FormClosed += (_, _) => { _timer.Dispose(); _tray.Dispose(); _api.Dispose(); };
+        FormClosed += (_, _) => { _dashboard?.Close(); _timer.Dispose(); _tray.Dispose(); _api.Dispose(); };
+    }
+
+    private void OpenDashboard(ContextMenuStrip menu)
+    {
+        if (_dashboard is null || _dashboard.IsDisposed)
+        {
+            var commands = menu.Items.Cast<ToolStripItem>().Skip(1).ToArray();
+            _dashboard = new PrinterDashboard(() =>
+                $"{_status}\r\n{_settings.Printer} · {_settings.PrintMode}\r\n{_settings.Server}", commands);
+            _dashboard.Show();
+        }
+        _dashboard.Activate();
     }
 
     private static string ErrorSummary(Exception ex) => ex switch {
         HttpRequestException { StatusCode: HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden } => "Sign-in expired or password changed. Open Setup and sign in again.",
         HttpRequestException http => "Server connection failed" + (http.StatusCode is { } code ? " (HTTP " + (int)code + ")" : ""),
-        IOException => "Printer offline, out of paper, or queue needs attention. Check Windows printer settings.",
+        System.ComponentModel.Win32Exception windows => windows.Message,
+        IOException io => io.Message,
         _ => ex.GetType().Name
     };
     private void Report(string message)
@@ -109,7 +124,7 @@ internal sealed class PrinterForm : Form
             {
                 if (JournalPolicy.Decide(journal) == Recovery.Acknowledge)
                 {
-                    PrinterHealth.EnsureReady(_settings.Printer);
+                    await PrinterHealth.EnsureReadyAsync(_settings.Printer);
                     if (!await _api.Action(journal.Lease, "complete")) { Review(journal); return; }
                     Store.Write<Journal?>("pending.json", null); Report("Printed job acknowledged");
                 }
@@ -120,7 +135,7 @@ internal sealed class PrinterForm : Form
                 }
                 else { Review(journal); return; }
             }
-            PrinterHealth.EnsureReady(_settings.Printer);
+            await PrinterHealth.EnsureReadyAsync(_settings.Printer);
             var lease = await _api.Claim();
             if (lease is null) { if (_status != "Connected — waiting for paid orders") Report("Connected — waiting for paid orders"); return; }
             Store.Write("pending.json", new Journal(lease, "Prepared"));
@@ -188,13 +203,13 @@ internal sealed class PrinterForm : Form
             await Navigate(_api.Receipt(lease).AbsoluteUri);
             await Ready(lease.OrderId);
             var receipt = await CaptureReceipt();
-            PrinterHealth.EnsureReady(_settings.Printer);
+            await PrinterHealth.EnsureReadyAsync(_settings.Printer);
             if (!leaseValid || !await _api.Action(lease, "renew")) throw new InvalidOperationException("Print lease lost before submission.");
             Store.Write("pending.json", new Journal(lease, "Submitting"));
             Report("Sending paid order to BIXOLON");
             await SubmitReceipt(receipt);
             Store.Write("pending.json", new Journal(lease, "Submitted"));
-            PrinterHealth.EnsureReady(_settings.Printer);
+            await PrinterHealth.EnsureReadyAsync(_settings.Printer);
             if (!await _api.Action(lease, "complete")) { Review(new(lease, "NeedsReview")); return; }
             Store.Write<Journal?>("pending.json", null); Report("Paid order submitted to printer and acknowledged");
         }
@@ -202,7 +217,7 @@ internal sealed class PrinterForm : Form
     }
 
     private Task SubmitReceipt(ThermalReceipt receipt) => Task.Run(() => {
-        Store.Write("render-diagnostics.json", new { version = "1.3.0", mode = _settings.PrintMode, receipt.Width, receipt.Height, paperWidthMm = 80, contentWidthMm = 72, contentHeightMm = Math.Round(receipt.Height * 72d / receipt.Width, 1) });
+        Store.Write("render-diagnostics.json", new { version = typeof(PrinterForm).Assembly.GetName().Version?.ToString(3), mode = _settings.PrintMode, receipt.Width, receipt.Height, paperWidthMm = 80, contentWidthMm = 72, contentHeightMm = Math.Round(receipt.Height * 72d / receipt.Width, 1) });
         if (_settings.PrintMode == "driver") DriverReceipt.Submit(_settings.Printer, receipt);
         else RawPrinter.Submit(_settings.Printer, receipt.Commands);
     });
@@ -297,7 +312,7 @@ internal sealed class PrinterForm : Form
             }
             else
             {
-                PrinterHealth.EnsureReady(_settings.Printer);
+                await PrinterHealth.EnsureReadyAsync(_settings.Printer);
                 await SubmitReceipt(receipt);
                 Report("Test receipt accepted by BIXOLON printer spooler");
             }

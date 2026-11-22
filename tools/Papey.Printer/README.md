@@ -65,9 +65,12 @@ submission with a subsequent queue error retains its journal until the queue is
 healthy, without submitting another copy.
 Use one active shop installation; local mutex prevents duplicate local instances.
 
-Avoid interrupting an in-flight receipt when updating. Pause and wait until
-`pending.json` is null, then run setup. Do not remove this journal to bypass a
-recovery prompt. If another computer reclaimed the lease, resolve it on the server.
+For a desktop ZIP update, choose **Exit** from the tray before running `Setup.cmd`.
+If the app is actively processing a receipt, wait until it lets you exit.
+Orders can stay queued during the update. Setup preserves the local receipt
+journal, and the updated app resumes recovery when it starts. If asked to
+resolve an uncertain print, check the paper and Windows queue before retrying.
+If another computer reclaimed the lease, resolve it on the server.
 
 ## Checks
 
@@ -98,10 +101,10 @@ and continues on another page if the driver caps roll length. RAW mode remains
 available. Existing installations keep their current mode; new setup recommends
 the Windows driver. Spooler acceptance cannot prove physical printing.
 
-Before updating, exit the tray app after the queue is idle and any uncertain
-job has been resolved. Extract the updated package, then run Setup.cmd. The
-updater refuses a running instance or unresolved journal and preserves existing
-credentials. To change credentials later, run the installed app with --setup.
+Before updating, exit the tray app once it finishes its active operation.
+Extract the updated package and run `Setup.cmd`. Existing credentials and the
+receipt journal are preserved, including any receipt awaiting recovery.
+To change credentials later, run the installed app with `--setup`.
 
 If the printer's own self-test is also blank, website page dimensions cannot
 explain that result: check the thermal paper and device with the customer. If
@@ -117,4 +120,10 @@ within the driver's printable area without shrinking or losing the remaining row
 
 ## Version 1.3.0
 
-Starts receipt initialization even when Windows launches the tray app hidden. The tray menu now includes account/printer setup for renewing saved credentials. Server connection failures explain expired login versus printer queue attention. Exit the old tray app after its current receipt finishes, extract the updated Windows ZIP, run Setup.cmd, and sign in if requested. Existing uncertain journals must be resolved before updating; never delete them to force a reprint.
+Starts receipt initialization even when Windows launches the tray app hidden. The tray menu includes account/printer setup for renewing saved credentials. Server connection failures distinguish expired login from printer queue issues.
+
+## Version 1.3.1
+
+Setup can update with orders waiting in the Windows or server queue, including
+when a receipt is waiting for recovery. The app checks printer and job status
+through Windows Print Spooler.
