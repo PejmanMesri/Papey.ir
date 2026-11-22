@@ -308,8 +308,7 @@
         if (!await ShippingSms.SetOrderStatusAsync(o.Id, s))
         {
             _statusVersion++;
-            _shipmentOrder = o; _openShipment = true;
-            _trackingNotice = "تغییر وضعیت انجام نشد. پیش از ارسال، شرکت ارسال و کد رهگیری معتبر را ذخیره کنید.";
+            _trackingNotice = "تغییر وضعیت انجام نشد. صفحه را تازه کنید و دوباره تلاش کنید.";
             return;
         }
         o.Status = s;

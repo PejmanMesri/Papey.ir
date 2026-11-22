@@ -20,9 +20,10 @@ public sealed class ShippingSmsQueue(IDbContextFactory<AppDbContext> factory, Sm
         {
             order.Status = OrderStatus.Shipped;
             order.ShippedAt ??= DateTime.UtcNow;
-            if (!await db.ShippingSmsJobs.AnyAsync(j => j.OrderId == order.Id, ct))
-                db.ShippingSmsJobs.Add(new() { OrderId = order.Id, IsSandbox = sms.IsSandbox });
         }
+        if (order.Status is OrderStatus.Shipped or OrderStatus.Delivered &&
+            !await db.ShippingSmsJobs.AnyAsync(j => j.OrderId == order.Id, ct))
+            db.ShippingSmsJobs.Add(new() { OrderId = order.Id, IsSandbox = sms.IsSandbox });
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
         return true;
@@ -36,8 +37,7 @@ public sealed class ShippingSmsQueue(IDbContextFactory<AppDbContext> factory, Sm
         var orders = await db.Orders.FromSqlInterpolated($"SELECT * FROM \"Orders\" WHERE \"Id\" = {orderId} FOR UPDATE").ToListAsync(ct);
         var order = orders.FirstOrDefault();
         if (order is null || order.Status is OrderStatus.Pending or OrderStatus.PaymentFailed) return false;
-        if (status == OrderStatus.Shipped && !ShipmentTracking.IsComplete(order)) return false;
-        if (status == OrderStatus.Shipped && order.Status != OrderStatus.Shipped &&
+        if (status == OrderStatus.Shipped && ShipmentTracking.IsComplete(order) &&
             !await db.ShippingSmsJobs.AnyAsync(j => j.OrderId == order.Id, ct))
             db.ShippingSmsJobs.Add(new() { OrderId = order.Id, IsSandbox = sms.IsSandbox });
         order.Status = status;
