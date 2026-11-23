@@ -8,7 +8,10 @@ public static class ProductInventory
 {
     public static int MaximumQuantity(ProductVariant variant) =>
         !variant.IsEnabled || !variant.Product.IsActive ? 0 :
-        variant.Product.HasUnlimitedStock ? int.MaxValue : Math.Max(0, variant.Stock);
+        IsUnlimited(variant, variant.Product) ? int.MaxValue : Math.Max(0, variant.Stock);
+
+    public static bool IsUnlimited(ProductVariant variant, Product product) =>
+        variant.UnlimitedStockOverride ?? product.HasUnlimitedStock;
 
     public static bool CanOrder(ProductVariant variant, int quantity) =>
         quantity > 0 && quantity <= MaximumQuantity(variant);
@@ -26,7 +29,7 @@ public static class ProductInventory
         if (variant is null) return null;
         await db.Entry(variant).Reference(v => v.Product).LoadAsync(ct);
         if (!CanOrder(variant, quantity)) return null;
-        if (!variant.Product.HasUnlimitedStock) variant.Stock -= quantity;
+        if (!IsUnlimited(variant, variant.Product)) variant.Stock -= quantity;
         return variant;
     }
 }

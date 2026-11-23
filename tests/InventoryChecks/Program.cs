@@ -81,6 +81,33 @@ try
         if (commit) await tx.CommitAsync();
         return true;
     }
+
+    var type = new ProductTypeEntity { Name = "Bulk type" };
+    var color = new Color { Name = "Black", Hex = "#000000" };
+    var size = new Size { Name = "M" };
+    db.AddRange(type, color, size);
+    await db.SaveChangesAsync();
+    await db.Categories.Where(c => c.Id == category.Id)
+        .ExecuteUpdateAsync(set => set.SetProperty(c => c.ProductTypeId, type.Id));
+
+    async Task<int> ApplyBulk(BulkStockMode mode, int quantity = 0)
+    {
+        await using var context = factory.CreateDbContext();
+        return await BulkInventory.ApplyAsync(context, type.Id, color.Id, size.Id, mode, quantity);
+    }
+    Check(await ApplyBulk(BulkStockMode.Limited, 2) == 2, "Bulk stock updates legacy variants and creates missing combinations");
+    Check(!await Reserve(available.Id, 3) && await Reserve(available.Id, 2),
+        "Finite override enforces and decrements stock even when the product defaults to unlimited");
+    Check(await ApplyBulk(BulkStockMode.Unlimited) == 2, "Bulk stock can make one combination unlimited");
+    var added = await db.ProductVariants.AsNoTracking().SingleAsync(v => v.ProductId == limited.Id && v.ColorId == color.Id);
+    Check(await Reserve(added.Id, 500), "Unlimited override works on a finite-stock product");
+    Check(await ApplyBulk(BulkStockMode.Unavailable) == 2 && !await Reserve(available.Id, 1)
+        && !await Reserve(added.Id, 1), "Bulk unavailable blocks both combinations");
+    Check(await db.ProductVariants.AnyAsync(v => v.Id == finite.Id && v.IsEnabled && v.Stock == 3
+        && v.UnlimitedStockOverride == null), "Bulk stock preserves other colors and sizes");
+    await db.ProductVariants.Where(v => v.Id == available.Id).ExecuteUpdateAsync(set => set
+        .SetProperty(v => v.IsEnabled, true).SetProperty(v => v.Stock, 4)
+        .SetProperty(v => v.UnlimitedStockOverride, (bool?)null));
     Check(await Reserve(available.Id, 20000), "Checkout accepts unlimited quantities");
     Check(await db.ProductVariants.Where(v => v.Id == available.Id).Select(v => v.Stock).SingleAsync() == 4, "Unlimited checkout never decrements stock");
     Check(!await Reserve(disabled.Id, 1), "Checkout rejects disabled historical variants");

@@ -1,0 +1,69 @@
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject IJSRuntime JS
+@inject ILogger<BulkStockEditor> Logger
+
+<details class="card-box" style="margin-bottom:20px">
+    <summary><strong>تنظیم گروهی موجودی</strong></summary>
+    <p>یک نوع محصول، رنگ و سایز را انتخاب کنید. تغییر روی همهٔ محصولات آن نوع اعمال می‌شود.</p>
+    <form @onsubmit="Apply" @onsubmit:preventDefault>
+        <fieldset class="form-grid" disabled="@_busy">
+            <label>نوع محصول<select class="form-input" @bind="_type"><option value="0">انتخاب کنید</option>
+                @foreach (var item in _types) { <option value="@item.Id">@item.Name</option> }
+            </select></label>
+            <label>رنگ<select class="form-input" @bind="_color"><option value="0">انتخاب کنید</option>
+                @foreach (var item in Colors.Where(c => c.IsActive)) { <option value="@item.Id">@item.Name</option> }
+            </select></label>
+            <label>سایز<select class="form-input" @bind="_size"><option value="0">انتخاب کنید</option>
+                @foreach (var item in Sizes.Where(s => s.IsActive)) { <option value="@item.Id">@item.Name</option> }
+            </select></label>
+            <label>موجودی<select class="form-input" @bind="_mode">
+                <option value="@BulkStockMode.Unavailable">ناموجود</option>
+                <option value="@BulkStockMode.Limited">موجود با تعداد مشخص</option>
+                <option value="@BulkStockMode.Unlimited">موجودی نامحدود</option>
+            </select></label>
+            @if (_mode == BulkStockMode.Limited)
+            {
+                <label>تعداد برای هر محصول<input class="form-input" type="number" min="1" required @bind="_quantity" /></label>
+            }
+        </fieldset>
+        <button class="btn-papey" type="submit" disabled="@(_busy || _type == 0 || _color == 0 || _size == 0)">اعمال موجودی</button>
+        @if (_message is not null) { <p role="status">@_message</p> }
+    </form>
+</details>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<Color> Colors { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<Size> Sizes { get; set; } = [];
+    private List<ProductTypeEntity> _types = [];
+    private int _type, _color, _size, _quantity = 1;
+    private BulkStockMode _mode;
+    private bool _busy;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        _types = await db.ProductTypes.AsNoTracking().Where(t => t.IsActive).OrderBy(t => t.DisplayOrder).ToListAsync();
+    }
+
+    private async Task Apply()
+    {
+        if (_busy || _type == 0 || _color == 0 || _size == 0) return;
+        _busy = true;
+        _message = null;
+        try
+        {
+            if (!await JS.InvokeAsync<bool>("confirm", "موجودی این ترکیب برای همهٔ محصولات نوع انتخاب‌شده تغییر کند؟")) return;
+            await using var db = await DbFactory.CreateDbContextAsync();
+            var count = await BulkInventory.ApplyAsync(db, _type, _color, _size, _mode, _quantity);
+            _message = count == 0 ? "محصولی برای تغییر پیدا نشد." :
+                $"موجودی {PersianHelpers.ToPersianDigits(count.ToString())} محصول به‌روزرسانی شد.";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Bulk inventory update failed");
+            _message = "تغییر موجودی انجام نشد. انتخاب‌ها و تعداد را بررسی کنید و دوباره تلاش کنید.";
+        }
+        finally { _busy = false; }
+    }
+}

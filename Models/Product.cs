@@ -89,6 +89,7 @@ public class ProductVariant
 
     public bool IsEnabled { get; set; } = true;
     public int Stock { get; set; }
+    public bool? UnlimitedStockOverride { get; set; }
 
     [Column(TypeName = "numeric(18,0)")]
     public decimal? PriceOverride { get; set; }

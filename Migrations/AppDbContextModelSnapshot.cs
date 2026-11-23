@@ -1044,6 +1044,9 @@ namespace Papey.Migrations
                     b.Property<int>("Stock")
                         .HasColumnType("integer");
 
+                    b.Property<bool?>("UnlimitedStockOverride")
+                        .HasColumnType("boolean");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ColorId");

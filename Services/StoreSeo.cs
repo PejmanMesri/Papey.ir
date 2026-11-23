@@ -28,7 +28,7 @@ public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfigura
     {
         var variants = product.Variants.Where(v => v.IsEnabled).ToArray();
         var prices = variants.Select(v => v.EffectivePrice).DefaultIfEmpty(product.Price).Select(price=>price-DiscountService.PercentOff(price,discountPercent)).ToArray();
-        var available = variants.Any(v => product.IsActive && (product.HasUnlimitedStock || v.Stock > 0));
+        var available = variants.Any(v => product.IsActive && (ProductInventory.IsUnlimited(v, product) || v.Stock > 0));
         var offers = new Dictionary<string, object?> {
             ["@type"] = prices.Min() == prices.Max() ? "Offer" : "AggregateOffer", ["url"] = url, ["priceCurrency"] = "IRR",
             ["availability"] = "https://schema.org/" + (available ? "InStock" : "OutOfStock"), ["itemCondition"] = "https://schema.org/NewCondition"

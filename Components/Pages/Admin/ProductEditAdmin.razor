@@ -236,7 +236,11 @@ else
                                 var v = _product.Variants.FirstOrDefault(x => x.ColorId == c.Id && x.SizeId == s.Id);
                                 <td style="white-space:nowrap">
                                     <input type="checkbox" checked="@(v?.IsEnabled == true)" aria-label="فعال بودن @c.Name / @s.Name" @onchange="e => ToggleVariant(c, s, (bool)e.Value!)" />
-                                    @if (!_product.HasUnlimitedStock)
+                                    @if (v?.UnlimitedStockOverride == true)
+                                    {
+                                        <small>نامحدود</small>
+                                    }
+                                    else if (v?.UnlimitedStockOverride == false || !_product.HasUnlimitedStock)
                                     {
                                         <input type="number" min="0" class="form-input" value="@(v?.Stock ?? 0)"
                                                aria-label="موجودی @c.Name / @s.Name" disabled="@(v?.IsEnabled != true)" style="width:80px"
@@ -761,7 +765,7 @@ else
 
     private async Task SetStock(Color c, Size s, string? val)
     {
-        if (_saving || _product?.HasUnlimitedStock != false || !int.TryParse(val, out var stock) || stock < 0) return;
+        if (_saving || _product is null || !int.TryParse(val, out var stock) || stock < 0) return;
         if (IsNew)
         {
             var variant = _product.Variants.FirstOrDefault(v => v.ColorId == c.Id && v.SizeId == s.Id);
@@ -771,7 +775,7 @@ else
         _variantMsg = null;
         await using var db = await DbFactory.CreateDbContextAsync();
         var t = await db.ProductVariants.FirstOrDefaultAsync(v => v.ProductId == Id && v.ColorId == c.Id && v.SizeId == s.Id);
-        if (t is null || !t.IsEnabled) return;
+        if (t is null || !t.IsEnabled || ProductInventory.IsUnlimited(t, _product)) return;
         t.Stock = stock;
         _variantMsg = "✓ موجودی به‌روزرسانی شد.";
         await db.SaveChangesAsync();
