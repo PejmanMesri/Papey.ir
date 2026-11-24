@@ -102,7 +102,7 @@ public sealed class StoreSeo(IDbContextFactory<AppDbContext> factory, IConfigura
             indexable=await db.Products.AnyAsync(p=>p.IsActive&&(p.Category.Slug==slug||p.ProductCategories.Any(pc=>pc.Category.Slug==slug)));
         }
         if (indexable && image is null)
-            image = ImageUrl(await db.Products.AsNoTracking().Where(p => p.IsActive && p.ImageUrl != null).OrderByDescending(p => p.HomeHeroSlot != null).ThenBy(p => p.Id).Select(p => p.ImageUrl).FirstOrDefaultAsync());
+            image = Url("/img/papey-share.jpg");
         var siteJson = path == "" ? JsonSerializer.Serialize(new Dictionary<string, object?> {
             ["@context"] = "https://schema.org", ["@graph"] = new object[] {
                 new Dictionary<string, object?> { ["@type"] = "OnlineStore", ["@id"] = Url("/#organization"), ["name"] = "پاپی", ["alternateName"] = "Papey", ["url"] = Url("/"), ["sameAs"] = new[] { "https://www.instagram.com/papey.ir", "https://t.me/papeycompany" } },
