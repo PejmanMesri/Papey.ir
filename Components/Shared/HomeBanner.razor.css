@@ -90,3 +90,17 @@
     }
     .home-slide.has-mobile-art .home-slide-copy p { color: #fff; }
 }
+
+@media (min-width: 901px) {
+    .home-slideshow { aspect-ratio: 3 / 1; }
+    .home-slide-art { position: absolute; inset: 0; aspect-ratio: auto; }
+    .home-slide-copy {
+        position: absolute;
+        inset-inline: 64px;
+        bottom: 28px;
+        padding: 0;
+    }
+    .home-slide-copy h2, .home-slide-copy p { text-shadow: 0 1px 8px #000, 0 1px 3px #000; }
+    .home-slide-copy p { margin: 4px 0 0; }
+    .banner-arrows button { top: 50%; }
+}

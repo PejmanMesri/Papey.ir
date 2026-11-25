@@ -16,24 +16,47 @@
         <label for="banner-interval"><strong>زمان نمایش هر بنر</strong><small>بین ۳ تا ۳۰ ثانیه</small></label>
         <div><input id="banner-interval" aria-label="زمان نمایش هر بنر به ثانیه" class="form-input" type="number" min="3" max="30" required @bind="_interval" @bind:event="oninput" /><span>ثانیه</span><button type="submit" class="btn-papey" disabled="@_busy">ذخیره زمان</button></div>
     </form>
-    <div class="editorial-actions"><button class="btn-papey" @onclick="Add" disabled="@(_content.Slides.Count >= 20)">+ افزودن بنر</button><button class="btn-papey" @onclick="Save">ذخیره تغییرات</button><a href="/" target="_blank" rel="noopener">مشاهده فروشگاه ↗</a></div>
+    <div class="banner-toolbar">
+        <button type="button" class="btn-papey btn-outline" @onclick="Add" disabled="@(_content.Slides.Count >= 20)">افزودن بنر</button>
+        <a href="/" target="_blank" rel="noopener">مشاهده فروشگاه ↗</a>
+        <button type="button" class="btn-papey banner-save" @onclick="Save">ذخیره تغییرات</button>
+    </div>
     @foreach (var slide in _content.Slides)
     {
+        var index = _content.Slides.IndexOf(slide);
+        var desktop = Preview(slide.Id, slide.Image);
+        var mobile = Preview(slide.MobileUploadKey, slide.MobileImage);
         <section class="card-box banner-editor" @key="slide.Id">
-            <div class="banner-editor-image">@if (!string.IsNullOrEmpty(Preview(slide.Id, slide.Image))) { <img src="@Preview(slide.Id, slide.Image)" alt="پیش‌نمایش دسکتاپ" /> }<label>تصویر دسکتاپ <span dir="ltr">(۲۰۴۶ × ۸۲۲ px)</span><InputFile accept="image/png,image/jpeg,image/webp" OnChange="e => Upload(e, slide.Id)" /></label>
-                <label>تصویر موبایل <span dir="ltr">(۹۶۰ × ۱۲۰۰ px)</span><InputFile accept="image/png,image/jpeg,image/webp" OnChange="e => Upload(e, slide.MobileUploadKey)" /></label>
-                @if (!string.IsNullOrEmpty(Preview(slide.MobileUploadKey, slide.MobileImage)))
-                {
-                    <img class="banner-mobile-preview" src="@Preview(slide.MobileUploadKey, slide.MobileImage)" alt="پیش‌نمایش موبایل" />
-                }
-            </div>
-            <div class="banner-editor-fields">
-                <label>عنوان (اختیاری)<input class="form-input" maxlength="120" @bind="slide.Title" /></label>
-                <label>توضیح (اختیاری)<textarea class="form-input" maxlength="500" @bind="slide.Description"></textarea></label>
-                <label>لینک دکمه<input class="form-input" dir="ltr" placeholder="/products" @bind="slide.Link" /></label>
-                <label><input type="checkbox" @bind="slide.Active" /> بنر فعال است</label>
-                <label><input type="checkbox" @bind="slide.IsCampaign" /> تصویر عریض طراحی‌شده (نمایش تمام‌عرض)</label>
-                <div class="editorial-actions"><button class="btn-papey btn-outline" disabled="@(_content.Slides.IndexOf(slide) == 0)" @onclick="() => Move(slide, -1)">↑ قبل‌تر</button><button class="btn-papey btn-outline" disabled="@(_content.Slides.IndexOf(slide) == _content.Slides.Count - 1)" @onclick="() => Move(slide, 1)">↓ بعدتر</button><button class="btn-papey btn-outline" @onclick="() => Remove(slide)">حذف بنر</button></div>
+            <details open="@(_newSlideId == slide.Id)">
+                <summary>
+                    @if (!string.IsNullOrEmpty(desktop)) { <img src="@desktop" alt="" /> }
+                    <span><strong>@(string.IsNullOrWhiteSpace(slide.Title) ? $"بنر {PersianHelpers.ToPersianDigits((index + 1).ToString())}" : slide.Title)</strong>
+                    <small>@(slide.Active ? "فعال" : "غیرفعال") · @(string.IsNullOrEmpty(mobile) ? "بدون تصویر موبایل" : "تصویر موبایل دارد")</small></span>
+                    <span class="banner-edit-label">ویرایش</span>
+                </summary>
+                <div class="banner-edit-body">
+                    <div class="banner-uploads">
+                        <label><strong>تصویر دسکتاپ</strong><small dir="ltr">2046 × 822 px</small>
+                            @if (!string.IsNullOrEmpty(desktop)) { <img src="@desktop" alt="پیش‌نمایش دسکتاپ" /> }
+                            <InputFile accept="image/png,image/jpeg,image/webp" OnChange="e => Upload(e, slide.Id)" />
+                        </label>
+                        <label><strong>تصویر موبایل</strong><small dir="ltr">960 × 1200 px</small>
+                            @if (!string.IsNullOrEmpty(mobile)) { <img src="@mobile" alt="پیش‌نمایش موبایل" /> }
+                            <InputFile accept="image/png,image/jpeg,image/webp" OnChange="e => Upload(e, slide.MobileUploadKey)" />
+                        </label>
+                    </div>
+                    <div class="banner-editor-fields">
+                        <label>عنوان (اختیاری)<input class="form-input" maxlength="120" @bind="slide.Title" /></label>
+                        <label>توضیح (اختیاری)<textarea class="form-input" maxlength="500" @bind="slide.Description"></textarea></label>
+                        <label>لینک دکمه<input class="form-input" dir="ltr" placeholder="/products" @bind="slide.Link" /></label>
+                        <label class="banner-active"><input type="checkbox" @bind="slide.Active" /> نمایش در فروشگاه</label>
+                    </div>
+                </div>
+            </details>
+            <div class="banner-row-actions">
+                <button type="button" class="btn-papey btn-sm btn-outline" disabled="@(index == 0)" @onclick="() => Move(slide, -1)">↑ قبل‌تر</button>
+                <button type="button" class="btn-papey btn-sm btn-outline" disabled="@(index == _content.Slides.Count - 1)" @onclick="() => Move(slide, 1)">↓ بعدتر</button>
+                <button type="button" class="btn-papey btn-sm btn-danger-papey" @onclick="() => Remove(slide)">حذف بنر</button>
             </div>
         </section>
     }
@@ -51,7 +74,14 @@
     private string? _notice;
     protected override async Task OnInitializedAsync() { _content = await Settings.ReadAsync(); _interval = _content.IntervalSeconds; await using var db = await DbFactory.CreateDbContextAsync(); _types = await db.ProductTypes.OrderBy(t => t.DisplayOrder).ToListAsync(); }
     private string Preview(string id, string fallback) => _pending.TryGetValue(id, out var file) ? file.PreviewUrl : fallback;
-    private void Add() { if (_content!.Slides.Count < 20) _content.Slides.Add(new() { Title = "", Description = "" }); }
+    private string? _newSlideId;
+    private void Add()
+    {
+        if (_content!.Slides.Count >= 20) return;
+        var slide = new HomeSlide { Title = "", Description = "" };
+        _newSlideId = slide.Id;
+        _content.Slides.Add(slide);
+    }
     private void Move(HomeSlide slide, int delta) { var index = _content!.Slides.IndexOf(slide); var next = index + delta; if (next < 0 || next >= _content.Slides.Count) return; _content.Slides.RemoveAt(index); _content.Slides.Insert(next, slide); }
     private void Remove(HomeSlide slide) { _content!.Slides.Remove(slide); if (_pending.Remove(slide.Id, out var file)) Uploads.Delete(file); if (_pending.Remove(slide.MobileUploadKey, out var mobile)) Uploads.Delete(mobile); }
     private const long MaxBannerBytes = 10 * 1024 * 1024;
