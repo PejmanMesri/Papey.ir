@@ -10,6 +10,9 @@ public sealed class HomeSlide
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Image { get; set; } = "";
+    public string MobileImage { get; set; } = "";
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string MobileUploadKey => "mobile-" + Id;
     public string Title { get; set; } = "سلیقه‌ات را زندگی کن.";
     public string Description { get; set; } = "طرح‌هایی از دنیای تو، روی لباسی برای هر روز تو.";
     public string Link { get; set; } = "/products";
@@ -51,7 +54,8 @@ public sealed class HomepageSettings(IDbContextFactory<AppDbContext> factory, Pr
         {
             if (slide.Title?.Length > 120 || slide.Description?.Length > 500) return "عنوان (حداکثر ۱۲۰ حرف) و توضیح (حداکثر ۵۰۰ حرف) را بررسی کنید.";
             if (!LocalUrl(slide.Link)) return "لینک دکمه باید آدرس داخلی مانند /products باشد.";
-            if (!pending.ContainsKey(slide.Id) && !ImageUrl(slide.Image)) return "برای هر اسلاید یک تصویر انتخاب کنید.";
+            if (!pending.ContainsKey(slide.Id) && !ImageUrl(slide.Image)) return "برای هر اسلاید تصویر دسکتاپ را انتخاب کنید.";
+            if (!string.IsNullOrEmpty(slide.MobileImage) && !ImageUrl(slide.MobileImage)) return "آدرس تصویر موبایل معتبر نیست.";
         }
         if (content.TypePhotos.Values.Any(v => !ImageUrl(v))) return "آدرس تصویر معتبر نیست.";
         await using var transaction = await db.Database.BeginTransactionAsync();
@@ -62,13 +66,15 @@ public sealed class HomepageSettings(IDbContextFactory<AppDbContext> factory, Pr
         {
             foreach (var entry in pending)
             {
-                var slide = copy.Slides.SingleOrDefault(s => s.Id == entry.Key);
+                var slide = copy.Slides.SingleOrDefault(s => s.Id == entry.Key || s.MobileUploadKey == entry.Key);
                 var typeId = entry.Key.StartsWith("type-") && int.TryParse(entry.Key[5..], out var type) ? type : 0;
                 if (slide is null && (typeId == 0 || !await db.ProductTypes.AnyAsync(t => t.Id == typeId))) continue;
                 if (entry.Value.IsVideo) throw new InvalidOperationException("فقط تصویر مجاز است.");
                 var path = uploads.CopyToPermanent(entry.Value, false); paths.Add(path);
                 var url = "/uploads/images/" + Path.GetFileName(path);
-                if (slide is not null) slide.Image = url; else copy.TypePhotos[typeId] = url;
+                if (slide is null) copy.TypePhotos[typeId] = url;
+                else if (entry.Key == slide.MobileUploadKey) slide.MobileImage = url;
+                else slide.Image = url;
             }
             var row = await db.StorePageContents.FindAsync("homepage");
             if (row is null) { row = new() { Id = "homepage" }; db.StorePageContents.Add(row); }
