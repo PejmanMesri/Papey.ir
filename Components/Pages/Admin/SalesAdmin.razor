@@ -191,7 +191,7 @@
                                         <div class="shipment-fields">
                                             <label>شرکت ارسال<input class="form-input" list="shipment-couriers" maxlength="25" required @bind="tracking.Courier" @bind:event="oninput" /></label>
                                             <label>کد رهگیری مرسوله<input class="form-input" dir="ltr" maxlength="25" required @bind="tracking.Number" @bind:event="oninput" /></label>
-                                            <button type="submit" class="btn-papey" disabled="@_savingTracking">@(_savingTracking ? "در حال ذخیره…" : "ذخیره اطلاعات ارسال")</button>
+                                            <div class="admin-form-actions"><button type="submit" class="btn-papey" disabled="@_savingTracking">@(_savingTracking ? "در حال ذخیره…" : "ذخیره اطلاعات ارسال")</button></div>
                                         </div>
                                     </form>
                                     <datalist id="shipment-couriers"><option value="تیپاکس" /><option value="پست" /><option value="چاپار" /></datalist>

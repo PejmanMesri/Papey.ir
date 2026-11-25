@@ -19,7 +19,7 @@
     @if (_message is not null) { <div class="alert-papey @(_failed ? "alert-danger" : "alert-success")" role="status">@_message</div> }
     <label class="form-label">تخفیف همه کالاها (درصد؛ صفر یعنی غیرفعال)<input class="form-input" type="number" min="0" max="100" @bind="_discountPercent" /></label>
     <p>تخفیف فروشگاه، سپس کد تخفیف و در پایان مالیات محاسبه می‌شود. سفارش‌های قبلی تغییر نمی‌کنند.</p>
-    <button class="btn-papey" type="button" disabled="@(!_loaded || _saving)" @onclick="Save">@(_saving ? "در حال ذخیره…" : "ذخیره تنظیمات")</button>
+    <div class="admin-form-actions"><button class="btn-papey" type="button" disabled="@(!_loaded || _saving)" @onclick="Save">@(_saving ? "در حال ذخیره…" : "ذخیره تنظیمات")</button></div>
 </section>
 <section class="card-box guide-settings" aria-labelledby="guide-settings-title">
     <h2 id="guide-settings-title">راهنمای سایز انواع لباس</h2>

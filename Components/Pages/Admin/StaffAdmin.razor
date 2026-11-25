@@ -17,7 +17,7 @@
             <label for="staff-phone">موبایل (اختیاری)<input id="staff-phone" class="form-input" type="tel" dir="ltr" maxlength="16" @bind="_phone" @bind:event="oninput" /></label>
             <label for="staff-password">رمز عبور<input id="staff-password" class="form-input" type="password" dir="ltr" autocomplete="new-password" minlength="10" maxlength="72" required @bind="_password" @bind:event="oninput" /><small>حداقل ۱۰ کاراکتر</small></label>
         </div>
-        <button type="submit" class="btn-papey" disabled="@_busy">@(_busy ? "در حال ذخیره…" : "ایجاد حساب مدیر سایت")</button>
+        <div class="admin-form-actions"><button type="submit" class="btn-papey" disabled="@_busy">@(_busy ? "در حال ذخیره…" : "ایجاد حساب مدیر سایت")</button></div>
     </form>
 </section>
 <section aria-label="فهرست همکاران">

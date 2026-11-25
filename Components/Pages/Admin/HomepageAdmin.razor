@@ -33,7 +33,7 @@
     }
     <h2>تصاویر انتخاب مدل لباس</h2><p>این تصاویر در صفحه اصلی، منو و فیلتر محصولات استفاده می‌شوند. تصویر دلخواه انتخاب کنید و سپس ذخیره کنید.</p>
     <div class="type-photo-editor">@foreach (var type in _types) { <section class="card-box"><h3>@type.Name</h3><img src="@Preview("type-" + type.Id, _content.TypePhotos.GetValueOrDefault(type.Id) ?? HomepageSettings.DefaultPhoto(type.Name) ?? "/img/custom-studio/tshirt-black-front.webp")" alt="@type.Name" /><label>تغییر تصویر<InputFile accept="image/png,image/jpeg,image/webp" OnChange='e => Upload(e, "type-" + type.Id)'  /></label></section> }</div>
-    <button class="btn-papey" @onclick="Save">ذخیره تغییرات</button>
+    <div class="admin-form-actions"><button class="btn-papey" @onclick="Save">ذخیره تغییرات</button></div>
     </fieldset>
 }
 @code {

@@ -18,7 +18,7 @@
 @if (_users.Count == 0) { <tr><td colspan="8">کاربری یافت نشد.</td></tr> }
 </tbody></table>
 </div>
-<div style="display:flex;gap:16px;align-items:center;margin-top:20px"><button class="btn-papey btn-outline" disabled="@(_page==0)" @onclick="Previous">قبلی</button><span>صفحه @Fa(_page+1) از @Fa(Math.Max(1,(_total+24)/25))</span><button class="btn-papey btn-outline" disabled="@((_page+1)*25>=_total)" @onclick="Next">بعدی</button></div>
+<div class="admin-pagination"><button class="btn-papey btn-outline" disabled="@(_page==0)" @onclick="Previous">قبلی</button><span>صفحه @Fa(_page+1) از @Fa(Math.Max(1,(_total+24)/25))</span><button class="btn-papey btn-outline" disabled="@((_page+1)*25>=_total)" @onclick="Next">بعدی</button></div>
 @code {
  private sealed record UserRow(string Username,string? FullName,string? Phone,string? Email,bool IsAdmin,bool IsStaff,bool IsDisabled,DateTime CreatedAt,int Orders);
  private List<UserRow> _users=[];

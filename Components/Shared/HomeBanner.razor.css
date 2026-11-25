@@ -1,12 +1,11 @@
-.home-slideshow{width:calc(100% - 24px);height:auto;aspect-ratio:3/1;margin:12px auto 0;position:relative;display:grid;background:#111;color:#fff;overflow:hidden;border:1px solid #302923;border-radius:20px}
-.home-slide{position:relative;grid-area:1/1;min-width:0;min-height:0;opacity:0;visibility:hidden;transform:scale(.99);transition:opacity .48s ease,transform .48s ease,visibility .48s;pointer-events:none}.home-slide.is-active{opacity:1;transform:none;visibility:visible;pointer-events:auto}
-.home-slide-art{position:absolute;inset:0;overflow:hidden}.home-slide-art>img{display:block;width:100%;height:100%;object-fit:cover;object-position:left center;background:#111}
-.home-slide.is-campaign .home-slide-art>img{width:100%;max-width:none;mask-image:none}
-.home-slide-copy{position:absolute;z-index:1;inset-inline-start:max(68px, 8%);top:46%;transform:translateY(-50%);max-width:38%}.home-slide-copy h2{font-size:clamp(1.8rem,3vw,4rem);line-height:1.5;margin:16px 0;color:#fff;font-weight:850;overflow-wrap:anywhere}.home-slide-copy p{line-height:2;color:#eee;font-size:.9rem}.home-slide-copy a{display:inline-block;margin-top:12px;padding:11px 22px;border:1px solid #d8bd7e;color:#171717;text-decoration:none;background:#e7d4a5;border-radius:999px;font-weight:700}.home-slide-copy a:hover{background:#eee}
+.home-slideshow{width:calc(100% - 24px);height:auto;margin:12px auto 0;position:relative;display:grid;background:#111;color:#fff;overflow:hidden;border:1px solid #302923;border-radius:20px}
+.home-slide{position:relative;grid-area:1/1;min-width:0;min-height:0;opacity:0;visibility:hidden;transition:opacity .48s ease,visibility .48s;pointer-events:none}.home-slide.is-active{opacity:1;transform:none;visibility:visible;pointer-events:auto}
+.home-slide-art{position:relative;aspect-ratio:3/1;overflow:hidden}.home-slide-art>img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:scale-down;object-position:center;background:#111}
+.home-slide-copy{position:relative;z-index:1;text-align:center;padding:12px 20px 42px}.home-slide-copy h2{font-size:clamp(1.4rem,2vw,2.4rem);line-height:1.5;margin:0;color:#fff;font-weight:850;overflow-wrap:anywhere}.home-slide-copy p{line-height:2;color:#eee;font-size:.9rem}.home-slide-copy a{display:inline-block;margin-top:12px;padding:11px 22px;border:1px solid #d8bd7e;color:#171717;text-decoration:none;background:#e7d4a5;border-radius:999px;font-weight:700}.home-slide-copy a:hover{background:#eee}
 
 .banner-arrows { position:absolute; inset:0; z-index:3; pointer-events:none; }
 .banner-arrows button {
-    position:absolute; top:50%; translate:0 -50%; pointer-events:auto;
+    position:absolute; top:calc((100vw - 26px) / 6); translate:0 -50%; pointer-events:auto;
     display:grid; place-items:center; width:44px; height:44px; padding:0;
     border:1px solid #e7c68988; border-radius:13px; background:#171410e8;
     color:#fff0cf; cursor:pointer; transition:background-color .2s,color .2s,scale .2s;
@@ -29,17 +28,19 @@
     outline:2px solid #ffe1a7; outline-offset:2px;
 }
 @media (max-width: 900px) {
-    .home-slideshow { aspect-ratio:auto; border-radius:15px; padding-bottom:34px; }
+    .home-slideshow { border-radius:15px; }
     .home-slide { display:flex; flex-direction:column; }
     .home-slide-art { position:relative; inset:auto; width:100%; aspect-ratio:2/1; }
-    .home-slide-art > img, .home-slide.is-campaign .home-slide-art > img { object-fit:contain; object-position:center; }
     .home-slide-copy {
-        position:static; transform:none; max-width:none; padding:12px 16px 5px;
+        position:static; transform:none; max-width:none; padding:10px 16px 42px;
         text-align:center; background:#111;
     }
     .home-slide-copy h2 { font-size:clamp(1.15rem,4.5vw,1.65rem); margin:0 0 6px; }
     .home-slide-copy p { font-size:.8rem; margin:0; line-height:1.75; }
     .home-slide-copy a { padding:8px 15px; margin-top:9px; font-size:.8rem; }
+    .banner-dots button { min-width:12px; padding-inline:2px; }
+    .banner-dots span { width:8px; }
+    .banner-dots .active span { width:16px; }
     .banner-arrows button { top:calc((100vw - 26px) / 4); }
     .banner-arrows button:first-child { inset-inline-start:6px; }
     .banner-arrows button:last-child { inset-inline-end:6px; }

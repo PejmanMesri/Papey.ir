@@ -26,7 +26,7 @@
                 <label>تعداد برای هر محصول<input class="form-input" type="number" min="1" required @bind="_quantity" /></label>
             }
         </fieldset>
-        <button class="btn-papey" type="submit" disabled="@(_busy || _type == 0 || _color == 0 || _size == 0)">اعمال موجودی</button>
+        <div class="admin-form-actions"><button class="btn-papey" type="submit" disabled="@(_busy || _type == 0 || _color == 0 || _size == 0)">اعمال موجودی</button></div>
         @if (_message is not null) { <p role="status">@_message</p> }
     </form>
 </details>

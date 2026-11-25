@@ -16,7 +16,7 @@
 <label>حداکثر کاهش قیمت (تومان)<input class="form-input" required type="number" min="1" @bind="_cap" /></label>
 <label>ظرفیت کل استفاده<input class="form-input" required type="number" min="1" @bind="_limit" /></label>
 <label>آخرین روز اعتبار (شمسی)<JalaliDatePicker @bind-Value="_expiry" /></label>
-</div><button class="btn-papey" disabled="@_saving">تعریف کد</button>
+</div><div class="admin-form-actions"><button class="btn-papey" disabled="@_saving">تعریف کد</button></div>
 </form>@if(_message is not null){<p role="status">@_message</p>}
 </section>
 <div class="admin-table-scroll" role="region" aria-label="جدول اطلاعات" tabindex="0">
