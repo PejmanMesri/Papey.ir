@@ -1,19 +1,28 @@
 <nav aria-label="منوی مدیریت">
     <NavLink href="/admin" Match="NavLinkMatch.All">📊 داشبورد</NavLink>
-    <NavLink href="/admin/vouchers">🎟 کدهای تخفیف</NavLink>
-    <NavLink href="/admin/users">👥 کاربران</NavLink>
-    <NavLink href="/admin/sales">💰 فروش و تراکنش‌ها</NavLink>
-    <NavLink href="/admin/custom-designs">✦ طرح‌های اختصاصی</NavLink>
-    <NavLink href="/admin/reviews">💬 نظرهای خریداران</NavLink>
-    <NavLink href="/admin/products">👕 محصولات</NavLink>
-    <NavLink href="/admin/categories">🗂 دسته‌بندی‌ها</NavLink>
-    <NavLink href="/admin/colors-sizes">🎨 رنگ‌ها و سایزها</NavLink>
-    <NavLink href="/admin/product-types">🏷 انواع محصول</NavLink>
-    <NavLink href="/admin/homepage">بنرها و تصاویر مدل لباس</NavLink>
-    <NavLink href="/admin/pages">متن صفحات فروشگاه</NavLink>
-    <NavLink href="/admin/sms">✉ پیامک‌ها</NavLink>
-    <AuthorizeView Roles="Owner"><NavLink href="/admin/settings">⚙ تنظیمات فروشگاه</NavLink></AuthorizeView>
-    <AuthorizeView Roles="Owner"><NavLink href="/admin/staff">👥 همکاران و فروشندگان</NavLink></AuthorizeView>
+    <section class="admin-nav-group" aria-label="مدیریت سفارش‌ها">
+        <p aria-hidden="true">مدیریت سفارش‌ها</p>
+        <NavLink href="/admin/sales">💰 فروش و تراکنش‌ها</NavLink>
+        <NavLink href="/admin/custom-designs">✦ طرح‌های اختصاصی</NavLink>
+        <NavLink href="/admin/reviews">💬 نظرهای خریداران</NavLink>
+        <NavLink href="/admin/users">👥 کاربران</NavLink>
+        <NavLink href="/admin/vouchers">🎟 کدهای تخفیف</NavLink>
+    </section>
+    <section class="admin-nav-group" aria-label="فروشگاه">
+        <p aria-hidden="true">فروشگاه</p>
+        <NavLink href="/admin/products">👕 محصولات</NavLink>
+        <NavLink href="/admin/categories">🗂 دسته‌بندی‌ها</NavLink>
+        <NavLink href="/admin/colors-sizes">🎨 رنگ‌ها و سایزها</NavLink>
+        <NavLink href="/admin/product-types">🏷 انواع محصول</NavLink>
+        <NavLink href="/admin/homepage">بنرها و تصاویر مدل لباس</NavLink>
+        <NavLink href="/admin/pages">متن صفحات فروشگاه</NavLink>
+    </section>
+    <section class="admin-nav-group" aria-label="تنظیمات">
+        <p aria-hidden="true">تنظیمات</p>
+        <NavLink href="/admin/sms">✉ پیامک‌ها</NavLink>
+        <AuthorizeView Roles="Owner"><NavLink href="/admin/settings">⚙ تنظیمات فروشگاه</NavLink></AuthorizeView>
+        <AuthorizeView Roles="Owner"><NavLink href="/admin/staff">👥 همکاران و فروشندگان</NavLink></AuthorizeView>
+    </section>
     <hr />
     <a href="/">🏠 بازگشت به فروشگاه</a>
     <a href="/logout">🚪 خروج</a>

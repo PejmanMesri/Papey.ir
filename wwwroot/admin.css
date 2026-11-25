@@ -5,7 +5,7 @@
     background: #f6f5f1;
     color: #171717;
     display: grid;
-    grid-template-columns: 232px minmax(0, 1fr);
+    grid-template-columns: 248px minmax(0, 1fr);
     min-height: 100dvh;
 }
 .admin-shell .admin-side {
@@ -13,7 +13,7 @@
     top: 0;
     width: auto;
     align-self: start;
-    max-height: 100dvh;
+    height: 100dvh;
     overflow-y: auto;
     padding: 24px 14px;
     background: #101010;
@@ -36,7 +36,7 @@
 .admin-side nav a { padding: 9px 12px; border-radius: 6px; line-height: 1.6; }
 .admin-side nav a.active { color: #ffdfaa; background: #392d20; }
 .admin-side nav hr { width: 100%; border: 0; border-top: 1px solid #38342f; }
-.admin-mobile-menu { display: none; }
+.admin-menu-toggle { display: none; }
 .admin-shell .admin-main {
     min-width: 0;
     background: transparent;
@@ -64,37 +64,18 @@
 @media (max-width: 900px) {
     .admin-shell { display: block; }
     .admin-shell .admin-side {
-        position: relative;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        z-index: 10;
+        display: flex;
+        justify-content: space-between;
         align-items: center;
-        column-gap: 10px;
-        max-height: none;
+        gap: 12px;
+        height: auto;
         overflow: visible;
         padding: 10px 16px;
     }
     .admin-side .admin-wordmark { margin: 0; padding: 4px 0; border: 0; }
     .admin-desktop-nav { display: none; }
-    .admin-mobile-menu { display: contents; }
-    .admin-mobile-menu summary {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        min-height: 44px;
-        padding: 0 12px;
-        border: 1px solid #51483b;
-        border-radius: 6px;
-        color: #fff;
-        cursor: pointer;
-    }
-    .admin-mobile-menu:not([open]) nav { display: none; }
-    .admin-mobile-menu nav {
-        grid-column: 1 / -1;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        margin-top: 12px;
-    }
-    .admin-mobile-menu nav a { display: flex; align-items: center; min-height: 44px; }
-    .admin-mobile-menu nav hr { grid-column: 1 / -1; }
+    .admin-menu-toggle { display: inline-flex; align-items: center; gap: 8px; }
 }
 @media (max-width: 600px) {
     .admin-shell .admin-main { padding: 16px 12px 28px; }
@@ -104,4 +85,49 @@
     .admin-content button.btn-papey { min-height: 40px; }
     .admin-content .table-papey { min-width: max-content; }
     .admin-table-scroll .table-papey :is(th, td) { padding: 9px 10px; }
+}
+
+.admin-nav-group { display: grid; gap: 3px; margin-block: 12px 4px; }
+.admin-nav-group > p { margin: 0 12px 4px; color: #baa88f; font-size: .73rem; }
+.admin-side nav a { position: relative; transition: background-color .18s, color .18s; }
+.admin-side nav a.active::before {
+    content: ""; position: absolute; inset-block: 8px; inset-inline-start: 0;
+    width: 3px; border-radius: 4px; background: #e8ba78;
+}
+.admin-menu-toggle, .admin-drawer-header button {
+    min-height: 44px; min-width: 44px; padding: 0 12px;
+    border: 1px solid #5b5042; border-radius: 8px;
+    background: #27231e; color: #fff; font: inherit; cursor: pointer;
+}
+.admin-drawer {
+    position: fixed; inset-block: 0; inset-inline: 0 auto;
+    margin: 0; width: min(320px, 88vw); max-width: none;
+    height: 100dvh; max-height: none; padding: 16px;
+    border: 0; background: #101010; color: #fff; overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.admin-drawer[open] { animation: admin-drawer-enter .24s ease-out both; }
+.admin-drawer::backdrop { background: #0a070580; }
+.admin-drawer-header {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; padding-bottom: 12px; border-bottom: 1px solid #38342f;
+}
+.admin-drawer nav a { min-height: 44px; display: flex; align-items: center; }
+.admin-content :is(.stat-card, .card-box) { animation: admin-content-enter .24s ease-out both; }
+.admin-content a.stat-card { transition: transform .18s, box-shadow .18s; }
+@media (hover: hover) {
+    .admin-content a.stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px #19161014; }
+    .admin-table-scroll tbody > tr:hover > td { background-color: #ac86540b; }
+}
+@keyframes admin-drawer-enter {
+    from { transform: translateX(100%); opacity: .5; }
+}
+@keyframes admin-content-enter {
+    from { opacity: 0; transform: translateY(6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .admin-shell *, .admin-shell *::before, .admin-shell *::after {
+        animation: none !important;
+        transition: none !important;
+    }
 }

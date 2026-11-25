@@ -4,6 +4,21 @@
 (function () {
     'use strict';
 
+    var adminCompact = matchMedia('(max-width: 900px)');
+    adminCompact.addEventListener('change', function (event) {
+        if (!event.matches) document.querySelector('.admin-drawer[open]')?.close();
+    });
+    document.addEventListener('click', function (event) {
+        var drawer = document.getElementById('admin-drawer');
+        if (!drawer) return;
+        if (event.target.closest('[data-admin-menu-open]') && !drawer.open) {
+            drawer.showModal();
+        } else if (drawer.open && (event.target === drawer || event.target.closest('.admin-drawer a'))) {
+            drawer.close();
+        }
+    }, true);
+
+
     document.addEventListener('click', function (event) {
         if (!event.target.closest('[data-contact-dialog]')) return;
         var dialog = document.getElementById('about-contact-dialog');

@@ -6,10 +6,16 @@
             <strong lang="en">PAPEY</strong><span>پنل مدیریت</span>
         </a>
         <div class="admin-desktop-nav"><AdminNavigation /></div>
-        <details class="admin-mobile-menu" data-navigation-menu>
-            <summary>☰ <span>منو</span></summary>
+        <button type="button" class="admin-menu-toggle" data-admin-menu-open aria-haspopup="dialog" aria-controls="admin-drawer">
+            <span aria-hidden="true">☰</span> منو
+        </button>
+        <dialog class="admin-drawer" id="admin-drawer" aria-label="منوی مدیریت">
+            <header class="admin-drawer-header">
+                <strong>پنل مدیریت</strong>
+                <form method="dialog"><button type="submit" aria-label="بستن منو" autofocus>×</button></form>
+            </header>
             <AdminNavigation />
-        </details>
+        </dialog>
     </aside>
     <main class="admin-main">
         <div class="admin-content">
