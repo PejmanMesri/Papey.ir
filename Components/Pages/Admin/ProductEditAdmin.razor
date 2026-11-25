@@ -217,6 +217,7 @@ else
             @(_product.HasUnlimitedStock ? "فقط ترکیب‌های رنگ و سایز قابل سفارش را تیک بزنید؛ نیازی به وارد کردن تعداد نیست." : "ترکیب‌های رنگ و سایز را فعال کنید و تعداد موجودی هر ترکیب را وارد کنید. موجودی صفر یعنی ناموجود.")
         </p>
         <div style="overflow-x:auto">
+            <div class="admin-table-scroll" role="region" aria-label="جدول اطلاعات" tabindex="0">
             <table class="table-papey">
                 <thead>
                     <tr>
@@ -253,6 +254,7 @@ else
                     }
                 </tbody>
             </table>
+            </div>
         </div>
         </fieldset>
         @if (_variantMsg is not null) { <div class="alert-papey alert-success" style="margin-top:8px">@_variantMsg</div> }

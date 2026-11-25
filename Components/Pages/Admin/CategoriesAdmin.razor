@@ -43,6 +43,7 @@
     @if (_msg is not null) { <div class="alert-papey alert-danger">@_msg</div> }
 </div>
 
+<div class="admin-table-scroll" role="region" aria-label="جدول اطلاعات" tabindex="0">
 <table class="table-papey mobile-card-table">
     <thead><tr><th>نام</th><th>نوع محصول</th><th>Slug</th><th>توضیح</th><th>محصولات</th><th>در منو</th><th>وضعیت</th><th>ترتیب</th><th></th></tr></thead>
     <tbody>
@@ -68,6 +69,7 @@
         }
     </tbody>
 </table>
+</div>
 
 @code {
     private List<Category> _categories = new();

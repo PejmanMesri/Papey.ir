@@ -52,6 +52,7 @@
     </div>
 </div>
 
+<div class="admin-table-scroll" role="region" aria-label="جدول اطلاعات" tabindex="0">
 <table class="table-papey mobile-card-table">
     <thead>
         <tr><th>شماره سفارش</th><th>مشتری</th><th>اقلام</th><th>مبلغ</th><th>وضعیت</th><th>کد پیگیری</th><th>تاریخ</th><th></th></tr>
@@ -138,6 +139,7 @@
                             </div>
                             <h4>🛒 اقلام سفارش</h4>
                             <div style="overflow-x:auto">
+                                <div class="admin-table-scroll" role="region" aria-label="جدول اطلاعات" tabindex="0">
                                 <table class="table-papey mobile-card-table">
                                     <thead>
                                         <tr><th>محصول</th><th>رنگ</th><th>سایز</th><th>قیمت واحد</th><th>تعداد</th><th>جمع</th></tr>
@@ -156,6 +158,7 @@
                                         }
                                     </tbody>
                                 </table>
+                                </div>
                             </div>
                             <div style="display:flex; gap:24px; flex-wrap:wrap; justify-content:flex-end; margin-top:12px; border-top:1px solid var(--papey-border); padding-top:12px">
                                 <span>جمع اقلام: <strong>@o.TotalAmount.ToToman()</strong></span>
@@ -174,6 +177,7 @@
         }
     </tbody>
 </table>
+</div>
 
 <dialog @ref="_shipmentDialog" class="shipment-dialog" aria-label="اطلاعات ارسال مرسوله">
 @if (_shipmentOrder is { } shipment) {

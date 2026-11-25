@@ -22,6 +22,7 @@
             <div><label class="form-label">کد</label><input class="form-input" @bind="_newColorHex" style="width:90px" /></div>
             <button class="btn-papey" @onclick="AddColor">➕ افزودن</button>
         </div>
+        <div class="admin-table-scroll" role="region" aria-label="جدول اطلاعات" tabindex="0">
         <table class="table-papey mobile-card-table">
             <thead><tr><th>رنگ</th><th>نام</th><th>کد</th><th>ترتیب</th><th>وضعیت</th><th></th></tr></thead>
             <tbody>
@@ -59,6 +60,7 @@
                 }
             </tbody>
         </table>
+        </div>
     </div>
 
     <div class="card-box">
@@ -67,6 +69,7 @@
             <div><label class="form-label">نام سایز</label><input class="form-input" @bind="_newSizeName" placeholder="مثلاً 3XL" /></div>
             <button class="btn-papey" @onclick="AddSize">➕ افزودن</button>
         </div>
+        <div class="admin-table-scroll" role="region" aria-label="جدول اطلاعات" tabindex="0">
         <table class="table-papey mobile-card-table">
             <thead><tr><th>نام</th><th>ترتیب</th><th>وضعیت</th><th></th></tr></thead>
             <tbody>
@@ -102,6 +105,7 @@
                 }
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 

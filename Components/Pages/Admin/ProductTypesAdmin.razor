@@ -22,6 +22,7 @@
         <div><label class="form-label">آیکن فیلتر</label><ProductTypeIconPicker @bind-Value="_newIcon" TypeName="@_newName" UploadingChanged="IconUploading" /></div>
         <button class="btn-papey" disabled="@(_iconUploads > 0)" @onclick="Add">➕ افزودن</button>
     </div>
+    <div class="admin-table-scroll" role="region" aria-label="جدول اطلاعات" tabindex="0">
     <table class="table-papey mobile-card-table">
         <thead><tr><th>نام</th><th>آیکن فیلتر</th><th>محصولات</th><th>ترتیب</th><th>وضعیت</th><th></th></tr></thead>
         <tbody>
@@ -70,6 +71,7 @@
             }
         </tbody>
     </table>
+    </div>
     @if (_deleteId is { } deleteId && _types.FirstOrDefault(t => t.Id == deleteId) is { } pending)
     {
         <div class="alert-papey alert-info" role="alert">

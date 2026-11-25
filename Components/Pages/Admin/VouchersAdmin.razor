@@ -19,9 +19,11 @@
 </div><button class="btn-papey" disabled="@_saving">تعریف کد</button>
 </form>@if(_message is not null){<p role="status">@_message</p>}
 </section>
+<div class="admin-table-scroll" role="region" aria-label="جدول اطلاعات" tabindex="0">
 <table class="table-papey mobile-card-table"><thead><tr><th>کد</th><th>درصد</th><th>سقف</th><th>اعتبار</th><th>استفاده / ظرفیت</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody>
 @foreach(var row in _rows){var v=row.Voucher;<tr><td data-label="کد"><b dir="ltr">@v.Code</b></td><td data-label="درصد">@Fa(v.Percent)٪</td><td data-label="سقف">@v.MaxReduction.ToToman()</td><td data-label="اعتبار">@PersianHelpers.ToPersianDateTime(v.ExpiresAt)</td><td data-label="ظرفیت">@Fa(row.Used) / @Fa(v.UseLimit)</td><td data-label="وضعیت">@(!v.Active?"غیرفعال":v.ExpiresAt<=DateTime.UtcNow?"منقضی":"فعال")</td><td data-label="عملیات">@if(v.Active){<button class="btn-papey btn-outline btn-sm" @onclick="()=>Deactivate(v.Id)">غیرفعال کردن</button>}</td></tr>}
 </tbody></table>
+</div>
 @code{
  private string _code="";private int _percent=10,_limit=100;private decimal _cap=100000;private DateTime? _expiry;private bool _saving;private string? _message;
  private sealed record Row(Voucher Voucher,int Used);private List<Row> _rows=[];

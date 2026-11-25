@@ -2,15 +2,19 @@
 
 <div class="admin-shell">
     <aside class="admin-side">
-        <a class="brand" href="/" aria-label="پاپی، صفحه اصلی فروشگاه">پاپی<span>.</span> | مدیریت</a>
+        <a class="brand admin-wordmark" href="/" aria-label="پاپی، صفحه اصلی فروشگاه">
+            <strong lang="en">PAPEY</strong><span>پنل مدیریت</span>
+        </a>
         <div class="admin-desktop-nav"><AdminNavigation /></div>
         <details class="admin-mobile-menu" data-navigation-menu>
-            <summary>☰ منوی مدیریت</summary>
+            <summary>☰ <span>منو</span></summary>
             <AdminNavigation />
         </details>
     </aside>
     <main class="admin-main">
-        @Body
+        <div class="admin-content">
+            @Body
+        </div>
     </main>
 </div>
 

@@ -64,6 +64,7 @@
     <p>پس از تأیید پرداخت، برای هر گیرنده یک پیامک در صف ثبت می‌شود. شماره‌های ورود مدیر مستقل از این فهرست هستند.</p>
     <p dir="ltr">@string.Join(" • ", Sms.OrderNotificationPhones)</p>
     <p>«پذیرفته شده» به معنی پذیرش درخواست توسط SMS.ir است؛ دریافت روی گوشی را در گزارش SMS.ir بررسی کنید.</p>
+    <div class="admin-table-scroll" role="region" aria-label="جدول اطلاعات" tabindex="0">
     <table class="table-papey mobile-card-table">
         <thead><tr><th>سفارش</th><th>گیرنده</th><th>وضعیت پیامک</th><th>جزئیات</th></tr></thead>
         <tbody>
@@ -78,12 +79,14 @@
             }
         </tbody>
     </table>
+    </div>
     @if (_adminJobs.Count == 0) { <p>هنوز اعلان سفارش جدید ثبت نشده است.</p> }
 </div>
 <div class="card-box">
     <div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px"><h2>پیامک ارسال سفارش</h2><button class="btn-papey btn-outline" disabled="@_busy" @onclick="LoadJobs">به‌روزرسانی</button></div>
     <p>با تغییر وضعیت سفارش به «ارسال شده»، پیامک به شماره گیرنده سفارش ارسال می‌شود.</p>
     @if (!Sms.CanSendShipping) { <p class="alert-papey alert-danger">پیامک‌های سفارش تا تکمیل تنظیمات در صف باقی می‌مانند.</p> }
+    <div class="admin-table-scroll" role="region" aria-label="جدول اطلاعات" tabindex="0">
     <table class="table-papey mobile-card-table">
         <thead><tr><th>سفارش</th><th>محیط</th><th>وضعیت پیامک</th><th>تلاش‌ها</th><th>جزئیات</th></tr></thead>
         <tbody>
@@ -105,6 +108,7 @@
             }
         </tbody>
     </table>
+    </div>
     @if (_jobs.Count == 0) { <p>هنوز پیامک ارسال سفارش ثبت نشده است.</p> }
 </div>
 
