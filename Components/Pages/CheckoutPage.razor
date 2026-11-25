@@ -151,7 +151,7 @@ else
             var user = await db.Users.FindAsync(uid);
             if (user is not null)
             {
-                _model.CustomerName = user.FullName ?? "";
+                _model.CustomerName = ReceiverNameOrEmpty(user.FullName);
                 _model.CustomerPhone = user.Phone ?? "";
             }
             var def = _savedAddresses.FirstOrDefault(a => a.IsDefault) ?? _savedAddresses.FirstOrDefault();
@@ -170,7 +170,7 @@ else
 
     private void FillFrom(Address a)
     {
-        _model.CustomerName = a.ReceiverName;
+        _model.CustomerName = ReceiverNameOrEmpty(a.ReceiverName);
         _model.CustomerPhone = a.ReceiverPhone;
         _model.Province = a.Province;
         _model.City = a.City;
@@ -178,9 +178,27 @@ else
         _model.PostalCode = a.PostalCode;
     }
 
+    private static string ReceiverNameOrEmpty(string? name) =>
+        IsPlaceholderName(name) ? "" : name?.Trim() ?? "";
+
+    private static bool IsPlaceholderName(string? name)
+    {
+        if (name is null) return false;
+        var normalized = System.Text.RegularExpressions.Regex.Replace(
+            name.Normalize(System.Text.NormalizationForm.FormKC), @"[\s\p{Cf}]+", "")
+            .Replace('ي', 'ی').Replace('ك', 'ک');
+        return normalized == "کاربرپاپی";
+    }
+
     private async Task SubmitOrder()
     {
         if (_processing) return;
+        if (IsPlaceholderName(_model.CustomerName))
+        {
+            _error = "نام و نام خانوادگی واقعی گیرنده را وارد کنید.";
+            return;
+        }
+        _model.CustomerName = _model.CustomerName.Trim();
         var acceptedTaxEnabled = _taxEnabled;
         _processing = true; _error = null;
         try
